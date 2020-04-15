@@ -1,11 +1,11 @@
 {
   "name": "@lotivo/sequelize-acl",
   "version": "0.0.0-dev",
-  "description": " ACL for Sequelize",
+  "description": "ACL for Sequelize",
   "main": "lib/index.js",
   "scripts": {
-    "debug": "node --nolazy --inspect-brk=9229 ./tests/runner.js",
-    "test": "mocha tests/* --reporter spec",
+    "debug": "node ./tests/runner.js --inspect-brk=9229",
+    "test": "mocha ./tests/runner.js --reporter spec",
     "cover": "nyc npm test && nyc report --reporter=lcov --reporter=text-summary",
     "coverall": "nyc report --reporter=text-lcov | coveralls"
   },
