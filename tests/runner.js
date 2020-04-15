@@ -17,7 +17,8 @@ describe('Sequelize ACL - SQLite', function () {
 
         let seq = new Sequelize({ dialect: 'sqlite',logging: false, });        
         seq.authenticate().then(function() {
-            self.acl2 =  new SequelizeAcl(seq, {sync : false, debug: true, timestamps : true, paranoid : true});
+            self.acl2 =  new SequelizeAcl(seq, {sync : false, debug: false, timestamps : true, paranoid : true});
+            self.acl2 =  new SequelizeAcl(seq, {sync : true, debug: true, timestamps : true, paranoid : true});
             done();
         });
     });

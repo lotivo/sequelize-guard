@@ -290,6 +290,12 @@ exports.MakeControl = function(){
 
             expect(res._control._roles).to.include('admin');
         });
+        
+        it('should not accept anything other than string for role', function(){
+            let res = this.acl.init().allow('admin').allow(3);
+
+            expect(res._control._roles).to.include('admin');
+        });
         // it('add multiple admin role to control', function(){
         //     let res = this.acl.init().allow(['admin','moderator']);
         //     expect(res._control._roles.length).to.equal(2);
@@ -355,7 +361,7 @@ exports.Miscl = function(){
     describe('Miscl', function(){
 
         if(this.acl2){
-            
+
         }
     })
 }
