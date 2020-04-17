@@ -4,8 +4,37 @@ const chai = require('chai')
 var expect = chai.expect;
 var assert = chai.assert;
 
+var schemas = require('../lib/migrations/acl-schema').schemas;
+
 var SequelizeAcl = require('../lib/index');
 
+
+exports.init = function () {
+    describe('SequelizeACL init ', function(){
+
+        it('should be initialized when user passed', function(done){
+            let AclUser = this.seqMem1.define("User", schemas['users'], {tableName : `acl_users`});
+            let seqAcl =  new SequelizeAcl(this.seqMem1, {sync : false, debug: false, timestamps : true, paranoid : true, UserModel: AclUser});
+
+            if(seqAcl){
+                this.__proto__.seqMem1 = null;
+                done()
+            }
+        });
+
+        it('should be initialized with options 2', function(done){
+            let seqAcl =  new SequelizeAcl(this.seqMem2, {sync : true, debug: true, timestamps : true, paranoid : false});
+            let seqAcl2 =  new SequelizeAcl(this.seqMem3, {sync : true, debug: false, timestamps : true, paranoid : false});
+            
+            if(seqAcl && seqAcl2){
+                this.__proto__.seqMem2 = null;
+                this.__proto__.seqMem3 = null;
+                done()
+            }
+        });
+
+    })
+};
 
 exports.Constructor = function () {
 
