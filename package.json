@@ -1,11 +1,11 @@
 {
   "name": "@lotivo/sequelize-acl",
   "version": "0.0.0-dev",
-  "description": " ACL for Sequelize",
+  "description": "ACL for Sequelize",
   "main": "lib/index.js",
   "scripts": {
-    "debug": "node --nolazy --inspect-brk=9229 ./tests/runner.js",
-    "test": "mocha tests/* --reporter spec",
+    "debug": "node ./tests/runner.js --inspect-brk=9229",
+    "test": "mocha ./tests/runner.js --reporter spec",
     "cover": "nyc npm test && nyc report --reporter=lcov --reporter=text-summary",
     "coverall": "nyc report --reporter=text-lcov | coveralls"
   },
@@ -14,7 +14,12 @@
     "url": "git+https://github.com/lotivo/sequelize-acl.git"
   },
   "keywords": [
-    "sequelize-acl", "acl", "sequelize", "acl-sequelize","role","permission" 
+    "sequelize-acl",
+    "acl",
+    "sequelize",
+    "acl-sequelize",
+    "role",
+    "permission"
   ],
   "author": "Pankaj Vaghela <vpankaj1998official@gmail.com>",
   "license": "MIT",
@@ -33,6 +38,9 @@
     "nyc": "^15.0.1"
   },
   "dependencies": {
-    "sequelize": "^5.21.6"
+    "faker": "^4.1.0",
+    "lodash": "^4.17.15",
+    "sequelize": "^5.21.6",
+    "sqlite3": "^4.1.1"
   }
 }
