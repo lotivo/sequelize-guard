@@ -484,6 +484,26 @@ exports.AclSetup = function(){
                 expect(roles.length).to.equal(1);
             });
         });
+        it('it should assign role to user 2', async function(){
+            let acl = this.acl;
+            return  this.acl._sequelize.models.User.findByPk(3).then(function(user){
+                return acl.assignRole(user, 'moderator').then((user)=> {
+                    return user.getRoles();
+                });
+            }).then(roles => {
+                expect(roles.length).to.equal(1);
+            }).then(() => {
+                return  this.acl._sequelize.models.User.findByPk(4).then(function(user){
+                    return acl.assignRole(user, 'user').then((user)=> {
+                        return user.getRoles();
+                    });                
+                }).then(roles => {
+                    expect(roles.length).to.equal(1);
+                });
+            });
+        });
+        
+        
         it('it should assign roles to user', async function(){
             let acl = this.acl;
             return  this.acl._sequelize.models.User.findByPk(2).then(function(user){
@@ -502,6 +522,15 @@ exports.AclSetup = function(){
             }).then(roles => {
                 expect(roles.length).to.equal(1);
             });
+        });
+    })
+}
+
+exports.AclAuthorize = function(){
+    describe('AclAuthorize', function(){
+        
+        it('it should allow user to view ', function(){
+
         });
     })
 }

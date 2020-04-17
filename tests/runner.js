@@ -9,7 +9,7 @@ describe('Sequelize ACL - SQLite', function () {
     var dbConfig = {
         dialect: 'sqlite',
         logging: false,
-        // storage: './seql-acl-testd5.sqlite3',
+        // storage: './seql-acl-testdb7.sqlite3',
     }
 
     before(function (done) {
