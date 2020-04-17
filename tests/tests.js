@@ -12,14 +12,20 @@ exports.Constructor = function () {
     // Group of tests using describe
     describe('setup', function () {
 
-        let migration = [];
+        let migration = [], seeds = [];
         let queryInterfaceStub = {
             createTable: function(tableName, schema) {
                 migration.push(tableName);
             },
             dropTable: function(tableName, schema) {
                 migration.push(tableName);
-            }
+            },
+            bulkInsert : function(tableName, data) {
+                seeds.push(tableName);
+            }, 
+            bulkDelete : function(tableName, data) {
+                seeds.push(tableName);
+            },
         };
 
         it('properly runs up migration', function() {
@@ -59,6 +65,23 @@ exports.Constructor = function () {
             SequelizeAcl.migration.down(queryInterfaceStub, this.acl.sequelize, { prefix: 'acl_' });
             assert.deepEqual(migration, expected);
         });
+
+        it('properly runs up seeder', function() {
+            seeds = [];
+            let expected = ['acl_roles'];
+
+            SequelizeAcl.seeder.up(queryInterfaceStub, this.acl.sequelize);
+            assert.deepEqual(seeds, expected);
+        });
+        
+        it('properly runs down seeder', function() {
+            seeds = [];
+            let expected = ['acl_roles'];
+
+            SequelizeAcl.seeder.down(queryInterfaceStub, this.acl.sequelize);
+            assert.deepEqual(seeds, expected);
+        });
+        
     });
 }
 
@@ -149,6 +172,16 @@ exports.Roles = function(){
                 })
             });
 
+            it('single: should not create for empty string', function(done){
+                this.acl.makeRole('').then(function(data){
+                    expect(!data);
+                    done();
+                }).catch((err)=>{
+                    assert(err);
+                    done();
+                })
+            });
+
             it('multiple: should not create duplicate, return created roles', function(done){
                 this.acl.makeRoles(['admin','moderator',{ name:'user', description:"A basic user"}]).then(function(data){
                     expect(data.length).to.equal(2);
@@ -208,14 +241,30 @@ exports.Roles = function(){
 exports.Users = function(){
     describe('Users', function(){
         it('should create user', function(done){
-            this.acl.makeUser({name: "Pan", email: "test@test.com" }).then(function(data){
-                expect(data.dataValues.name).to.equal('Pan');
+            this.acl.makeUser({name: "SuperAdmin", email: "superadmin@test.com" }).then(function(data){
+                expect(data.dataValues.name).to.equal('SuperAdmin');
                 done();
             }).catch((err)=>{
                 assert(!err);
                 done();
             })
         })
+
+        it('should create user 2', function(done){
+            let users = [
+                {name: "SomeAdmin", email: "someAdmin@test.com" },
+                {name: "fleur editor", email: "editor@test.com" },
+                {name: "User 1", email: "myuser@test.com" },
+            ];
+            this.acl._models.AclUser.bulkCreate(users).then(function(data){
+                expect(data.length).to.equal(3);
+                done();
+            }).catch((err)=>{
+                assert(!err);
+                done();
+            })
+        })
+
 
     });
 }
@@ -256,7 +305,7 @@ exports.UserAclified = function(){
         describe('Remove Role-User relation ', function(){
             it('single : should remove role', function(done){
                 this.acl._sequelize.models.User.findByPk(1).then(function(user){
-                    user.rmRoles('admin').then(result => {
+                    user.rmAssignedRoles('admin').then(result => {
                         expect(result).to.equal(1);
 
                         user.getRoles().then(roles => {
@@ -269,7 +318,7 @@ exports.UserAclified = function(){
 
             it('multiple : should remove roles', function(done){
                 this.acl._sequelize.models.User.findByPk(1).then(function(user){
-                    user.rmRoles(['superadmin','moderator','toddle']).then(result => {
+                    user.rmAssignedRoles(['superadmin','moderator','toddle']).then(result => {
                         expect(result).to.equal(2);
                         user.getRoles().then(roles => {
                             expect(roles.length).to.equal(0);
@@ -317,48 +366,125 @@ exports.MakeControl = function(){
             expect(res._control._resources.length).to.equal(0);
         });
 
-        it('commit basic control', function(done){
-            this.acl.init()
+        it('commit basic control', async function(){
+            return this.acl.init()
                 .allow('admin')
                 .to(['view', 'edit'])
                 .on('blog').commit().then((data) => {
-                    done();
+                    expect(data.permissions.length).to.equal(1);
+                    expect(data.role.name).to.equal('admin');
                 }).catch(e => {
                     assert(!e)
-                    done();
                 });
         });
 
-        it('commit basic control 2', function(done){
-            this.acl.init()
+        it('commit basic control 2', async function(){
+            return this.acl.init()
                 .allow('superadmin')
                 .to(['*'])
-                .on('blog').commit().then((data) => {
-                    done();
+                .on('*').commit().then((data) => {
+                    expect(data.permissions.length).to.equal(1);
+                    expect(data.role.name).to.equal('superadmin');
                 }).catch(e => {
                     assert(!e);
-                    done();
                 });
         });
-        it('commit basic control 3', function(done){
-            this.acl.init()
-                .allow('superadmin')
+        it('commit basic control 3', async function(){
+            return this.acl.init()
+                .allow('admin')
                 .to(['*'])
                 .on(['blog','post','image']).commit().then((data) => {
-                    done();
+                    expect(data.permissions.length).to.equal(4);
+                    expect(data.role.name).to.equal('admin');
                 }).catch(e => {
                     assert(!e);
-                    done();
                 });
         });
-        
+        it('commit control 4',async function(){
+            return this.acl.init()
+                .on(['blog','post','image','notice'])
+                .allow('moderator')
+                .to(['view','edit','update'])
+                .commit().then((data) => {
+                    expect(data.permissions.length).to.equal(4);
+                    expect(data.role.name).to.equal('moderator');
+                }).catch(e => {
+                    assert(!e);
+                });
+        });
+        it('commit control 5', function(){
+            return this.acl.init()
+                .on(['blog','post','image','notice'])
+                .allow('analyst')
+                .to(['view'])
+                .commit().then((data) => {
+                    expect(data.permissions.length).to.equal(4);
+                    expect(data.role.name).to.equal('analyst');
+                }).catch(e => {
+                    assert(!e);
+                });
+        });
+        it('commit control 6', function(){
+            return this.acl.init()
+                .on(['blog','post','notice'])
+                .allow('user')  
+                .to(['view'])
+                .commit().then((data) => {
+                    expect(data.permissions.length).to.equal(3);
+                    expect(data.role.name).to.equal('user');
+                }).catch(e => {
+                    assert(!e);
+                });
+        });
 
     })
 }
 
+
+
+exports.AclSetup = function(){
+    describe('AclSetup', function(){
+        
+        it('it should assign role to user', async function(){
+            let acl = this.acl;
+            return  this.acl._sequelize.models.User.findByPk(1).then(function(user){
+                return acl.assignRole(user, 'superadmin').then((user)=> {
+                    return user.getRoles();
+                });
+            }).then(roles => {
+                expect(roles.length).to.equal(1);
+            });
+        });
+        it('it should assign roles to user', async function(){
+            let acl = this.acl;
+            return  this.acl._sequelize.models.User.findByPk(2).then(function(user){
+                return acl.assignRoles(user, ['superadmin','admin']);
+            }).then(roles => {
+                expect(roles.length).to.equal(2);
+            });
+        });
+        it('it should remove assigned roles from user', async function(){
+            let acl = this.acl;
+            return  this.acl._sequelize.models.User.findByPk(2).then(function(user){
+                return acl.rmAssignedRoles(user, ['superadmin']).then((res)=> {
+                    expect(res).to.equal(1);
+                    return user.getRoles();
+                });
+            }).then(roles => {
+                expect(roles.length).to.equal(1);
+            });
+        });
+    })
+}
+
+
+
+
+
 exports.Miscl = function(){
 
     describe('Miscl', function(){
+
 
         if(this.acl2){
 
