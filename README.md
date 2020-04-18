@@ -41,7 +41,7 @@ user.can('*');
 
 ## Installation
 
-Using npm:
+[NPM page](https://www.npmjs.com/package/@lotivo/sequelize-acl) 
 
 ```bash
 npm i @lotivo/sequelize-acl
@@ -52,8 +52,6 @@ or
 ```bash
 yarn add @lotivo/sequelize-acl
 ```
-
-This assumes you are using npm as your package manager.
 
 Make sure, Sequelize is setup in your project.
 If not, follow Sequelize [Getting Started](https://sequelize.org/master/manual/getting-started.html) first.
