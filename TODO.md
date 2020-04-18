@@ -4,7 +4,7 @@ List of some major tasks to do.
 
 ## A. API Changes
 
-### A.1 Multiple Roles during assigning roles
+### Multiple Roles during assigning roles
   
   **currently** you can do as following:
 
@@ -29,6 +29,12 @@ List of some major tasks to do.
       }
     ])
   ```
+
+### Create Child Roles
+
+Write API to create child roles. Database and models are already setup to have this.
+
+Just create easy api to support that.
 
 ## D. Database/ Structural Changes
 
