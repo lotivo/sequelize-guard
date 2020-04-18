@@ -16,7 +16,7 @@ After installation you can do stuff like
 user.assignRole('admin')
 
 //assign permission to a role.
-acl().init().allow('admin')
+acl.init().allow('admin')
     .to(['view', 'edit'])
     .on('blog')
     .commit();
@@ -113,6 +113,7 @@ module.exports = db;
 #### Options
 
 ```js
+//defaults
 {
     tables : {
         meta: 'meta',
@@ -163,6 +164,8 @@ acl.init()
     .on('blog')
     .commit();
 ```
+
+(There's a one liner alternative available. Read below in SequelizeAPI)
 
 Looks natural and easy right? Let's break the above example.
 
@@ -215,9 +218,13 @@ SequelizeAcl adds some api calls to User Model that you provide in options. So y
 ### SequelizeAcl API
 
 - createPermissions(resource, actions, options)
+
 - makeRole(role) : string
 - makeRoles(roles) : array of strings
 - deleteRoles(roles) : array of strings
+
+- allow(role, actions, resources) : AccessControl in one call
+
 - assignRoles(user, roles) : UserModel, [string|array]
 - rmAssignedRoles(user, roles)
 
