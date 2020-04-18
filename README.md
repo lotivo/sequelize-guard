@@ -1,16 +1,33 @@
 # sequelize-acl
 
 [![Build Status](https://travis-ci.com/lotivo/sequelize-acl.svg?branch=master)](https://travis-ci.com/lotivo/sequelize-acl) [![Coverage Status](https://coveralls.io/repos/github/lotivo/sequelize-acl/badge.svg?branch=master)](https://coveralls.io/github/lotivo/sequelize-acl?branch=master)
+An ACL library for Sequelize.js.
+All the Authorization you need in one place. 
 
-An ACL library for Sequelize.js
+Independent from ACL or ACL node.
 
-Not dependent on ACL or ACL node.
+## Installation
 
--------------
+Using npm:
 
-## Getting Started
+```bash
+npm i @lotivo/sequelize-acl
+```
 
-### Basic Usage
+or
+
+```bash
+yarn add @lotivo/sequelize-acl
+```
+
+This assumes you are using npm as your package manager.
+
+Make sure, Sequelize is setup in your project.
+If not, follow Sequelize [Getting Started](https://sequelize.org/master/manual/getting-started.html) first.
+
+## Usage
+
+### Setup
 
 #### 1. Create Sequelize Object
 
@@ -94,3 +111,39 @@ module.exports = db;
 - **userModel**: *(Sequelize Model | null)*, custom used model you want to use, instead of default User Model.
 - **userPk** : *(string | 'id' )*, Primary key for User Model, in case your custom model has primaryKey other than 'id'.
 - **safeAclDeletes** : *(bool | true)*, if set to true, role or permissions can't be deleted as long as they are associated with any other data. To remove you must break all other associations (to be tested).
+
+## Usage
+
+### @can
+
+function | bool
+
+Pass permission you are testing for as follows. returns true if allowed.
+
+```js
+//view blogs
+user.can('view blogs');
+
+//All Actions on blogs
+user.can('* blogs');
+
+//view All Resources, eg. analyst
+user.can('view *');
+
+//All Action on All Resources, superadmin  
+user.can('*');
+```
+
+## Influences
+
+Inspired from Spaties's Authorization Library for Laravel. ACL for Node.js
+
+## Contributions
+
+if you want or can write docs or tests, feel free to send Pull Requests.
+
+Feel free to create issues.
+
+## License
+
+[MIT](https://github.com/lotivo/sequelize-acl/blob/master/LICENSE)

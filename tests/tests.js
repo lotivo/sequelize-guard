@@ -443,11 +443,11 @@ exports.MakeControl = function(){
         });
         it('commit control 5', function(){
             return this.acl.init()
-                .on(['blog','post','image','notice'])
+                .on(['*'])
                 .allow('analyst')
                 .to(['view'])
                 .commit().then((data) => {
-                    expect(data.permissions.length).to.equal(4);
+                    expect(data.permissions.length).to.equal(1);
                     expect(data.role.name).to.equal('analyst');
                 }).catch(e => {
                     assert(!e);
@@ -484,10 +484,20 @@ exports.AclSetup = function(){
                 expect(roles.length).to.equal(1);
             });
         });
+        
+        it('it should assign roles to user', async function(){
+            let acl = this.acl;
+            return  this.acl._sequelize.models.User.findByPk(2).then(function(user){
+                return acl.assignRoles(user, ['superadmin','admin','user']);
+            }).then(roles => {
+                expect(roles.length).to.equal(3);
+            });
+        });
+
         it('it should assign role to user 2', async function(){
             let acl = this.acl;
             return  this.acl._sequelize.models.User.findByPk(3).then(function(user){
-                return acl.assignRole(user, 'moderator').then((user)=> {
+                return acl.assignRole(user, 'analyst').then((user)=> {
                     return user.getRoles();
                 });
             }).then(roles => {
@@ -502,16 +512,6 @@ exports.AclSetup = function(){
                 });
             });
         });
-        
-        
-        it('it should assign roles to user', async function(){
-            let acl = this.acl;
-            return  this.acl._sequelize.models.User.findByPk(2).then(function(user){
-                return acl.assignRoles(user, ['superadmin','admin']);
-            }).then(roles => {
-                expect(roles.length).to.equal(2);
-            });
-        });
         it('it should remove assigned roles from user', async function(){
             let acl = this.acl;
             return  this.acl._sequelize.models.User.findByPk(2).then(function(user){
@@ -520,7 +520,7 @@ exports.AclSetup = function(){
                     return user.getRoles();
                 });
             }).then(roles => {
-                expect(roles.length).to.equal(1);
+                expect(roles.length).to.equal(2);
             });
         });
     })
@@ -529,8 +529,36 @@ exports.AclSetup = function(){
 exports.AclAuthorize = function(){
     describe('AclAuthorize', function(){
         
-        it('it should allow user to view ', function(){
+        it('it should allow user to view blog',  function(){
+            return this.acl._sequelize.models.User.findByPk(4).then( async function(user){
+                let a = await user.can('view blog');
+                assert(a);
+            });
+        });
+        it('it should allow superadmin to *',  function(){
+            return this.acl._sequelize.models.User.findByPk(1).then( async function(user){
+                let a = await user.can('*');
+                assert(a);
+            });
+        });
+        it('it should allow admin to blog *',  function(){
+            return this.acl._sequelize.models.User.findByPk(2).then( async function(user){
+                let a = await user.can('* blog');
+                assert(a);
+            });
+        });
+        it('it should allow analyst to view *',  function(){
+            return this.acl._sequelize.models.User.findByPk(3).then( async function(user){
+                let a = await user.can('view *');
+                assert(a);
+            });
+        });
 
+        it('it should allow user to edit blog',  function(){
+            return this.acl._sequelize.models.User.findByPk(4).then( async function(user){
+                let a = await user.can('edit blog');
+                assert(!a);
+            });
         });
     })
 }
