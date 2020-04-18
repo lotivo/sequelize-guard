@@ -2,11 +2,42 @@
 
 [![Build Status](https://travis-ci.com/lotivo/sequelize-acl.svg?branch=master)](https://travis-ci.com/lotivo/sequelize-acl) [![Coverage Status](https://coveralls.io/repos/github/lotivo/sequelize-acl/badge.svg?branch=master)](https://coveralls.io/github/lotivo/sequelize-acl?branch=master)
 An ACL library for Sequelize.js.
-All the Authorization you need in one place.
+
+All the Authorization logic you need in one place, allowing you to manage user permissions and roles in a database.
 
 Independent from ACL or ACL node.
 
-**Package under Developement.** Feel free to try and give feedback.
+**Package under Development.** Feel free to try and give feedback.
+
+After installation you can do stuff like
+
+```js
+//Assign Role to a user.
+user.assignRole('admin')
+
+//assign permission to a role.
+acl().init().allow('admin')
+    .to(['view', 'edit'])
+    .on('blog')
+    .commit();
+
+```
+
+and **can** check if user has permission like
+
+```js
+//view blog
+user.can('view blog');
+
+//All Actions on blog
+user.can('* blog');
+
+//view All Resources, eg. analyst
+user.can('view *');
+
+//All Action on All Resources, superadmin  
+user.can('*');
+```
 
 ## Installation
 
@@ -221,14 +252,20 @@ user.can('*');
 
 ## Influences
 
-Inspired from Spaties's Authorization Library for Laravel. ACL for Node.js
+- Spaties's Laravel-permission, Authorization Library for Laravel.
+- ACL for Node.js
+
+## Alternative
+
+- ACL is versatile library which has support for most ORMs.
+    I actually tried to use that before writing this, but somehow wasn't feeling the power or freedom I wanted. But it is quite popular and mostly used.
 
 ## Contributions
 
-if you want or can write docs or tests, feel free to send Pull Requests.
+For docs or tests or even code, feel free to send Pull Requests.
 
 Feel free to create issues.
 
 ## License
 
-[MIT](https://github.com/lotivo/sequelize-acl/blob/master/LICENSE)
+The MIT License (MIT). Please see [License File](https://github.com/lotivo/sequelize-acl/blob/master/LICENSE) for more information.
