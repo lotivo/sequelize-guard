@@ -366,33 +366,33 @@ exports.MakeControl = function(){
         it('add admin role to control', function(){
             let res = this.acl.init().allow('admin');
 
-            expect(res._control._roles).to.include('admin');
+            expect(res._roles).to.include('admin');
         });
         
         it('should not accept anything other than string for role', function(){
             let res = this.acl.init().allow('admin').allow(3);
 
-            expect(res._control._roles).to.include('admin');
+            expect(res._roles).to.include('admin');
         });
         // it('add multiple admin role to control', function(){
         //     let res = this.acl.init().allow(['admin','moderator']);
-        //     expect(res._control._roles.length).to.equal(2);
+        //     expect(res._roles.length).to.equal(2);
         // });
 
         it('add view action to control', function(){
-            let res = this.acl.to('view');
-            expect(res._control._actions).to.include('view');
+            let res = this.acl.init().to('view');
+            expect(res._actions).to.include('view');
         });
 
         it('add blog resource to control', function(){
-            let res = this.acl.on('blog');
-            expect(res._control._resources).to.include('blog');
+            let res = this.acl.init().on('blog');
+            expect(res._resources).to.include('blog');
         });
         it('should reset control sets', function(){
             let res = this.acl.init();
-            expect(res._control._roles.length).to.equal(0);
-            expect(res._control._actions.length).to.equal(0);
-            expect(res._control._resources.length).to.equal(0);
+            expect(res._roles.length).to.equal(0);
+            expect(res._actions.length).to.equal(0);
+            expect(res._resources.length).to.equal(0);
         });
 
         it('commit basic control', async function(){
