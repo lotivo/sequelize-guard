@@ -2,9 +2,11 @@
 
 [![Build Status](https://travis-ci.com/lotivo/sequelize-acl.svg?branch=master)](https://travis-ci.com/lotivo/sequelize-acl) [![Coverage Status](https://coveralls.io/repos/github/lotivo/sequelize-acl/badge.svg?branch=master)](https://coveralls.io/github/lotivo/sequelize-acl?branch=master)
 An ACL library for Sequelize.js.
-All the Authorization you need in one place. 
+All the Authorization you need in one place.
 
 Independent from ACL or ACL node.
+
+**Package under Developement.** Feel free to try and give feedback.
 
 ## Installation
 
@@ -52,12 +54,14 @@ For example we have used default Sequelize setup file for models.
 Initialize SequelizeACL object **after** you have already initialized your models.
 
 ```js
+//Import library
 var SequelizeAcl = require('@lotivo/sequelize-acl');
 
 ...
 //initialize models
 ...
 
+//initialize SequelizeAcl
 var acl = new SequelizeAcl(sequelize, options);
 ```
 
@@ -112,11 +116,92 @@ module.exports = db;
 - **userPk** : *(string | 'id' )*, Primary key for User Model, in case your custom model has primaryKey other than 'id'.
 - **safeAclDeletes** : *(bool | true)*, if set to true, role or permissions can't be deleted as long as they are associated with any other data. To remove you must break all other associations (to be tested).
 
-## Usage
+## Assigning Roles and Permissions
 
-### @can
+### AclControl
 
-function | bool
+- AclControl is API layer over SequelizeAcl's internal logic.
+- API calls are chainable, which means you can call them in whichever order you prefer. [ exception :  `commit()` ].
+
+We are going to use same instance ```acl``` of SequelizeAcl we created during setup.
+
+It's best to learn from examples. So here we will take a basic example.
+
+```js
+acl.init()
+    .allow('admin')
+    .to(['view', 'edit'])
+    .on('blog')
+    .commit();
+```
+
+Looks natural and easy right? Let's break the above example.
+
+#### 1. init()
+
+To initialize an AclControl call init() method on `acl` instance.
+This function returns a brand new instance of [AclControl](#AclControl).
+
+#### 2. allow()
+
+parameter : **Role** (string)
+
+- Pass name of role for which you are making control statement.
+- Currently only supports one role at time. (Planning on allowing multiple roles soon).
+
+**Note**: If you call this multiple times, whatever you passed most recently is taken into account.
+
+#### 3. to()
+
+parameter : **Action**(s) (string | array)
+
+- accepts action as string or array of string.
+- eg. view, edit, update, delete, wildcard (*)
+
+#### 4. on()
+
+parameter : **Resource**(s) (string | array)
+
+- pass name of resources as string or array of strings.
+- eg. blog, post, image, article, wildcard(*)
+
+#### 5. commit()
+
+Asynchronous call which saves all the data provided in database, using magic of SequelizeAcl and Sequelize.
+
+- If permission is already created before, same permission is used.
+- If Role is already created same role is assigned permission given.
+  
+**Returns** : object with properties roles, permission. 
+All the roles and permissions specified (created or old) by this AclControl statement are returned.
+
+### User Model API
+
+SequelizeAcl adds some api calls to User Model that you provide in options. So you can assign roles straight from your user object that is logged in.
+
+- user.assignRole(role) : string
+- user.assignRoles(roles) : array of strings
+- user.rmAssignedRoles(roles) : array of strings
+
+### SequelizeAcl API
+
+- createPermissions(resource, actions, options)
+- makeRole(role) : string
+- makeRoles(roles) : array of strings
+- deleteRoles(roles) : array of strings
+- assignRoles(user, roles) : UserModel, [string|array]
+- rmAssignedRoles(user, roles)
+
+For More information read about SequelizeAcl API here.
+
+## Authorizing
+
+### User API
+
+#### user.can()
+
+parameter : 'action resource' (string)
+returns : bool
 
 Pass permission you are testing for as follows. returns true if allowed.
 
