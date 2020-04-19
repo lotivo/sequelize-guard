@@ -218,6 +218,7 @@ SequelizeAcl adds some api calls to User Model that you provide in options. So y
 ### SequelizeAcl API
 
 - createPermissions(resource, actions, options)
+- createPermissionsBulk({resource, actions}, options)
 
 - makeRole(role) : string
 - makeRoles(roles) : array of strings
