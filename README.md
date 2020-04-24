@@ -21,6 +21,9 @@ acl.init().allow('admin')
     .on('blog')
     .commit();
 
+//or if you like one liners
+acl.allow('admin',['view','edit'],'blog');
+
 ```
 
 and **can** check if user has permission like
@@ -41,7 +44,7 @@ user.can('*');
 
 ## Installation
 
-[NPM page](https://www.npmjs.com/package/@lotivo/sequelize-acl) 
+[NPM page](https://www.npmjs.com/package/@lotivo/sequelize-acl)
 
 ```bash
 npm i @lotivo/sequelize-acl
