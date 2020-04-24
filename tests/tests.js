@@ -110,6 +110,10 @@ exports.Constructor = function () {
             SequelizeAcl.seeder.down(queryInterfaceStub, this.acl.sequelize);
             assert.deepEqual(seeds, expected);
         });
+
+        it('should return all acl models, i.e. 6 models', function(){
+            expect(Object.keys(this.acl.models()).length).to.equal(6);
+        })
         
     });
 }
