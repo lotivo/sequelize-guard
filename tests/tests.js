@@ -175,6 +175,48 @@ exports.Permissions = function(){
                 })
         })
 
+
+        it('should create permission in bulk with "multiple resources" with options, return created, ', function(){
+            return this.acl.createPermissionsBulk([
+                    {
+                        resource : 'blog',
+                        actions : 'view',
+                    },
+                    {
+                        name : 'blog_manage',
+                        resource : 'blog',
+                        actions : ['view','edit','update','create']
+                    },
+                ], { 
+                    json :true
+                }).then(function(perms){
+                    expect(perms.length).to.equal(1);
+                }).catch((err)=>{
+                    assert(!err);
+                })
+        });
+
+
+
+        it('should create permission in bulk with "multiple resources" without options, return created', function(){
+            return this.acl.createPermissionsBulk([
+                    {
+                        resource : 'blog',
+                        actions : 'view',
+                    },
+                    {
+                        name : 'gallery_manage',
+                        resource : 'gallery',
+                        actions : ['view','edit','update','create']
+                    },
+                ]).then(function(perms){
+                    expect(perms.length).to.equal(1);
+                }).catch((err)=>{
+                    assert(!err);
+                })
+        });
+
+
     });
 }
 
@@ -453,12 +495,9 @@ exports.MakeControl = function(){
                     assert(!e);
                 });
         });
-        it('commit control 6', function(){
-            return this.acl.init()
-                .on(['blog','post','notice'])
-                .allow('user')  
-                .to(['view'])
-                .commit().then((data) => {
+        it('should commit control, SequelizeAcl allow api, return permissions and roles', function(){
+            return this.acl.allow('user', ['view'], ['blog','post','notice'])
+                .then((data) => {
                     expect(data.permissions.length).to.equal(3);
                     expect(data.role.name).to.equal('user');
                 }).catch(e => {
