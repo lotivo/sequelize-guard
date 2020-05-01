@@ -13,17 +13,13 @@ After installation you can do stuff like
 
 ```js
 //Assign Role to a user.
-user.assignRole('admin')
+user.assignRole('admin');
 
 //assign permission to a role.
-acl.init().allow('admin')
-    .to(['view', 'edit'])
-    .on('blog')
-    .commit();
+acl.init().allow('admin').to(['view', 'edit']).on('blog').commit();
 
 //or if you like one liners
-acl.allow('admin',['view','edit'],'blog');
-
+acl.allow('admin', ['view', 'edit'], 'blog');
 ```
 
 and **can** check if user has permission like
@@ -38,7 +34,7 @@ user.can('* blog');
 //view All Resources, eg. analyst
 user.can('view *');
 
-//All Action on All Resources, superadmin  
+//All Action on All Resources, superadmin
 user.can('*');
 ```
 
@@ -70,15 +66,19 @@ Create sequelize object with your database configuration.
 For example we have used default Sequelize setup file for models.
 
 ```js
- //models/index.js
+//models/index.js
 
-  let sequelize;
-  if (config.use_env_variable) {
-      sequelize = new Sequelize(process.env[config.use_env_variable], config);
-  } else {
-      sequelize = new Sequelize(config.database, config.username, config.password, config);
-  }
-
+let sequelize;
+if (config.use_env_variable) {
+  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+} else {
+  sequelize = new Sequelize(
+    config.database,
+    config.username,
+    config.password,
+    config
+  );
+}
 ```
 
 #### 2. Initialize Sequelize-acl
@@ -134,38 +134,36 @@ module.exports = db;
     debug: false,
     userModel: null,
     userPk : 'id', //User Primary Key
-    safeAclDeletes : true
+    safeAclDeletes : true,
+    userCacheTime: 1800, // 60*30
 }
 ```
 
-- **tables** : *name of tables* - to be used for acl tables. (to be implemented).
+- **tables** : _name of tables_ - to be used for acl tables. (to be implemented).
 - **prefix** : custom prefix for for all tables
 - **primaryKey** : custom primary key for all acl tables (to be implemented) ,
-- **timestamps** : *(bool | false)*, add timestamps to table
-- **paranoid** : *(bool | false)*, soft deletes
-- **sync**: *(bool | true)*, if set to true, database tables will be created without migrations
-- **debug**: *(bool | false)*, print database queries to console.
-- **userModel**: *(Sequelize Model | null)*, custom used model you want to use, instead of default User Model.
-- **userPk** : *(string | 'id' )*, Primary key for User Model, in case your custom model has primaryKey other than 'id'.
-- **safeAclDeletes** : *(bool | true)*, if set to true, role or permissions can't be deleted as long as they are associated with any other data. To remove you must break all other associations (to be tested).
+- **timestamps** : _(bool | false)_, add timestamps to table
+- **paranoid** : _(bool | false)_, soft deletes
+- **sync**: _(bool | true)_, if set to true, database tables will be created without migrations
+- **debug**: _(bool | false)_, print database queries to console.
+- **userModel**: _(Sequelize Model | null)_, custom used model you want to use, instead of default User Model.
+- **userPk** : _(string | 'id' )_, Primary key for User Model, in case your custom model has primaryKey other than 'id'.
+- **safeAclDeletes** : _(bool | true)_, if set to true, role or permissions can't be deleted as long as they are associated with any other data. To remove you must break all other associations (to be tested).
+- **userCacheTime** : _(int | 1800)_, time for which roles of user will be cached (in seconds), this number should be inversely proportional to your user traffic.
 
 ## Assigning Roles and Permissions
 
 ### AclControl
 
 - AclControl is API layer over SequelizeAcl's internal logic.
-- API calls are chainable, which means you can call them in whichever order you prefer. [ exception :  `commit()` ].
+- API calls are chainable, which means you can call them in whichever order you prefer. [ exception : `commit()` ].
 
-We are going to use same instance ```acl``` of SequelizeAcl we created during setup.
+We are going to use same instance `acl` of SequelizeAcl we created during setup.
 
 It's best to learn from examples. So here we will take a basic example.
 
 ```js
-acl.init()
-    .allow('admin')
-    .to(['view', 'edit'])
-    .on('blog')
-    .commit();
+acl.init().allow('admin').to(['view', 'edit']).on('blog').commit();
 ```
 
 (There's a one liner alternative available. Read below in SequelizeAPI)
@@ -191,14 +189,14 @@ parameter : **Role** (string)
 parameter : **Action**(s) (string | array)
 
 - accepts action as string or array of string.
-- eg. view, edit, update, delete, wildcard (*)
+- eg. view, edit, update, delete, wildcard (\*)
 
 #### 4. on()
 
 parameter : **Resource**(s) (string | array)
 
 - pass name of resources as string or array of strings.
-- eg. blog, post, image, article, wildcard(*)
+- eg. blog, post, image, article, wildcard(\*)
 
 #### 5. commit()
 
@@ -206,8 +204,8 @@ Asynchronous call which saves all the data provided in database, using magic of 
 
 - If permission is already created before, same permission is used.
 - If Role is already created same role is assigned permission given.
-  
-**Returns** : object with properties roles, permission. 
+
+**Returns** : object with properties roles, permission.
 All the roles and permissions specified (created or old) by this AclControl statement are returned.
 
 ### User Model API
@@ -226,6 +224,7 @@ SequelizeAcl adds some api calls to User Model that you provide in options. So y
 - makeRole(role) : string
 - makeRoles(roles) : array of strings
 - deleteRoles(roles) : array of strings
+- allRoles(roles) : get All roles
 
 - allow(role, actions, resources) : AccessControl in one call
 
@@ -255,9 +254,15 @@ user.can('* blogs');
 //view All Resources, eg. analyst
 user.can('view *');
 
-//All Action on All Resources, superadmin  
+//All Action on All Resources, superadmin
 user.can('*');
 ```
+
+### Events
+
+- onRolesCreated : with created roles
+- onPermsCreated : with created permissions
+- onPermsAssigned : role to whom permissions are assigned
 
 ## Influences
 
@@ -267,7 +272,7 @@ user.can('*');
 ## Alternative
 
 - ACL is versatile library which has support for most ORMs.
-    I actually tried to use that before writing this, but somehow wasn't feeling the power or freedom I wanted. But it is quite popular and mostly used.
+  I actually tried to use that before writing this, but somehow wasn't feeling the power or freedom I wanted. But it is quite popular and mostly used.
 
 ## Contributions
 

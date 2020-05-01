@@ -52,6 +52,9 @@ typings/
 
 # Optional eslint cache
 .eslintcache
+.eslintignore
+.eslintrc.js
+.prettierrc
 
 # Microbundle cache
 .rpt2_cache/
@@ -104,3 +107,6 @@ dist
 .tern-port
 
 .vscode/
+.editorconfig
+.thea/
+.coverage/

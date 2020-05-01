@@ -1,0 +1,4 @@
+{
+  "mocha.files.glob": "tests/runner.js ",
+  "mocha.coverage": null
+}
