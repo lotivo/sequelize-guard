@@ -9,7 +9,7 @@ var schemas = require('../lib/migrations/acl-schema').schemas;
 var SequelizeAcl = require('../lib/index');
 
 exports.init = function () {
-  describe('SequelizeACL init ', function () {
+  describe('SequelizeACL init custom config', function () {
     it('should be initialized when user passed', function (done) {
       let AclUser = this.seqMem1.define('User', schemas['users'], {
         tableName: `acl_users`,
@@ -35,16 +35,9 @@ exports.init = function () {
         timestamps: true,
         paranoid: false,
       });
-      let seqAcl2 = new SequelizeAcl(this.seqMem3, {
-        sync: true,
-        debug: false,
-        timestamps: true,
-        paranoid: false,
-      });
 
-      if (seqAcl && seqAcl2) {
+      if (seqAcl) {
         this.__proto__.seqMem2 = null;
-        this.__proto__.seqMem3 = null;
         done();
       }
     });
@@ -481,7 +474,7 @@ exports.Users = function () {
     it('should create user 2', function (done) {
       let users = [
         { name: 'SomeAdmin', email: 'someAdmin@test.com' },
-        { name: 'fleur editor', email: 'editor@test.com' },
+        { name: 'flux editor', email: 'editor@test.com' },
         { name: 'User 1', email: 'myuser@test.com' },
       ];
       this.acl._models.AclUser.bulkCreate(users)
@@ -680,12 +673,10 @@ exports.MakeControl = function () {
         });
     });
     it('should commit control, SequelizeAcl allow api, return permissions and roles ; checking new role', function () {
-      return this.acl
-        .allow('galleryuser', ['view'], ['gallery'])
-        .then((data) => {
-          expect(data.permissions.length).to.equal(1);
-          expect(data.role.name).to.equal('galleryuser');
-        });
+      return this.acl.allow('user8', ['view'], ['gallery']).then((data) => {
+        expect(data.permissions.length).to.equal(1);
+        expect(data.role.name).to.equal('user8');
+      });
     });
   });
 };
@@ -812,9 +803,7 @@ exports.AclAuthorize = function () {
       });
     });
     it('it should allow user to view blog', function () {
-      return this.acl._sequelize.models.User.findByPk(4).then(async function (
-        user
-      ) {
+      return this.acl._sequelize.models.User.findByPk(4).then(async (user) => {
         let a = await user.can('view blog');
         assert(a);
       });
@@ -864,9 +853,9 @@ exports.Events = function () {
       );
 
       expect(this.acl._ee.listenerCount('onRolesCreated')).to.equal(2);
-      this.acl.makeRole('EventonRolesCreatedRole');
+      this.acl.makeRole('EventOnRolesCreatedRole');
     });
-    it('should register, listen on someEvent event, removed after one call', function () {
+    it('should register, listen on someEvent event, removed "AFTER" one call', function () {
       this.acl.once(
         'someEvent',
         function (data) {
@@ -878,17 +867,64 @@ exports.Events = function () {
       expect(this.acl._ee.listenerCount('someEvent')).to.equal(1);
       this.acl._ee.emit('someEvent', ['a']);
     });
+    it('should register, listen on someEvent event, removed "BEFORE" one call', function () {
+      const cb = this.acl.once(
+        'someEvent',
+        function (data) {
+          assert(!data);
+        }.bind(this)
+      );
+
+      expect(this.acl._ee.listenerCount('someEvent')).to.equal(1);
+      cb();
+      expect(this.acl._ee.listenerCount('someEvent')).to.equal(0);
+      this.acl._ee.emit('someEvent', ['a']);
+    });
   });
 };
 
-exports.Miscl = function () {
-  describe('Miscl', function () {
+exports.Miscellaneous = function () {
+  describe('Miscellaneous', function () {
     it('should reset cache', function () {
       let cache = this.acl.resetCache();
+      expect(cache.stats.keys).to.equal(0);
+    });
+    it('should reset user cache', function () {
+      let cache = this.acl.resetUserCache();
       expect(cache.stats.keys).to.equal(0);
     });
     // it('it should setup cache', function () {
 
     // });
+  });
+};
+
+exports.customConfig = function () {
+  describe('SequelizeACL init custom config', function () {
+    before(function (done) {
+      let seqAcl2 = new SequelizeAcl(this.seqMem3, {
+        sync: true,
+        debug: false,
+        timestamps: true,
+        paranoid: false,
+        userCache: false,
+      });
+
+      this.acl2 = seqAcl2;
+      done();
+    });
+
+    it('should work without user cache', function () {
+      let self = this;
+      self.acl2
+        .makeUser({ name: 'SuperAdmin', email: 'superadmin@test.com' })
+        .then(function (user) {
+          self.acl2.getUserRoles(user).then((roles) => {
+            // roles
+            expect(data.dataValues.name).to.equal('SuperAdmin');
+            done();
+          });
+        });
+    });
   });
 };

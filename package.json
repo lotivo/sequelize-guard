@@ -45,7 +45,6 @@
     "sqlite3": "^4.2.0"
   },
   "dependencies": {
-    "dataloader": "^2.0.0",
     "faker": "^4.1.0",
     "lodash": "^4.17.15",
     "node-cache": "^5.1.0",

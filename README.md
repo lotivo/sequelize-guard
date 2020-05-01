@@ -135,7 +135,8 @@ module.exports = db;
     userModel: null,
     userPk : 'id', //User Primary Key
     safeAclDeletes : true,
-    userCacheTime: 1800, // 60*30
+    userCache: true,
+    userCacheTime: 60, // 60
 }
 ```
 
@@ -149,13 +150,14 @@ module.exports = db;
 - **userModel**: _(Sequelize Model | null)_, custom used model you want to use, instead of default User Model.
 - **userPk** : _(string | 'id' )_, Primary key for User Model, in case your custom model has primaryKey other than 'id'.
 - **safeAclDeletes** : _(bool | true)_, if set to true, role or permissions can't be deleted as long as they are associated with any other data. To remove you must break all other associations (to be tested).
+- **userCache** : _(bool | true)_, roles of user will be cached, this will allow faster permission resolution and less database connections.
 - **userCacheTime** : _(int | 1800)_, time for which roles of user will be cached (in seconds), this number should be inversely proportional to your user traffic.
 
 ## Assigning Roles and Permissions
 
 ### AclControl
 
-- AclControl is API layer over SequelizeAcl's internal logic.
+- AclControl is API layer over SequelizeAcl.
 - API calls are chainable, which means you can call them in whichever order you prefer. [ exception : `commit()` ].
 
 We are going to use same instance `acl` of SequelizeAcl we created during setup.
@@ -220,12 +222,13 @@ SequelizeAcl adds some api calls to User Model that you provide in options. So y
 
 - createPermissions(resource, actions, options)
 - createPermissionsBulk({resource, actions}, options)
+- findPermissions(args) : find/search permission based on name, resource and action
 
 - makeRole(role) : string
 - makeRoles(roles) : array of strings
 - deleteRoles(roles) : array of strings
 - allRoles(roles) : get All roles
-
+- findRoles(args) : find/search roles based on name
 - allow(role, actions, resources) : AccessControl in one call
 
 - assignRoles(user, roles) : UserModel, [string|array]
@@ -261,6 +264,7 @@ user.can('*');
 ### Events
 
 - onRolesCreated : with created roles
+- onRolesDeleted : with data of deleted roles
 - onPermsCreated : with created permissions
 - onPermsAssigned : role to whom permissions are assigned
 
