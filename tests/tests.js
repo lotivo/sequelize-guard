@@ -914,14 +914,14 @@ exports.customConfig = function () {
       done();
     });
 
-    it('should work without user cache', function () {
+    it('should work without user cache', function (done) {
       let self = this;
       self.acl2
         .makeUser({ name: 'SuperAdmin', email: 'superadmin@test.com' })
         .then(function (user) {
           self.acl2.getUserRoles(user).then((roles) => {
             // roles
-            expect(data.dataValues.name).to.equal('SuperAdmin');
+            expect(roles).to.be.an('array');
             done();
           });
         });
