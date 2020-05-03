@@ -771,7 +771,85 @@ exports.AclAuthorize = function () {
             expect(roles.length).to.equal(2);
           });
       });
+
+      it('should return true if user has given roles, true for user_id 1, superadmin', function () {
+        return this.acl
+          .models()
+          .AclUser.findByPk(1)
+          .then(async (user) => {
+            let a = await user.isAnyOf(['superadmin', 'admin']);
+            assert(a);
+          });
+      });
+
+      it('should return true if user has any of given roles, true for user_id 2, [ user & admin ]', function () {
+        return this.acl
+          .models()
+          .AclUser.findByPk(2)
+          .then(async (user) => {
+            let a = await user.isAnyOf(['user', 'admin']);
+            assert(a);
+          });
+      });
+      it('should return true if user has all given roles, true for user_id 2, [ user & admin ]', function () {
+        return this.acl
+          .models()
+          .AclUser.findByPk(2)
+          .then(async (user) => {
+            let a = await user.isAllOf(['user', 'admin']);
+            assert(a);
+          });
+      });
+
+      it('should return false if user do not have all given roles, false for user_id 1, [ superadmin ]', function () {
+        return this.acl
+          .models()
+          .AclUser.findByPk(1)
+          .then(async (user) => {
+            let a = await user.isAllOf(['admin', 'superadmin']);
+            assert(!a);
+          });
+      });
+
+      it('should return false if user do not have all given roles, true for user_id 2, [ user & admin ]', function () {
+        return this.acl
+          .models()
+          .AclUser.findByPk(2)
+          .then(async (user) => {
+            let a = await user.isAllOf(['user', 'admin', 'superadmin']);
+            assert(!a);
+          });
+      });
+      it('should return true if user has given role, true for user_id 2, [ user & admin ], checking isA', function () {
+        return this.acl
+          .models()
+          .AclUser.findByPk(2)
+          .then(async (user) => {
+            let a = await user.isA('user');
+            assert(a);
+          });
+      });
+
+      it('should return true if user has given role, true for user_id 2, [ user & admin ], checking isAn', function () {
+        return this.acl
+          .models()
+          .AclUser.findByPk(2)
+          .then(async (user) => {
+            let a = await user.isAn('admin');
+            assert(a);
+          });
+      });
+      it('should return false if user do not have given role, true for user_id 2, [ user & admin ]', function () {
+        return this.acl
+          .models()
+          .AclUser.findByPk(2)
+          .then(async (user) => {
+            let a = await user.isA('superadmin');
+            assert(!a);
+          });
+      });
     });
+
     describe('all permissions', function () {
       it('should allow superadmin to *', function () {
         return this.acl
@@ -792,7 +870,7 @@ exports.AclAuthorize = function () {
           });
       });
 
-      it('it should not allow user to *', function () {
+      it('it should not allow user to edit blog', function () {
         return this.acl
           .models()
           .AclUser.findByPk(4)
@@ -801,7 +879,18 @@ exports.AclAuthorize = function () {
             assert(!a);
           });
       });
+
+      it('it should not allow user to edit blog, check with cant', function () {
+        return this.acl
+          .models()
+          .AclUser.findByPk(4)
+          .then(async (user) => {
+            let a = await user.cant('edit blog');
+            assert(a);
+          });
+      });
     });
+
     it('it should allow user to view blog', function () {
       return this.acl._sequelize.models.User.findByPk(4).then(async (user) => {
         let a = await user.can('view blog');
