@@ -891,40 +891,44 @@ exports.AclAuthorize = function () {
       });
     });
 
-    it('it should allow user to view blog', function () {
-      return this.acl._sequelize.models.User.findByPk(4).then(async (user) => {
-        let a = await user.can('view blog');
-        assert(a);
+    describe('permissions', () => {
+      it('it should allow user to view blog', function () {
+        return this.acl._sequelize.models.User.findByPk(4).then(
+          async (user) => {
+            let a = await user.can('view blog');
+            assert(a);
+          }
+        );
       });
-    });
-    it('it should allow admin to * blog', function () {
-      return this.acl._sequelize.models.User.findByPk(2).then(async function (
-        user
-      ) {
-        let a = await user.can('* blog');
-        assert(a);
+      it('it should allow admin to * blog', function () {
+        return this.acl._sequelize.models.User.findByPk(2).then(async function (
+          user
+        ) {
+          let a = await user.can('* blog');
+          assert(a);
+        });
       });
-    });
-    it('it should allow analyst to view *', function () {
-      return this.acl._sequelize.models.User.findByPk(3).then(async function (
-        user
-      ) {
-        let a = await user.can('view *');
-        assert(a);
+      it('it should allow analyst to view *', function () {
+        return this.acl._sequelize.models.User.findByPk(3).then(async function (
+          user
+        ) {
+          let a = await user.can('view *');
+          assert(a);
+        });
       });
-    });
 
-    it('it should allow user to edit blog', function () {
-      return this.acl._sequelize.models.User.findByPk(4).then(async function (
-        user
-      ) {
-        let a = await user.can('edit blog');
-        assert(!a);
+      it('it should allow user to edit blog', function () {
+        return this.acl._sequelize.models.User.findByPk(4).then(async function (
+          user
+        ) {
+          let a = await user.can('edit blog');
+          assert(!a);
+        });
       });
-    });
-    it('it should setup cache', function () {
-      return this.acl.getCache().then((cache) => {
-        // console.log('test setup cache', cache);
+      it('it should setup cache', function () {
+        return this.acl.getCache().then((cache) => {
+          // console.log('test setup cache', cache);
+        });
       });
     });
   });
