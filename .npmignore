@@ -110,3 +110,4 @@ dist
 .editorconfig
 .thea/
 .coverage/
+.docs/
