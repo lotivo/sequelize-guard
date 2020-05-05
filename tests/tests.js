@@ -133,7 +133,7 @@ exports.Permissions = function () {
   describe('Permissions', function () {
     it('should create permission single action', function (done) {
       this.acl
-        .createPermissions('blog', 'view')
+        .createPerms('blog', 'view')
         .then(function (perms) {
           expect(perms[0].name).to.equal('blog:[view]');
           done();
@@ -145,7 +145,7 @@ exports.Permissions = function () {
     });
     it('should create permission multiple actions', function (done) {
       this.acl
-        .createPermissions('blog', ['view', 'edit'])
+        .createPerms('blog', ['view', 'edit'])
         .then(function (perms) {
           expect(perms[0].name).to.equal('blog:[view,edit]');
           done();
@@ -157,7 +157,7 @@ exports.Permissions = function () {
     });
     it('should not create duplicate permission', function (done) {
       this.acl
-        .createPermissions('blog', ['view', 'edit'])
+        .createPerms('blog', ['view', 'edit'])
         .then(function (perms) {
           expect(perms.length).to.equal(0);
           done();
@@ -170,7 +170,7 @@ exports.Permissions = function () {
 
     it('should create permission with "multiple resources" return created', function (done) {
       this.acl
-        .createPermissions(['blog', 'users'], ['view', 'edit'], {
+        .createPerms(['blog', 'users'], ['view', 'edit'], {
           names: ['', 'blog_main'],
           json: true,
         })
@@ -186,7 +186,7 @@ exports.Permissions = function () {
 
     it('should create permission with "multiple resources" return all', function (done) {
       this.acl
-        .createPermissions(['blog', 'users', 'admin'], ['view', 'edit'], {
+        .createPerms(['blog', 'users', 'admin'], ['view', 'edit'], {
           names: ['', 'blog_main'],
           all: true,
         })
@@ -202,7 +202,7 @@ exports.Permissions = function () {
 
     it('should create permission in bulk with "multiple resources" with options, return created, ', function () {
       return this.acl
-        .createPermissionsBulk(
+        .createPermsBulk(
           [
             {
               resource: 'blog',
@@ -228,7 +228,7 @@ exports.Permissions = function () {
 
     it('should create permission in bulk with "multiple resources" without options, return created', function () {
       return this.acl
-        .createPermissionsBulk([
+        .createPermsBulk([
           {
             resource: 'blog',
             actions: 'view',
@@ -250,34 +250,32 @@ exports.Permissions = function () {
     describe('Find Permissions', () => {
       it('should find perms by resource action in search mode', async function () {
         return this.acl
-          .findPermissions({ resource: 'blog', action: 'view', search: true })
+          .findPerms({ resource: 'blog', action: 'view', search: true })
           .then((perms) => {
             expect(perms).to.be.an('array');
           });
       });
       it('should find perms by name in search mode', async function () {
         return this.acl
-          .findPermissions({ name: 'blog', search: true })
+          .findPerms({ name: 'blog', search: true })
           .then((perms) => {
             expect(perms).to.be.an('array');
           });
       });
       it('should find perms by resource action by exact match', async function () {
         return this.acl
-          .findPermissions({ resource: 'blog', action: 'view' })
+          .findPerms({ resource: 'blog', action: 'view' })
           .then((perms) => {
             expect(perms).to.be.an('array');
           });
       });
       it('should find perms by name by exact match', async function () {
-        return this.acl
-          .findPermissions({ name: 'blog:[view]' })
-          .then((perms) => {
-            expect(perms).to.be.an('array');
-          });
+        return this.acl.findPerms({ name: 'blog:[view]' }).then((perms) => {
+          expect(perms).to.be.an('array');
+        });
       });
       it('should return all permissions when no args ', async function () {
-        return this.acl.findPermissions().then((perms) => {
+        return this.acl.findPerms().then((perms) => {
           expect(perms).to.be.an('array');
         });
       });
@@ -404,6 +402,17 @@ exports.Roles = function () {
         expect(roles.length).to.equal(5);
       });
     });
+
+    it('should return role data by name ', function () {
+      this.acl.getRole('admin').then((role) => {
+        expect(role.name).to.equal('admin');
+      });
+    });
+    it('should return null if role not found ', function () {
+      this.acl.getRole('adminNotFound').then((role) => {
+        expect(role).to.equal(null);
+      });
+    });
     // });
 
     // describe('Delete Role(s)', function () {
@@ -452,6 +461,33 @@ exports.Roles = function () {
           assert(err);
           done();
         });
+    });
+
+    it('should add permission to role', function () {
+      return this.acl
+        .addPermsToRole('analyst', ['view'], ['*', 'resAnalyst'])
+        .then((data) => {
+          expect(data.permissions.length).to.equal(2);
+          expect(data.role.name).to.equal('analyst');
+        });
+    });
+    it('should remove permissions from role', function () {
+      return this.acl
+        .rmPermsFromRole('analyst', ['view'], ['resAnalyst'])
+        .then((data) => {
+          expect(data.permissions.length).to.equal(1);
+          expect(data.role.name).to.equal('analyst');
+        })
+        .catch((e) => console.log(e));
+    });
+    it('should remove permissions from role', function () {
+      return this.acl
+        .rmPermsFromRole('analyst2', ['view'], ['resAnalyst'])
+        .then((data) => {
+          expect(data.permissions.length).to.equal(0);
+          expect(data.role.name).to.equal('analyst2');
+        })
+        .catch((e) => console.log(e));
     });
   });
 };
@@ -649,18 +685,6 @@ exports.MakeControl = function () {
         })
         .catch((e) => {
           assert(!e);
-        });
-    });
-    it('commit control 5', function () {
-      return this.acl
-        .init()
-        .on(['*'])
-        .allow('analyst')
-        .to(['view'])
-        .commit()
-        .then((data) => {
-          expect(data.permissions.length).to.equal(1);
-          expect(data.role.name).to.equal('analyst');
         });
     });
 
