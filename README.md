@@ -5,25 +5,21 @@ An ACL library for Sequelize.js.
 
 All the Authorization logic you need in one place, allowing you to manage user permissions and roles in a database.
 
-Independent from ACL or ACL node.
+- [API Reference](https://lotivo-2020.web.app/api/index.html)
 
-**Package under Development.** Feel free to try and give feedback.
+Independent from ACL or ACL node.
 
 After installation you can do stuff like
 
 ```js
 //Assign Role to a user.
-user.assignRole('admin')
+user.assignRole('admin');
 
 //assign permission to a role.
-acl.init().allow('admin')
-    .to(['view', 'edit'])
-    .on('blog')
-    .commit();
+acl.init().allow('admin').to(['view', 'edit']).on('blog').commit();
 
 //or if you like one liners
-acl.allow('admin',['view','edit'],'blog');
-
+acl.allow('admin', ['view', 'edit'], 'blog');
 ```
 
 and **can** check if user has permission like
@@ -38,8 +34,21 @@ user.can('* blog');
 //view All Resources, eg. analyst
 user.can('view *');
 
-//All Action on All Resources, superadmin  
+//All Action on All Resources, superadmin
 user.can('*');
+```
+
+and check if user has certain role by **isA**
+
+```js
+//check if user is editor
+user.isA('editor');
+
+//use isAn where you require
+user.isAn('admin');
+
+//use isAnyOf to check either of roles
+user.isAnyOf(['admin', 'moderator']);
 ```
 
 ## Installation
@@ -70,15 +79,19 @@ Create sequelize object with your database configuration.
 For example we have used default Sequelize setup file for models.
 
 ```js
- //models/index.js
+//models/index.js
 
-  let sequelize;
-  if (config.use_env_variable) {
-      sequelize = new Sequelize(process.env[config.use_env_variable], config);
-  } else {
-      sequelize = new Sequelize(config.database, config.username, config.password, config);
-  }
-
+let sequelize;
+if (config.use_env_variable) {
+  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+} else {
+  sequelize = new Sequelize(
+    config.database,
+    config.username,
+    config.password,
+    config
+  );
+}
 ```
 
 #### 2. Initialize Sequelize-acl
@@ -134,38 +147,38 @@ module.exports = db;
     debug: false,
     userModel: null,
     userPk : 'id', //User Primary Key
-    safeAclDeletes : true
+    safeAclDeletes : true,
+    userCache: true,
+    userCacheTime: 60, // 60
 }
 ```
 
-- **tables** : *name of tables* - to be used for acl tables. (to be implemented).
+- **tables** : _name of tables_ - to be used for acl tables. (to be implemented).
 - **prefix** : custom prefix for for all tables
 - **primaryKey** : custom primary key for all acl tables (to be implemented) ,
-- **timestamps** : *(bool | false)*, add timestamps to table
-- **paranoid** : *(bool | false)*, soft deletes
-- **sync**: *(bool | true)*, if set to true, database tables will be created without migrations
-- **debug**: *(bool | false)*, print database queries to console.
-- **userModel**: *(Sequelize Model | null)*, custom used model you want to use, instead of default User Model.
-- **userPk** : *(string | 'id' )*, Primary key for User Model, in case your custom model has primaryKey other than 'id'.
-- **safeAclDeletes** : *(bool | true)*, if set to true, role or permissions can't be deleted as long as they are associated with any other data. To remove you must break all other associations (to be tested).
+- **timestamps** : _(bool | false)_, add timestamps to table
+- **paranoid** : _(bool | false)_, soft deletes
+- **sync**: _(bool | true)_, if set to true, database tables will be created without migrations
+- **debug**: _(bool | false)_, print database queries to console.
+- **userModel**: _(Sequelize Model | null)_, custom used model you want to use, instead of default User Model.
+- **userPk** : _(string | 'id' )_, Primary key for User Model, in case your custom model has primaryKey other than 'id'.
+- **safeAclDeletes** : _(bool | true)_, if set to true, role or permissions can't be deleted as long as they are associated with any other data. To remove you must break all other associations (to be tested).
+- **userCache** : _(bool | true)_, roles of user will be cached, this will allow faster permission resolution and less database connections.
+- **userCacheTime** : _(int | 60)_, time for which roles of user will be cached (in seconds), this number should be inversely proportional to your user traffic.
 
 ## Assigning Roles and Permissions
 
 ### AclControl
 
-- AclControl is API layer over SequelizeAcl's internal logic.
-- API calls are chainable, which means you can call them in whichever order you prefer. [ exception :  `commit()` ].
+- AclControl is API layer over SequelizeAcl.
+- API calls are chainable, which means you can call them in whichever order you prefer. [ exception : `commit()` ].
 
-We are going to use same instance ```acl``` of SequelizeAcl we created during setup.
+We are going to use same instance `acl` of SequelizeAcl we created during setup.
 
 It's best to learn from examples. So here we will take a basic example.
 
 ```js
-acl.init()
-    .allow('admin')
-    .to(['view', 'edit'])
-    .on('blog')
-    .commit();
+acl.init().allow('admin').to(['view', 'edit']).on('blog').commit();
 ```
 
 (There's a one liner alternative available. Read below in SequelizeAPI)
@@ -191,14 +204,14 @@ parameter : **Role** (string)
 parameter : **Action**(s) (string | array)
 
 - accepts action as string or array of string.
-- eg. view, edit, update, delete, wildcard (*)
+- eg. view, edit, update, delete, wildcard (\*)
 
 #### 4. on()
 
 parameter : **Resource**(s) (string | array)
 
 - pass name of resources as string or array of strings.
-- eg. blog, post, image, article, wildcard(*)
+- eg. blog, post, image, article, wildcard(\*)
 
 #### 5. commit()
 
@@ -206,39 +219,52 @@ Asynchronous call which saves all the data provided in database, using magic of 
 
 - If permission is already created before, same permission is used.
 - If Role is already created same role is assigned permission given.
-  
-**Returns** : object with properties roles, permission. 
+
+**Returns** : object with properties roles, permission.
 All the roles and permissions specified (created or old) by this AclControl statement are returned.
 
 ### User Model API
 
 SequelizeAcl adds some api calls to User Model that you provide in options. So you can assign roles straight from your user object that is logged in.
 
-- user.assignRole(role) : string
-- user.assignRoles(roles) : array of strings
-- user.rmAssignedRoles(roles) : array of strings
+- user.assignRole(role)
+- user.assignRoles(roles)
+- user.rmAssignedRoles(roles)
 
 ### SequelizeAcl API
 
-- createPermissions(resource, actions, options)
-- createPermissionsBulk({resource, actions}, options)
+for handling permissions
+
+- createPerms(resource, actions, options)
+- createPermsBulk({resource, actions}, options)
+- findPerms(args) : find/search permission based on name, resource and action
+
+for handling roles
 
 - makeRole(role) : string
 - makeRoles(roles) : array of strings
 - deleteRoles(roles) : array of strings
+- allRoles(roles) : get All roles
+- getRole(roles) : get A role by name
+- findRoles(args) : find/search roles based on name
+
+for associations between user/role/permission
 
 - allow(role, actions, resources) : AccessControl in one call
-
+- addPermsToRole(role, actions, resources)
+- rmPermsFromRole(role, actions, resources)
 - assignRoles(user, roles) : UserModel, [string|array]
 - rmAssignedRoles(user, roles)
 
-For More information read about SequelizeAcl API here.
+For More information check SequelizeAcl [API Reference](https://lotivo-2020.web.app/api/index.html).
 
 ## Authorizing
 
 ### User API
 
-#### user.can()
+#### Permission based Authorization
+
+##### user.can()
 
 parameter : 'action resource' (string)
 returns : bool
@@ -255,9 +281,28 @@ user.can('* blogs');
 //view All Resources, eg. analyst
 user.can('view *');
 
-//All Action on All Resources, superadmin  
+//All Action on All Resources, superadmin
 user.can('*');
 ```
+
+#### Role based authorization
+
+You can use following methods to have perform role based authorization.
+
+- user.isAllOf(roles)
+- user.isAnyOf(roles)
+- user.isA(role)
+- user.isAn(role)
+
+For More information check SequelizeAcl [API Reference](https://lotivo-2020.web.app/api/index.html).
+
+### Events
+
+- onRolesCreated : with created roles
+- onRolesDeleted : with data of deleted roles
+- onPermsCreated : with created permissions
+- onPermsAddedToRole : with data after permissions added
+- onPermsRemovedFromRole : with data after permissions are removed
 
 ## Influences
 
@@ -267,7 +312,7 @@ user.can('*');
 ## Alternative
 
 - ACL is versatile library which has support for most ORMs.
-    I actually tried to use that before writing this, but somehow wasn't feeling the power or freedom I wanted. But it is quite popular and mostly used.
+  I actually tried to use that before writing this, but somehow wasn't feeling the power or freedom I wanted. But it is quite popular and mostly used.
 
 ## Contributions
 
