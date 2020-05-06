@@ -1,14 +1,13 @@
 {
   "name": "@lotivo/sequelize-acl",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "ACL for Sequelize",
   "main": "lib/index.js",
   "scripts": {
     "debug": "node ./tests/runner.js --inspect-brk=9229",
     "test": "mocha ./tests/runner.js --reporter spec",
     "cover": "nyc npm test && nyc report --reporter=lcov --reporter=text-summary",
-    "coverall": "nyc report --reporter=text-lcov | coveralls",
-    "postinstall": "npm-insights:log"
+    "coverall": "nyc report --reporter=text-lcov | coveralls"
   },
   "repository": {
     "type": "git",
@@ -53,7 +52,6 @@
     "faker": "^4.1.0",
     "lodash": "^4.17.15",
     "node-cache": "^5.1.0",
-    "npm-insights": "^2.0.1",
     "sequelize": "^5.21.6"
   }
 }
