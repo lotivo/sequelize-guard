@@ -5,30 +5,31 @@ List of some major tasks to do.
 ## A. API Changes
 
 ### Multiple Roles during assigning roles
-  
-  **currently** you can do as following:
 
-  ```acl.assignRoles(user, ['superadmin','admin'])```
+**currently** you can do as following:
 
-  ```acl.assignRoles(user, 'superadmin')```
+`guard.assignRoles(user, ['superadmin','admin'])`
 
-  **desired** : pass multiple roles
+`guard.assignRoles(user, 'superadmin')`
 
-  ```js
-    acl.assignRoles([user, user2], ['superadmin','admin'])
-  ```
+**desired** : pass multiple roles
 
-  ```js
-    acl.assignRoles([
-      {
-        user : user,
-        role : 'superadmin'
-      },{
-        user : user2,
-        role : 'admin'
-      }
-    ])
-  ```
+```js
+guard.assignRoles([user, user2], ['superadmin', 'admin']);
+```
+
+```js
+guard.assignRoles([
+  {
+    user: user,
+    role: 'superadmin',
+  },
+  {
+    user: user2,
+    role: 'admin',
+  },
+]);
+```
 
 ### Create Child Roles
 
@@ -46,56 +47,50 @@ Just create easy api to support that.
   e.g. If we give role "commentable" to Post, and "Commentable" role has permission to "have comments"
   then we can check.
 
-  ```BlogPost.can('have comments').```
+  `BlogPost.can('have comments').`
 
-  
 ====================================
 1
 [
-  {
-    id: 7,
-    name: 'superadmin',
-    description: null,
-    parent_id: null,
-    RoleUser: { id: 4, role_id: 7, user_id: 1 }
-  }
+{
+id: 7,
+name: 'superadmin',
+description: null,
+parent_id: null,
+RoleUser: { id: 4, role_id: 7, user_id: 1 }
+}
 ]
 ====================================
-        ✓ should allow superadmin to *
+✓ should allow superadmin to _
 ====================================
 2
 [
-  {
-    id: 4,
-    name: 'user',
-    description: 'A basic user',
-    parent_id: null,
-    RoleUser: { id: 5, role_id: 4, user_id: 2 }
-  },
-  {
-    id: 6,
-    name: 'admin',
-    description: null,
-    parent_id: null,
-    RoleUser: { id: 6, role_id: 6, user_id: 2 }
-  }
+{
+id: 4,
+name: 'user',
+description: 'A basic user',
+parent_id: null,
+RoleUser: { id: 5, role_id: 4, user_id: 2 }
+},
+{
+id: 6,
+name: 'admin',
+description: null,
+parent_id: null,
+RoleUser: { id: 6, role_id: 6, user_id: 2 }
+}
 ]
 ====================================
-        ✓ should not allow admin to *
+✓ should not allow admin to _
 ====================================
 4
 [
-  {
-    id: 4,
-    name: 'user',
-    description: 'A basic user',
-    parent_id: null,
-    RoleUser: { id: 9, role_id: 4, user_id: 4 }
-  }
+{
+id: 4,
+name: 'user',
+description: 'A basic user',
+parent_id: null,
+RoleUser: { id: 9, role_id: 4, user_id: 4 }
+}
 ]
 ====================================
-
-
-
-
-

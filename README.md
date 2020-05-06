@@ -1,45 +1,40 @@
-# sequelize-acl
+# SequelizeGuard
 
-[![Build Status](https://travis-ci.com/lotivo/sequelize-acl.svg?branch=master)](https://travis-ci.com/lotivo/sequelize-acl) [![Coverage Status](https://coveralls.io/repos/github/lotivo/sequelize-acl/badge.svg?branch=master)](https://coveralls.io/github/lotivo/sequelize-acl?branch=master)
+[![Build Status](https://travis-ci.com/lotivo/sequelize-guard.svg?branch=master)](https://travis-ci.com/lotivo/sequelize-guard) [![Coverage Status](https://coveralls.io/repos/github/lotivo/sequelize-guard/badge.svg?branch=master)](https://coveralls.io/github/lotivo/sequelize-guard?branch=master)
 
-An ACL library for Sequelize.js.
+An Authorization library for Sequelize.js.
 
 Fast, Easy, Roles & Permissions based Authorization.
 
 - Fluent, easy to use semantic API.
 - Assign multiple Roles to User.
 - It is Super FAST, uses cache based permission resolution system.
-- Listen for Events for anything ACL. Check [Events](#events)
-- No dependency on ACL Node.
+- Listen for Events for anything Guard. Check [Events](#events)
+- No dependency on Guard Node.
 
 to know more see [documentation](https://lotivo-2020.web.app/).
 
-Please provide your feedback : 
+Please provide your feedback :
 
-mail : vpankaj1998official@gmail.com
-twitter : @impankajv1 
+- mail : vpankaj1998official@gmail.com
+- twitter : @impankajv1
 
 ---
 
-- [sequelize-acl](#sequelize-acl)
+- [SequelizeGuard](#sequelizeguard)
   - [Demo](#demo)
   - [Installation](#installation)
   - [Usage](#usage)
     - [Getting Started](#getting-started)
       - [Migrations](#migrations)
       - [1. Create Sequelize Object](#1-create-sequelize-object)
-      - [2. Initialize Sequelize-acl](#2-initialize-sequelize-acl)
+      - [2. Initialize Sequelize-guard](#2-initialize-sequelize-guard)
     - [Expert Mode](#expert-mode)
       - [Options](#options)
   - [Assigning Roles and Permissions](#assigning-roles-and-permissions)
-    - [AclControl](#aclcontrol)
-      - [1. init()](#1-init)
-      - [2. allow()](#2-allow)
-      - [3. to()](#3-to)
-      - [4. on()](#4-on)
-      - [5. commit()](#5-commit)
+    - [GuardControl API](#guardcontrol-api)
     - [User Model API](#user-model-api)
-    - [SequelizeAcl API](#sequelizeacl-api)
+    - [SequelizeGuard API](#sequelizeguard-api)
   - [Authorization](#authorization)
     - [User API](#user-api)
       - [Permission based Authorization](#permission-based-authorization)
@@ -63,15 +58,15 @@ After installation you can do stuff like
 user.assignRole('admin');
 
 //assign permission to a role.
-acl.init().allow('admin').to(['view', 'edit']).on('blog').commit();
+guard.init().allow('admin').to(['view', 'edit']).on('blog').commit();
 
 //or if you like one liners
-acl.allow('admin', ['view', 'edit'], 'blog');
+guard.allow('admin', ['view', 'edit'], 'blog');
 ```
 
 - **Authorize**
 
-by permission like
+by permission
 
 ```js
 //view blog
@@ -102,16 +97,16 @@ user.isAnyOf(['admin', 'moderator']);
 
 ## Installation
 
-[NPM page](https://www.npmjs.com/package/@lotivo/sequelize-acl)
+[NPM page](https://www.npmjs.com/package/sequelize-guard)
 
 ```bash
-npm i @lotivo/sequelize-acl
+npm i sequelize-guard
 ```
 
 or
 
 ```bash
-yarn add @lotivo/sequelize-acl
+yarn add sequelize-guard
 ```
 
 Make sure, Sequelize is setup in your project.
@@ -123,19 +118,19 @@ If not, follow Sequelize [Getting Started](https://sequelize.org/master/manual/g
 
 #### Migrations
 
-sequelize-acl will automatically register and sync needed schemas.
+sequelize-guard will automatically register and sync needed schemas.
 
-Or you can use following code in migration file
+Or you can use following code in a migration file
 
 ```js
-var SequelizeAcl = require('@lotivo/sequelize-acl');
+var SequelizeGuard = require('sequelize-guard');
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return SequelizeAcl.migration.up(queryInterface, Sequelize, options);
+    return SequelizeGuard.migration.up(queryInterface, Sequelize, options);
   },
   down: (queryInterface, Sequelize) => {
-    return SequelizeAcl.migration.down(queryInterface, Sequelize, options);
+    return SequelizeGuard.migration.down(queryInterface, Sequelize, options);
   },
 };
 ```
@@ -157,24 +152,24 @@ if (config.use_env_variable) {
 }
 ```
 
-#### 2. Initialize Sequelize-acl
+#### 2. Initialize Sequelize-guard
 
-Initialize SequelizeACL object **after** you have already initialized your models.
+Initialize SequelizeGuard object **after** you have already initialized your models.
 
 ```js
 //Import library
-var SequelizeAcl = require('@lotivo/sequelize-acl');
+var SequelizeGuard = require('sequelize-guard');
 
 ...
 //initialize Sequelize
 ...
 
-//initialize SequelizeAcl & add to db for global use
-var acl = new SequelizeAcl(sequelize, options);
+//initialize SequelizeGuard & add to db for global use
+var guard = new SequelizeGuard(sequelize, options);
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
-db.acl = acl;  // <---------- Add this line
+db.guard = guard;  // <---------- Add this line
 
 module.exports = db;
 
@@ -182,7 +177,7 @@ module.exports = db;
 
 Please Note:
 
-- Make sure you pass same same options to migration and SequelizeAcl constructor,
+- Make sure you pass same same options to migration and SequelizeGuard constructor,
 - If you have your own User Model implemented, make sure you pass it during initialization,
   - not required for migrations.
 
@@ -193,15 +188,7 @@ Please Note:
 ```js
 //defaults
 {
-    tables : {
-        meta: 'meta',
-        parents: 'parents',
-        permissions: 'permissions',
-        resources: 'resources',
-        roles: 'roles',
-        users: 'users',
-    },
-    prefix : 'acl_',
+    prefix : 'guard_',
     primaryKey : 'id',
     timestamps : false,
     paranoid : false,
@@ -209,116 +196,115 @@ Please Note:
     debug: false,
     userModel: null,
     userPk : 'id', //User Primary Key
-    safeAclDeletes : true,
+    safeGuardDeletes : true,
     userCache: true,
     userCacheTime: 60, // 60
 }
 ```
 
-- **tables** : _name of tables_ - to be used for acl tables. (to be implemented).
 - **prefix** : custom prefix for for all tables
-- **primaryKey** : custom primary key for all acl tables (to be implemented) ,
+- **primaryKey** : custom primary key for all guard tables (to be implemented) ,
 - **timestamps** : _(bool | false)_, add timestamps to table
 - **paranoid** : _(bool | false)_, soft deletes
 - **sync**: _(bool | true)_, if set to true, database tables will be created without migrations
 - **debug**: _(bool | false)_, print database queries to console.
 - **userModel**: _(Sequelize Model | null)_, custom used model you want to use, instead of default User Model.
 - **userPk** : _(string | 'id' )_, Primary key for User Model, in case your custom model has primaryKey other than 'id'.
-- **safeAclDeletes** : _(bool | true)_, if set to true, role or permissions can't be deleted as long as they are associated with any other data. To remove you must break all other associations (to be tested).
+- **safeGuardDeletes** : _(bool | true)_, if set to true, role or permissions can't be deleted as long as they are associated with any other data. To remove you must break all other associations (to be tested).
 - **userCache** : _(bool | true)_, roles of user will be cached, this will allow faster permission resolution and less database connections.
 - **userCacheTime** : _(int | 60)_, time for which roles of user will be cached (in seconds), this number should be inversely proportional to your user traffic.
 
 ## Assigning Roles and Permissions
 
-### AclControl
+### GuardControl API
 
-- AclControl is API layer over SequelizeAcl.
-- API calls are chainable, which means you can call them in whichever order you prefer. [ exception : `commit()` ].
+- GuardControl is API layer over SequelizeGuard.
+- Makes API calls chainable, which means you can call them in whichever order you prefer. [ exception : `commit()` ].
 
-We are going to use same instance `acl` of SequelizeAcl we created during setup.
+We are going to use same instance `guard` of SequelizeGuard we created during setup.
 
 It's best to learn from examples. So here we will take a basic example.
 
 ```js
-acl.init().allow('admin').to(['view', 'edit']).on('blog').commit();
+guard.init().allow('admin').to(['view', 'edit']).on('blog').commit();
 ```
 
 (There's a one liner alternative available. Read below in SequelizeAPI)
 
 Looks natural and easy right? Let's break the above example.
 
-#### 1. init()
+**1. init()**
 
-To initialize an AclControl call init() method on `acl` instance.
-This function returns a brand new instance of [AclControl](#AclControl).
+To initialize an GuardControl call init() method on `guard` instance.
+This function returns a brand new instance of [GuardControl](#GuardControl).
 
-#### 2. allow()
+**2. allow()**
 
 parameter : **Role** (string)
 
 - Pass name of role for which you are making control statement.
 - Currently only supports one role at time. (Planning on allowing multiple roles soon).
 
-**Note**: If you call this multiple times, whatever you passed most recently is taken into account.
+**Note**: If you call this multiple times, whatever you passed most recently is considered.
 
-#### 3. to()
+**3. to()**
 
 parameter : **Action**(s) (string | array)
 
 - accepts action as string or array of string.
 - eg. view, edit, update, delete, wildcard (\*)
 
-#### 4. on()
+**4. on()**
 
 parameter : **Resource**(s) (string | array)
 
 - pass name of resources as string or array of strings.
 - eg. blog, post, image, article, wildcard(\*)
 
-#### 5. commit()
+**5. commit()**
 
-Asynchronous call which saves all the data provided in database, using magic of SequelizeAcl and Sequelize.
+Asynchronous call which saves all the data provided in database, using magic of SequelizeGuard and Sequelize.
 
 - If permission is already created before, same permission is used.
 - If Role is already created same role is assigned permission given.
 
 **Returns** : object with properties roles, permission.
-All the roles and permissions specified (created or old) by this AclControl statement are returned.
+All the roles and permissions specified (created or old) by this GuardControl statement are returned.
 
 ### User Model API
 
-SequelizeAcl adds some api calls to User Model that you provide in options. So you can assign roles straight from your user object that is logged in.
+SequelizeGuard adds some api calls to User Model that you provide in options. So you can assign roles straight from your user object that is logged in.
 
-- user.assignRole(role)
-- user.assignRoles(roles)
-- user.rmAssignedRoles(roles)
+- user.assignRole
+- user.assignRoles
+- user.rmAssignedRoles
 
-### SequelizeAcl API
+### SequelizeGuard API
 
 for handling permissions
 
-- createPerms(resource, actions, options)
-- createPermsBulk({resource, actions}, options)
-- findPerms(args) : find/search permission based on name, resource and action
+- createPerms
+- createPermsBulk
+- findPerms
 
-for handling roles
+**for handling roles**
 
-- makeRole(role) : string
-- makeRoles(roles) : array of strings
-- deleteRoles(roles) : array of strings
-- allRoles(roles) : get All roles
-- getRole(roles) : get A role by name
-- findRoles(args) : find/search roles based on name
+- makeRole
+- makeRoles
+- deleteRoles
+- allRoles
+- getRole
+- findRoles
 
-for associations between user/role/permission
+**for associations between user/role/permission**
 
-- allow(role, actions, resources) : AccessControl in one call
-- addPermsToRole(role, actions, resources)
-- rmPermsFromRole(role, actions, resources)
-- assignRoles(user, roles) : UserModel, [string|array]
-- rmAssignedRoles(user, roles)
+- allow : GuardControl in one line
+- addPermsToRole
+- rmPermsFromRole
+- assignRoles
+- rmAssignedRoles
 
-For More information check SequelizeAcl [API Reference](https://lotivo-2020.web.app/api/index.html).
+For More information check SequelizeGuard [API Reference](https://lotivo-2020.web.app/api/index.html).
 
 ## Authorization
 
@@ -356,7 +342,7 @@ You can use following methods to have perform role based authorization.
 - user.isA(role)
 - user.isAn(role)
 
-For More information check SequelizeAcl [API Reference](https://lotivo-2020.web.app/api/index.html).
+For More information check SequelizeGuard [API Reference](https://lotivo-2020.web.app/api/index.html).
 
 ### Events
 
@@ -370,7 +356,7 @@ You can listen to following events. They can be helpful for logging or updating 
 
 ## Road map
 
-- Yet to make seeders, see branch [dev-seeder](https://github.com/lotivo/sequelize-acl/blob/dev-seeder/README.md) for progress.
+- Yet to make seeders, see branch [dev-seeder](https://github.com/lotivo/sequelize-guard/blob/dev-seeder/README.md) for progress.
 - Implement "allow except" kind of permissions.
 - Role priority, which will allow to do things like
   - `user.atleast('admin')`
@@ -379,11 +365,11 @@ You can listen to following events. They can be helpful for logging or updating 
 ## Influences
 
 - Spaties's Laravel-permission, Authorization Library for Laravel.
-- ACL for Node.js
+- Node-ACL for Node.js
 
 ## Alternative
 
-- ACL is versatile library which has support for most ORMs.
+- Mode-ACL is versatile library which has support for most ORMs.
   I actually tried to use that before writing this, but somehow wasn't feeling the power or freedom I wanted. But it is quite popular and mostly used.
 
 ## Contributions
@@ -394,4 +380,4 @@ Feel free to create issues.
 
 ## License
 
-The MIT License (MIT). Please see [License File](https://github.com/lotivo/sequelize-acl/blob/master/LICENSE) for more information.
+The MIT License (MIT). Please see [License File](https://github.com/lotivo/sequelize-guard/blob/master/LICENSE) for more information.
