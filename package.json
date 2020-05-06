@@ -1,6 +1,6 @@
 {
   "name": "@lotivo/sequelize-acl",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ACL for Sequelize",
   "main": "lib/index.js",
   "scripts": {

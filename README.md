@@ -14,6 +14,11 @@ Fast, Easy, Roles & Permissions based Authorization.
 
 to know more see [documentation](https://lotivo-2020.web.app/).
 
+Please provide your feedback : 
+
+mail : vpankaj1998official@gmail.com
+twitter : @impankajv1 
+
 ---
 
 - [sequelize-acl](#sequelize-acl)
