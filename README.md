@@ -9,15 +9,15 @@ Fast, Easy, Roles & Permissions based Authorization.
 - Fluent, easy to use semantic API.
 - Assign multiple Roles to User.
 - It is Super FAST, uses cache based permission resolution system.
-- Listen for Events for anything Guard. Check [Events](#events)
-- No dependency on Guard Node.
+- Listen for Events related to authorization. Check [Events](#events)
+- No dependency on Node-acl.
 
-to know more see [documentation](https://lotivo-2020.web.app/).
+to know more see [documentation](https://sequelizeguard.web.app).
 
 Please provide your feedback :
 
 - mail : vpankaj1998official@gmail.com
-- twitter : @impankajv1
+- twitter : [@impankajv1](https://twitter.com/impankajv1)
 
 ---
 
@@ -304,7 +304,7 @@ for handling permissions
 - assignRoles
 - rmAssignedRoles
 
-For More information check SequelizeGuard [API Reference](https://lotivo-2020.web.app/api/index.html).
+For More information check SequelizeGuard [API Reference](https://sequelizeguard.web.app/api/index.html).
 
 ## Authorization
 
@@ -342,7 +342,7 @@ You can use following methods to have perform role based authorization.
 - user.isA(role)
 - user.isAn(role)
 
-For More information check SequelizeGuard [API Reference](https://lotivo-2020.web.app/api/index.html).
+For More information check SequelizeGuard [API Reference](https://sequelizeguard.web.app/api/index.html.
 
 ### Events
 
@@ -369,7 +369,7 @@ You can listen to following events. They can be helpful for logging or updating 
 
 ## Alternative
 
-- Mode-ACL is versatile library which has support for most ORMs.
+- Node-ACL is versatile library which has support for most ORMs.
   I actually tried to use that before writing this, but somehow wasn't feeling the power or freedom I wanted. But it is quite popular and mostly used.
 
 ## Contributions
