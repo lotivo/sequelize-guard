@@ -56,10 +56,10 @@ exports.Constructor = function () {
       dropTable: function (tableName, schema) {
         migration.push(tableName);
       },
-      bulkInsert: function (tableName, data) {
+      bulkInsert: async function (tableName, data) {
         seeds.push(tableName);
       },
-      bulkDelete: function (tableName, data) {
+      bulkDelete: async function (tableName, data) {
         seeds.push(tableName);
       },
     };
@@ -109,18 +109,34 @@ exports.Constructor = function () {
 
     it('properly runs up seeder', function () {
       seeds = [];
-      let expected = ['guard_roles'];
+      let expected = ['guard_roles', 'guard_permissions'];
 
-      SequelizeGuard.seeder.up(queryInterfaceStub, this.guard.sequelize);
-      assert.deepEqual(seeds, expected);
+      return SequelizeGuard.seeder
+        .up(queryInterfaceStub, this.guard.sequelize)
+        .then(() => {
+          assert.deepEqual(seeds, expected);
+        });
+    });
+    it('properly runs up seeder with options', function () {
+      seeds = [];
+      let expected = ['guard_roles', 'guard_permissions'];
+
+      return SequelizeGuard.seeder
+        .up(queryInterfaceStub, this.guard.sequelize, { timestamps: true })
+        .then(() => {
+          assert.deepEqual(seeds, expected);
+        });
     });
 
     it('properly runs down seeder', function () {
       seeds = [];
-      let expected = ['guard_roles'];
+      let expected = ['guard_roles', 'guard_permissions'];
 
-      SequelizeGuard.seeder.down(queryInterfaceStub, this.guard.sequelize);
-      assert.deepEqual(seeds, expected);
+      return SequelizeGuard.seeder
+        .down(queryInterfaceStub, this.guard.sequelize)
+        .then(() => {
+          assert.deepEqual(seeds, expected);
+        });
     });
 
     it('should return all guard models, i.e. 6 models', function () {
