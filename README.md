@@ -7,8 +7,8 @@ An Authorization library for Sequelize.js.
 Fast, Easy, Roles & Permissions based Authorization.
 
 - Fluent, easy to use semantic API.
-- Assign multiple Roles to User.
-- It is Super FAST, uses cache based permission resolution system.
+- Assign multiple Roles, Permissions to User.
+- Super FAST cache based permission resolution system.
 - Listen for Events related to authorization. Check [Events](#events)
 - No dependency on Node-acl.
 
@@ -304,7 +304,7 @@ for handling permissions
 - assignRoles
 - rmAssignedRoles
 
-For More information check SequelizeGuard [API Reference](https://sequelizeguard.web.app/api/index.html).
+For More information check SequelizeGuard [API Reference](https://sequelizeguard.web.app/api).
 
 ## Authorization
 
@@ -342,7 +342,7 @@ You can use following methods to have perform role based authorization.
 - user.isA(role)
 - user.isAn(role)
 
-For More information check SequelizeGuard [API Reference](https://sequelizeguard.web.app/api/index.html.
+For More information check SequelizeGuard [API Reference](https://sequelizeguard.web.app/api/).
 
 ### Events
 
@@ -356,7 +356,7 @@ You can listen to following events. They can be helpful for logging or updating 
 
 ## Road map
 
-- Yet to make seeders, see branch [dev-seeder](https://github.com/lotivo/sequelize-guard/blob/dev-seeder/README.md) for progress.
+- Make seeders better, see branch [dev-seeder](https://github.com/lotivo/sequelize-guard/blob/dev-seeder/README.md) for progress.
 - Implement "allow except" kind of permissions.
 - Role priority, which will allow to do things like
   - `user.atleast('admin')`
