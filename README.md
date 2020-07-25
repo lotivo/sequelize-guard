@@ -14,9 +14,8 @@ Fast, Easy, Roles & Permissions based Authorization.
 
 to know more see [documentation](https://sequelizeguard.web.app).
 
-Please provide your feedback :
+let me know how you feela about this library:
 
-- mail : vpankaj1998official@gmail.com
 - twitter : [@impankajv1](https://twitter.com/impankajv1)
 
 ---
