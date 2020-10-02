@@ -1,17 +1,20 @@
 import * as sequelize from 'sequelize/types/lib/sequelize';
-import { Model, ModelType, Sequelize } from 'sequelize';
+import { Model, ModelCtor, ModelType, Sequelize } from 'sequelize';
 import EventEmitter = NodeJS.EventEmitter;
 import NodeCache from 'node-cache';
 
 declare module 'sequelize/types/lib/sequelize' {
   interface Sequelize {
     guard: SequelizeGuard;
+    models: {
+      GuardModels
+    }
   }
 }
 
 type Action = 'view' | 'create' | 'update' | 'delete' | '*' | 'approve';
 
-interface SequelizeGuardOptions<TModel extends ModelType = typeof User> {
+interface SequelizeGuardOptions<TModel extends ModelType = typeof GuardUser> {
   prefix?: string;
   primaryKey?: string;
   timestamps?: boolean;
@@ -39,10 +42,10 @@ interface GuardUser {
 }
 
 /* ---------- Models ---------- */
-declare class User extends Model<User> {
+declare class GuardResource extends Model<GuardResource> {
   id: number;
   name: string;
-  email: string;
+  description: string;
 }
 
 declare class GuardPermission extends Model<GuardPermission> {
@@ -64,16 +67,37 @@ declare class GuardRole extends Model<GuardRole> {
   RoleUser?: RoleUser;
 }
 
+declare class RolePermission extends Model<RolePermission> {
+  id: number;
+  role_id: number;
+  permission_id: number;
+}
+
+declare class GuardUser extends Model<GuardUser> {
+  id: number;
+  name: string;
+  email: string;
+}
+
 declare class RoleUser extends Model<RoleUser> {
   id: number;
   role_id: number;
   user_id: any;
 }
 
+interface GuardModels {
+  GuardResource,
+  GuardRole,
+  GuardPermission,
+  RolePermission,
+  GuardUser,
+  RoleUser
+}
+
 declare class SequelizeGuard<TModel extends ModelType = ModelType> {
   constructor(seql: Sequelize, options: SequelizeGuardOptions<TModel>);
 
-  models(): {[name: string]: Model};
+  models(): GuardModels;
   init(): GuardControl;
   allow(role: string, actions: Action[] | Action, resources: string[] | string): Promise<{
     role: GuardRole,
@@ -160,10 +184,6 @@ declare class GuardControl {
 }
 
 export default SequelizeGuard;
-
-export {
-  GuardRole
-}
 
 export type {
   SequelizeGuardOptions,
