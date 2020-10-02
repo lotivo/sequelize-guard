@@ -1,5 +1,5 @@
 import * as sequelize from 'sequelize/types/lib/sequelize';
-import { Model, ModelCtor, ModelType, Sequelize } from 'sequelize';
+import { Model, ModelType, Sequelize } from 'sequelize';
 import EventEmitter = NodeJS.EventEmitter;
 import NodeCache from 'node-cache';
 
