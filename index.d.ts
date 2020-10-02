@@ -14,7 +14,7 @@ declare module 'sequelize/types/lib/sequelize' {
 
 type Action = 'view' | 'create' | 'update' | 'delete' | '*' | 'approve';
 
-interface SequelizeGuardOptions<TModel extends ModelType = typeof GuardUser> {
+interface SequelizeGuardOptions<TModel extends ModelType = typeof _GuardUser> {
   prefix?: string;
   primaryKey?: string;
   timestamps?: boolean;
@@ -73,7 +73,10 @@ declare class RolePermission extends Model<RolePermission> {
   permission_id: number;
 }
 
-declare class GuardUser extends Model<GuardUser> {
+/**
+ * Default guard user that is used when no UserModel is provided in SequelizeGuard constructor's options.
+ */
+declare class _GuardUser extends Model<_GuardUser> {
   id: number;
   name: string;
   email: string;
