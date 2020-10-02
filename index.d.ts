@@ -161,7 +161,11 @@ declare class GuardControl {
 
 export default SequelizeGuard;
 
+export {
+  GuardRole
+}
+
 export type {
   SequelizeGuardOptions,
-  GuardUser,
+  GuardUser
 }
