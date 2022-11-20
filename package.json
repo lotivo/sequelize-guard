@@ -31,9 +31,9 @@
   "author": "Pankaj Vaghela <vpankaj1998official@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/lotivo/sequelize-guard/issues"
+    "url": "https://github.com/amirrivand/sequelize-guard/issues"
   },
-  "homepage": "https://github.com/lotivo/sequelize-guard#readme",
+  "homepage": "https://github.com/amirrivand/sequelize-guard#readme",
   "engines": {
     "node": ">=14.0.0"
   },
