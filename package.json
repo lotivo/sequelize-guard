@@ -1,6 +1,6 @@
 {
   "name": "sequelize-guard",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "An Authorization Library for Sequelize",
   "main": "lib/index.js",
   "scripts": {
@@ -32,28 +32,28 @@
   },
   "homepage": "https://github.com/lotivo/sequelize-guard#readme",
   "engines": {
-    "node": ">=4.2.4"
+    "node": ">=14.0.0"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "coveralls": "^3.1.0",
+    "@faker-js/faker": "^7.6.0",
+    "chai": "^4.3.6",
+    "coveralls": "^3.1.1",
     "esdoc": "^1.1.0",
     "esdoc-standard-plugin": "^1.0.0",
-    "eslint": "^6.8.0",
+    "eslint": "^8.26.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-jsdoc": "^24.0.6",
     "eslint-plugin-prettier": "^3.1.3",
-    "istanbul": "^0.4.5",
-    "mocha": "^7.1.2",
-    "nyc": "^15.0.1",
-    "prettier": "^2.0.5",
-    "prettier-plugin-jsdoc": "0.0.17",
-    "sqlite3": "^4.2.0"
+    "mocha": "^10.1.0",
+    "nyc": "^15.1.0",
+    "prettier": "^2.7.1",
+    "prettier-plugin-jsdoc": "^0.4.2",
+    "sqlite3": "^5.1.2"
   },
   "dependencies": {
-    "faker": "^4.1.0",
-    "lodash": "^4.17.15",
-    "node-cache": "^5.1.0",
-    "sequelize": "^5.21.7"
+    "@scarf/scarf": "^1.0.4",
+    "lodash": "^4.17.21",
+    "node-cache": "^5.1.2",
+    "sequelize": "^6.25.3"
   }
 }
