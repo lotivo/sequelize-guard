@@ -1,7 +1,7 @@
 {
-  "name": "@amirrivand/sequelize-guard",
-  "version": "0.1.3",
-  "description": "An Authorization Library for Sequelize",
+  "name": "@amirrivand/sequelize-guard2",
+  "version": "1.0.3",
+  "description": "Sequelize Authorization Library",
   "main": "lib/index.js",
   "scripts": {
     "debug": "node ./tests/runner.js --inspect-brk=9229",
@@ -11,10 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amirrivand/sequelize-guard.git"
-  },
-  "publishConfig": {
-    "@amirrivand:registry": "https://npm.pkg.github.com/"
+    "url": "git+https://github.com/amirrivand/sequelize-guard2.git"
   },
   "keywords": [
     "sequelize-guard",
@@ -28,12 +25,9 @@
     "acl",
     "sequelize-acl"
   ],
-  "author": "Pankaj Vaghela <vpankaj1998official@gmail.com>",
+  "author": "Amir Rivand <amir.rivand@gmail.com>",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/amirrivand/sequelize-guard/issues"
-  },
-  "homepage": "https://github.com/amirrivand/sequelize-guard#readme",
+  "homepage": "https://github.com/amirrivand/sequelize-guard2",
   "engines": {
     "node": ">=14.0.0"
   },
