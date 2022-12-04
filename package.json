@@ -1,5 +1,5 @@
 {
-  "name": "@amirrivand/sequelize-guard2",
+  "name": "@amirrivand/sequelize-guard",
   "version": "1.0.3",
   "description": "Sequelize Authorization Library",
   "main": "lib/index.js",
