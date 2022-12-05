@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amirrivand/sequelize-guard2.git"
+    "url": "git+https://github.com/amirrivand/sequelize-guard.git"
   },
   "keywords": [
     "sequelize-guard",
@@ -27,7 +27,7 @@
   ],
   "author": "Amir Rivand <amir.rivand@gmail.com>",
   "license": "MIT",
-  "homepage": "https://github.com/amirrivand/sequelize-guard2",
+  "homepage": "https://github.com/amirrivand/sequelize-guard",
   "engines": {
     "node": ">=14.0.0"
   },
