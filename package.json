@@ -1,6 +1,6 @@
 {
   "name": "@amirrivand/sequelize-guard",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "Sequelize Authorization Library",
   "main": "lib/index.js",
   "scripts": {
