@@ -25,14 +25,18 @@
     "acl",
     "sequelize-acl"
   ],
-  "author": "Amir Rivand <amir.rivand@gmail.com>",
+  "author": "Pankaj Vaghela <vpankaj1998official@gmail.com>",
   "license": "MIT",
-  "homepage": "https://github.com/amirrivand/sequelize-guard",
+  "bugs": {
+    "url": "https://github.com/amirrivand/sequelize-guard/issues"
+  },
+  "homepage": "https://github.com/amirrivand/sequelize-guard#readme",
   "engines": {
     "node": ">=14.0.0"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
+    "@typescript-eslint/parser": "^5.47.0",
     "chai": "^4.3.6",
     "coveralls": "^3.1.1",
     "esdoc": "^1.1.0",
