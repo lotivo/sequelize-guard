@@ -157,6 +157,7 @@ declare class SequelizeGuard<TModel extends ModelType = ModelType> {
   assignRole(user: TModel, role: string): Promise<TModel>;
   assignRoles(user: TModel, roles: string[]): Promise<RoleUser>;
   rmAssignedRoles(user: TModel, roles: string | string[]): Promise<void>;
+  fixRoles(user: TModel, roles: string | string[]): Promise<Array<string[]>>
   onRolesCreated(cb: (...args: any[]) => void): () => EventEmitter;
   onRolesDeleted(cb: (...args: any[]) => void): () => EventEmitter;
   onPermsCreated(cb: (...args: any[]) => void): () => EventEmitter;

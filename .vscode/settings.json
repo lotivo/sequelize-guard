@@ -1,4 +1,19 @@
 {
   "mocha.files.glob": "tests/runner.js ",
-  "mocha.coverage": null
+  "mocha.coverage": null,
+  "sqltools.connections": [
+    {
+      "mysqlOptions": {
+        "authProtocol": "default"
+      },
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 3306,
+      "driver": "MySQL",
+      "name": "Doctour Dev",
+      "database": "doctour_dev",
+      "username": "amirrivand",
+      "password": "86963554"
+    }
+  ]
 }

@@ -1,0 +1,13 @@
+{
+  "prefix": "guard_",
+  "primaryKey": "id",
+  "timestamps": false,
+  "paranoid": false,
+  "sync": true,
+  "debug": false,
+  "UserModel": null,
+  "userPk": "id",
+  "safeGuardDeletes": true,
+  "userCache": true,
+  "userCacheTtl": 60
+}

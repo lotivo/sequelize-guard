@@ -4,14 +4,36 @@ const chai = require('chai');
 var expect = chai.expect;
 var assert = chai.assert;
 
-var schemas = require('../lib/migrations/guard-schema').schemas;
+const schemas = require('../lib/migrations/guard-schema').schemas;
 
-var SequelizeGuard = require('../lib/index');
+const SequelizeGuard = require('../lib/index');
+const { DataTypes } = require('sequelize');
+
+const UserSchema = {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  name: DataTypes.STRING,
+  email: {
+    type: DataTypes.STRING,
+    unique: {
+      name: 'users_email',
+      msg: 'A user with this email already exists.',
+    },
+    allowNull: true,
+    validate: {
+      notEmpty: true,
+      isEmail: true,
+    },
+  },
+}
 
 exports.init = function () {
   describe('SequelizeGuard init custom config', function () {
     it('should be initialized when user passed', function (done) {
-      let GuardUser = this.seqMem1.define('User', schemas['users'], {
+      let GuardUser = this.seqMem1.define('User', UserSchema, {
         tableName: `guard_users`,
       });
       let seqGuard = new SequelizeGuard(this.seqMem1, {
@@ -24,20 +46,6 @@ exports.init = function () {
 
       if (seqGuard) {
         this.__proto__.seqMem1 = null;
-        done();
-      }
-    });
-
-    it('should be initialized with options 2', function (done) {
-      let seqGuard = new SequelizeGuard(this.seqMem2, {
-        sync: true,
-        debug: true,
-        timestamps: true,
-        paranoid: false,
-      });
-
-      if (seqGuard) {
-        this.__proto__.seqMem2 = null;
         done();
       }
     });
@@ -83,6 +91,7 @@ exports.Constructor = function () {
         prefix: 'guard_',
         timestamps: true,
         paranoid: true,
+        UserModel: this.seqMem1.models.GuardUser
       });
 
       assert.deepEqual(migration, expected);
