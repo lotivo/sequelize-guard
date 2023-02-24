@@ -54,6 +54,6 @@
     "faker": "^4.1.0",
     "lodash": "^4.17.15",
     "node-cache": "^5.1.0",
-    "sequelize": "^5.21.7"
+    "sequelize": "^6.29.0"
   }
 }
