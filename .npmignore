@@ -111,3 +111,5 @@ dist
 .thea/
 .coverage/
 .docs/
+
+.history/

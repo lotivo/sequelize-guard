@@ -49,48 +49,57 @@ Just create easy api to support that.
 
   `BlogPost.can('have comments').`
 
-====================================
-1
+===================================
+
+```
 [
-{
-id: 7,
-name: 'superadmin',
-description: null,
-parent_id: null,
-RoleUser: { id: 4, role_id: 7, user_id: 1 }
-}
+  {
+    id: 7,
+    name: 'superadmin',
+    description: null,
+    parent_id: null,
+    RoleUser: { id: 4, role_id: 7, user_id: 1 }
+  }
 ]
+```
+
+✓ should allow superadmin to \_
+
 ====================================
-✓ should allow superadmin to _
-====================================
-2
+
+```
 [
-{
-id: 4,
-name: 'user',
-description: 'A basic user',
-parent_id: null,
-RoleUser: { id: 5, role_id: 4, user_id: 2 }
-},
-{
-id: 6,
-name: 'admin',
-description: null,
-parent_id: null,
-RoleUser: { id: 6, role_id: 6, user_id: 2 }
-}
+  {
+    id: 4,
+    name: 'user',
+    description: 'A basic user',
+    parent_id: null,
+    RoleUser: { id: 5, role_id: 4, user_id: 2 }
+  },
+  {
+    id: 6,
+    name: 'admin',
+    description: null,
+    parent_id: null,
+    RoleUser: { id: 6, role_id: 6, user_id: 2 }
+  }
 ]
+```
+
+✓ should not allow admin to \_
+
 ====================================
-✓ should not allow admin to _
-====================================
-4
+
+```
 [
-{
-id: 4,
-name: 'user',
-description: 'A basic user',
-parent_id: null,
-RoleUser: { id: 9, role_id: 4, user_id: 4 }
-}
+  {
+    id: 4,
+    name: 'user',
+    description: 'A basic user',
+    parent_id: null,
+    RoleUser: { id: 9, role_id: 4, user_id: 4 }
+  }
 ]
+```
+
 ====================================
