@@ -259,15 +259,9 @@ async function example() {
   await guard.allow('viewer', 'view', '*'); // Viewer can view everything
 
   // Create users
-  const admin = await guard.makeUser({
-    name: 'Admin User',
-    email: 'admin@example.com',
-  });
+  const admin = await guard.makeUser({});
 
-  const editor = await guard.makeUser({
-    name: 'Editor User',
-    email: 'editor@example.com',
-  });
+  const editor = await guard.makeUser({});
 
   // Assign roles
   await admin.assignRole('admin');

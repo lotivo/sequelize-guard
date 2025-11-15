@@ -157,19 +157,6 @@ export const schemas: Record<string, ModelAttributes> = {
       primaryKey: true,
       autoIncrement: true,
     },
-    name: DataTypes.STRING,
-    email: {
-      type: DataTypes.STRING,
-      unique: {
-        name: 'users_email',
-        msg: 'A user with this email already exists.',
-      },
-      allowNull: true,
-      validate: {
-        notEmpty: true,
-        isEmail: true,
-      },
-    },
   },
 };
 

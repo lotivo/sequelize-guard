@@ -121,6 +121,7 @@ export function initGuardModels(guard: SequelizeGuard): GuardModels {
         ...(schemas.users as any),
       },
       {
+        ...modelOptions(options),
         tableName: `${options.prefix}users`,
       },
     ) as ModelStatic<GuardUserModel>;

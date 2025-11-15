@@ -73,14 +73,6 @@ export interface BulkPermissionInput {
 }
 
 /**
- * User creation input
- */
-export interface UserInput {
-  name: string;
-  email?: string;
-}
-
-/**
  * Internal permission data structure
  */
 export interface PermissionData {

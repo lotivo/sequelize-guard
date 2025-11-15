@@ -84,21 +84,15 @@ function mappedRolesToIds(
   const mappedObj: Record<number, any> = {};
 
   objects.forEach((obj) => {
-    const jsonObj = obj.toJSON ? obj.toJSON() : obj;
-
-    if (obj.Permissions) {
-      jsonObj.Permissions = obj.Permissions.map((perm: any) =>
-        perm.toJSON ? perm.toJSON() : perm,
-      );
-    } else {
-      jsonObj.Permissions = false;
+    if (!obj.Permissions) {
+      obj.Permissions = false;
     }
 
     if (obj.dataValues) {
-      obj.dataValues.Permissions = jsonObj.Permissions;
+      obj.dataValues.Permissions = obj.Permissions;
     }
 
-    mappedObj[obj[id]] = jsonObj;
+    mappedObj[obj[id]] = obj;
   });
 
   return mappedObj;

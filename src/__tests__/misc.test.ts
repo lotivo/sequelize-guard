@@ -54,10 +54,7 @@ describe('Custom configuration - without user cache', () => {
   });
 
   it('should work without user cache', async () => {
-    const user = await guard.makeUser({
-      name: 'SuperAdmin',
-      email: 'superadmin@test.com',
-    });
+    const user = await guard.makeUser();
     const roles = await guard.getUserRoles(user);
     expect(Array.isArray(roles)).toBe(true);
   });

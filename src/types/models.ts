@@ -96,8 +96,6 @@ export interface GuardUserModel
     InferCreationAttributes<GuardUserModel>
   > {
   id: CreationOptional<number>;
-  name?: string;
-  email?: string;
 
   // Associations
   Roles?: NonAttribute<GuardRoleModel[]>;

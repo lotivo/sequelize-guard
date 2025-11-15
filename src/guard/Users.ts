@@ -1,11 +1,11 @@
 import { differenceBy } from 'lodash';
 import { Op } from 'sequelize';
 import type { SequelizeGuard } from '../SequelizeGuard';
-import type { GuardUserModel, GuardRoleModel, UserInput } from '../types';
+import type { GuardUserModel, GuardRoleModel } from '../types';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {
-    makeUser(user: UserInput): Promise<GuardUserModel>;
+    makeUser(): Promise<GuardUserModel>;
     assignRole(user: GuardUserModel, role: string): Promise<GuardUserModel>;
     assignRoles(user: GuardUserModel, roles: string[]): Promise<void>;
     rmAssignedRoles(user: GuardUserModel, roles: string[]): Promise<void>;
@@ -22,14 +22,10 @@ export function extendWithUsers(
   /**
    * Make/create a user
    */
-  SequelizeGuard.prototype.makeUser = async function (
-    user: UserInput,
-  ): Promise<GuardUserModel> {
-    return this._models.GuardUser.create({
-      name: user.name,
-      email: user.email,
-    } as any) as Promise<GuardUserModel>;
-  };
+  SequelizeGuard.prototype.makeUser =
+    async function (): Promise<GuardUserModel> {
+      return this._models.GuardUser.create({}) as Promise<GuardUserModel>;
+    };
 
   /**
    * Assign role to user
