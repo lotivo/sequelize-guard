@@ -4,17 +4,17 @@ node_js:
   - stable
 
 install:
-  - npm install
+  - yarn install
 
 #script:
-#  - npm run cover
+#  - yarn run cover
 
 # Send coverage data to Coveralls
 #after_script: "coverage"
 
 
 script:
-  - npm run cover
+  - yarn run cover
 
 # Send coverage data to Coveralls
-after_script: "npm run coverall"
+after_script: "yarn run coverall"

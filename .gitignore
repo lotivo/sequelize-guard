@@ -106,3 +106,4 @@ dist
 # Jetbrains project files
 .idea/
 
+.history/
