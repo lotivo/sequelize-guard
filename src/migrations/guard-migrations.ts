@@ -24,11 +24,6 @@ async function up(
   };
 
   // Create all guard tables
-  await queryInterface.createTable(getTableName('actions', opts), {
-    ...schemas.actions,
-    ...dateColumns,
-  });
-
   await queryInterface.createTable(getTableName('resources', opts), {
     ...schemas.resources,
     ...dateColumns,
@@ -81,7 +76,6 @@ async function down(
   await queryInterface.dropTable(getTableName('roles', opts));
   await queryInterface.dropTable(getTableName('permissions', opts));
   await queryInterface.dropTable(getTableName('resources', opts));
-  await queryInterface.dropTable(getTableName('actions', opts));
 
   if (!opts.UserModel) {
     await queryInterface.dropTable(getTableName('users', opts));

@@ -1,5 +1,4 @@
 export enum BaseModelType {
-  Actions = 'actions',
   Resources = 'resources',
   Permissions = 'permissions',
   Roles = 'roles',
@@ -14,7 +13,6 @@ export enum AssociationModelType {
 export type ModelType = BaseModelType | AssociationModelType;
 
 export const tablesMap = {
-  [BaseModelType.Actions]: 'actions',
   [BaseModelType.Resources]: 'resources',
   [BaseModelType.Permissions]: 'permissions',
   [BaseModelType.Roles]: 'roles',
@@ -26,7 +24,6 @@ export const tablesMap = {
 export const tableNames = Object.values(tablesMap);
 
 export const baseModelsNameMap = {
-  [BaseModelType.Actions]: 'action',
   [BaseModelType.Resources]: 'resource',
   [BaseModelType.Permissions]: 'permission',
   [BaseModelType.Roles]: 'role',
@@ -34,7 +31,6 @@ export const baseModelsNameMap = {
 } as const;
 
 export const ModelClassNameMap = {
-  [BaseModelType.Actions]: 'GuardAction',
   [BaseModelType.Resources]: 'GuardResource',
   [BaseModelType.Permissions]: 'GuardPermission',
   [BaseModelType.Roles]: 'GuardRole',

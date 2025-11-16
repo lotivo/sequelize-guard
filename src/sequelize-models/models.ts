@@ -1,5 +1,4 @@
 import type { SequelizeGuard } from '../SequelizeGuard';
-import { GuardActionModelStatic, initGuardAction } from './GuardAction';
 import {
   GuardPermissionModelStatic,
   initGuardPermission,
@@ -18,7 +17,6 @@ import { GuardUserModelStatic, initOrSetupGuardUser } from './GuardUser';
  * @param guard
  */
 export function initGuardModels(guard: SequelizeGuard): GuardModels {
-  const GuardAction = initGuardAction(guard);
   const GuardResource = initGuardResource(guard);
   const GuardPermission = initGuardPermission(guard);
   const GuardRole = initGuardRole(guard);
@@ -36,7 +34,6 @@ export function initGuardModels(guard: SequelizeGuard): GuardModels {
   });
 
   return {
-    GuardAction,
     GuardResource,
     GuardRole,
     GuardPermission,
@@ -50,7 +47,6 @@ export function initGuardModels(guard: SequelizeGuard): GuardModels {
  * Collection of all Guard models
  */
 export interface GuardModels {
-  GuardAction: GuardActionModelStatic;
   GuardResource: GuardResourceModelStatic;
   GuardRole: GuardRoleModelStatic;
   GuardPermission: GuardPermissionModelStatic;

@@ -1,6 +1,5 @@
 import { DataTypes } from 'sequelize';
 import {
-  getGuardActionSchema,
   getGuardResourceSchema,
   getGuardPermissionSchema,
   getGuardRoleSchema,
@@ -13,7 +12,6 @@ import {
  * Database schemas for Guard tables
  */
 export const schemas = {
-  actions: getGuardActionSchema(),
   resources: getGuardResourceSchema(),
   permissions: getGuardPermissionSchema(),
   roles: getGuardRoleSchema(),
