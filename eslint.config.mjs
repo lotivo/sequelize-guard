@@ -1,7 +1,7 @@
 import js from '@eslint/js';
 import typescriptParser from '@typescript-eslint/parser';
 import tsEslintPlugin from '@typescript-eslint/eslint-plugin';
-import prettierPlugin from 'eslint-plugin-prettier';
+import importPlugin from 'eslint-plugin-import';
 import prettierConfig from 'eslint-config-prettier';
 import jsdocPlugin from 'eslint-plugin-jsdoc';
 import globals from 'globals';
@@ -45,7 +45,7 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tsEslintPlugin,
-      prettier: prettierPlugin,
+      import: importPlugin,
       jsdoc: jsdocPlugin,
     },
     rules: {
@@ -55,8 +55,6 @@ export default [
       ...tsEslintPlugin.configs.recommended.rules,
       ...tsEslintPlugin.configs['recommended-requiring-type-checking'].rules,
       ...jsdocPlugin.configs.recommended.rules,
-      ...prettierConfig.rules,
-      'prettier/prettier': 'error',
 
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
@@ -121,4 +119,5 @@ export default [
       'object-curly-spacing': ['error', 'always'],
     },
   },
+  prettierConfig,
 ];
