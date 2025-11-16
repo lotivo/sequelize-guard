@@ -15,7 +15,11 @@ export default [
       'public/**',
       'resources/**',
       'dist/**',
+      '.backup/**',
       'server/graphql/schema/directives/dateDirective.js',
+      'src/**/*.test.ts',
+      'src/**/__tests__/**',
+      'index.d.ts',
     ],
   },
 

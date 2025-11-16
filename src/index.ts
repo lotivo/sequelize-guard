@@ -10,8 +10,6 @@ import { extendWithPermissions } from './guard/Permissions';
 import { extendWithRoles } from './guard/Roles';
 import { extendWithUsers } from './guard/Users';
 import { SequelizeGuard } from './SequelizeGuard';
-
-// Import all extension modules
 import { extendWithCache } from './utils/cache';
 import { extendWithUserCache } from './utils/userCache';
 

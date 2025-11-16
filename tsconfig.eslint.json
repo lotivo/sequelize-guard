@@ -4,6 +4,7 @@
     "src/**/*",
     "vite.config.mts",
     "eslint.config.mjs",
-    "**/*.test.ts"
-  ]
+    "src/**/*.test.ts"
+  ],
+  "exclude": [".backup"]
 }

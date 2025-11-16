@@ -94,7 +94,7 @@ export class GuardControl {
    * await control.commit()
    * ```
    */
-  async commit(): Promise<AddPermsToRoleResult> {
+  commit(): Promise<AddPermsToRoleResult> {
     const roles = this._roles;
     const actions = this._actions;
     const resources = this._resources;

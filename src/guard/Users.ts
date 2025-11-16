@@ -78,7 +78,7 @@ export function extendWithUsers(
   SequelizeGuard.prototype.getUserRoles = async function (
     user: GuardUserModel,
   ): Promise<GuardRoleSerializable[]> {
-    const cacheKey = `user_${user.get(this.options.userPk)}`;
+    const cacheKey = `user_${String(user.get(this.options.userPk))}`;
     const cache = this.getUserCache();
 
     let cacheRoles: GuardRoleSerializable[] | undefined = undefined;

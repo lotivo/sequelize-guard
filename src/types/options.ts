@@ -1,4 +1,4 @@
-import type { Model, ModelStatic, Sequelize } from 'sequelize';
+import type { ModelStatic } from 'sequelize';
 import { GuardUserModel } from '../sequelize-models';
 
 /**

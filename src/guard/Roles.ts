@@ -3,7 +3,6 @@ import {
   differenceBy,
   concat,
   filter,
-  uniq,
   without,
   intersectionBy,
 } from 'lodash';
