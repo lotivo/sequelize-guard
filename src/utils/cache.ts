@@ -1,7 +1,7 @@
 import NodeCache from 'node-cache';
 import { values } from 'lodash';
 import type { SequelizeGuard } from '../SequelizeGuard';
-import type { GuardRoleModel, GuardPermissionModel } from '../types';
+import { GuardPermissionModel } from '../sequelize-models';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {

@@ -1,7 +1,6 @@
 import { differenceBy } from 'lodash';
 import { Op } from 'sequelize';
-import type { SequelizeGuard } from '../SequelizeGuard';
-import type { GuardUserModel, GuardRoleModel } from '../types';
+import { GuardUserModel } from '../sequelize-models';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {

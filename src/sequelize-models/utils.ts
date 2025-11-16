@@ -6,9 +6,11 @@ import type { GuardInternalOptions } from '../types';
  */
 export function modelOptions(
   options: GuardInternalOptions,
+  tableName?: string,
 ): Partial<InitOptions> {
   return {
     timestamps: options.timestamps,
     paranoid: options.paranoid,
+    tableName,
   };
 }

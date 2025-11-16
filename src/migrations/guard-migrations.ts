@@ -1,8 +1,9 @@
 import type { QueryInterface } from 'sequelize';
 import type { GuardOptions } from '../types';
-import { schemas, tablesMap } from './guard-schema';
+import { schemas, timestamps } from './guard-schema';
 import { merge } from 'lodash';
 import { defaultOptions } from '../constants';
+import { getTableName } from '../sequelize-models';
 
 /**
  * Run migrations to create Guard tables
@@ -15,61 +16,47 @@ async function up(
   const opts = merge({}, defaultOptions, options);
   const prefix = opts.prefix;
 
+  const dateColumns = () => ({
+    ...(opts.timestamps && timestamps.basic),
+    ...(opts.paranoid && timestamps.paranoid),
+  });
+
   // Create all guard tables
-  await queryInterface.createTable(prefix + tablesMap.resources, {
+  await queryInterface.createTable(getTableName('actions', opts), {
+    ...schemas.actions,
+    ...dateColumns(),
+  });
+
+  await queryInterface.createTable(getTableName('resources', opts), {
     ...schemas.resources,
-    ...(opts.timestamps && {
-      created_at: Sequelize.DATE,
-      updated_at: Sequelize.DATE,
-    }),
-    ...(opts.paranoid && { deleted_at: Sequelize.DATE }),
+    ...dateColumns(),
   });
 
-  await queryInterface.createTable(prefix + tablesMap.permissions, {
+  await queryInterface.createTable(getTableName('permissions', opts), {
     ...schemas.permissions,
-    ...(opts.timestamps && {
-      created_at: Sequelize.DATE,
-      updated_at: Sequelize.DATE,
-    }),
-    ...(opts.paranoid && { deleted_at: Sequelize.DATE }),
+    ...dateColumns(),
   });
 
-  await queryInterface.createTable(prefix + tablesMap.roles, {
+  await queryInterface.createTable(getTableName('roles', opts), {
     ...schemas.roles,
-    ...(opts.timestamps && {
-      created_at: Sequelize.DATE,
-      updated_at: Sequelize.DATE,
-    }),
-    ...(opts.paranoid && { deleted_at: Sequelize.DATE }),
+    ...dateColumns(),
   });
 
-  await queryInterface.createTable(prefix + tablesMap.role_permission, {
+  await queryInterface.createTable(getTableName('role_permission', opts), {
     ...schemas.role_permission,
-    ...(opts.timestamps && {
-      created_at: Sequelize.DATE,
-      updated_at: Sequelize.DATE,
-    }),
-    ...(opts.paranoid && { deleted_at: Sequelize.DATE }),
+    ...dateColumns(),
   });
 
-  await queryInterface.createTable(prefix + tablesMap.role_user, {
+  await queryInterface.createTable(getTableName('role_user', opts), {
     ...schemas.role_user,
-    ...(opts.timestamps && {
-      created_at: Sequelize.DATE,
-      updated_at: Sequelize.DATE,
-    }),
-    ...(opts.paranoid && { deleted_at: Sequelize.DATE }),
+    ...dateColumns(),
   });
 
   // Create users table only if UserModel is not provided
   if (!opts.UserModel) {
-    await queryInterface.createTable(prefix + 'users', {
+    await queryInterface.createTable(getTableName('users', opts), {
       ...schemas.users,
-      ...(opts.timestamps && {
-        created_at: Sequelize.DATE,
-        updated_at: Sequelize.DATE,
-      }),
-      ...(opts.paranoid && { deleted_at: Sequelize.DATE }),
+      ...dateColumns(),
     });
   }
 }
@@ -85,14 +72,15 @@ async function down(
   const opts = merge({}, defaultOptions, options);
   const prefix = opts.prefix;
 
-  await queryInterface.dropTable(prefix + tablesMap.role_user);
-  await queryInterface.dropTable(prefix + tablesMap.role_permission);
-  await queryInterface.dropTable(prefix + tablesMap.roles);
-  await queryInterface.dropTable(prefix + tablesMap.permissions);
-  await queryInterface.dropTable(prefix + tablesMap.resources);
+  await queryInterface.dropTable(getTableName('role_user', opts));
+  await queryInterface.dropTable(getTableName('role_permission', opts));
+  await queryInterface.dropTable(getTableName('roles', opts));
+  await queryInterface.dropTable(getTableName('permissions', opts));
+  await queryInterface.dropTable(getTableName('resources', opts));
+  await queryInterface.dropTable(getTableName('actions', opts));
 
   if (!opts.UserModel) {
-    await queryInterface.dropTable(prefix + 'users');
+    await queryInterface.dropTable(getTableName('users', opts));
   }
 }
 

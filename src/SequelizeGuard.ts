@@ -1,14 +1,9 @@
 import { EventEmitter } from 'events';
 import { merge } from 'lodash';
-import type { ModelStatic, Sequelize } from 'sequelize';
-import type {
-  GuardOptions,
-  GuardInternalOptions,
-  GuardModels,
-  GuardUserModel,
-} from './types';
+import type { Sequelize } from 'sequelize';
+import type { GuardOptions, GuardInternalOptions } from './types';
 import { defaultOptions } from './constants';
-import { initGuardModels } from './models/GuardModels';
+import { GuardModels, initGuardModels } from './sequelize-models/models';
 import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
 import migration from './migrations/guard-migrations';
 import seeder from './seeder';

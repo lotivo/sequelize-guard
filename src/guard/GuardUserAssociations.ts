@@ -1,22 +1,33 @@
+import { isObjectLike } from 'lodash';
 import type { SequelizeGuard } from '../SequelizeGuard';
-import type { GuardUserModel } from '../types';
+import { GuardUserModel } from '../sequelize-models';
 
 /**
  * Setup associations and methods on User model
  */
 export function setupGuardUserAssociations(guard: SequelizeGuard): void {
-  const GuardUser = guard.options.UserModel || guard._models.GuardUser;
-  (guard as any)._UserModel = GuardUser;
+  const { GuardUser } = guard._models;
+  // (guard as any)._UserModel = GuardUser;
+
+  Object.defineProperty(GuardUser, 'assignRole', {
+    value: function (
+      this: typeof GuardUser,
+      user: GuardUserModel,
+      role: string,
+    ) {
+      return guard.assignRole(user, role);
+    },
+  });
 
   /**
    * Assign single role to user
    */
-  (GuardUser as any).prototype.assignRole = function (
-    this: GuardUserModel,
-    role: string,
-  ) {
-    return guard.assignRole(this, role);
-  };
+  // GuardUser.prototype.assignRole = function (
+  //   this: GuardUserModel,
+  //   role: string,
+  // ) {
+  //   return guard.assignRole(this, role);
+  // };
 
   /**
    * Assign multiple roles to user

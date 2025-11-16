@@ -1,4 +1,3 @@
-import type { SequelizeGuard } from '../SequelizeGuard';
 import { GuardControl } from './GuardControl';
 import type { AddPermsToRoleResult } from '../types';
 

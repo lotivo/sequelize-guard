@@ -3,5 +3,4 @@
  */
 
 export * from './options';
-export * from './models';
 export * from './api';

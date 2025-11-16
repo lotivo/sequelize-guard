@@ -8,9 +8,8 @@ import {
   intersectionBy,
 } from 'lodash';
 import { Op } from 'sequelize';
-import type { SequelizeGuard } from '../SequelizeGuard';
+import type { GuardRoleModel } from '../sequelize-models';
 import type {
-  GuardRoleModel,
   RoleCreationResult,
   FindRolesArgs,
   CreateRolesOptions,
@@ -138,13 +137,15 @@ export function extendWithRoles(
     const roleNames = sanitizedRoles.map((d) => d.name);
     const rolesToDelete = filter(
       cacheRoles,
-      (role: any) => roleNames.indexOf(role.name) >= 0,
+      (role: GuardRoleModel) => roleNames.indexOf(role.name) >= 0,
     );
 
     if (!rolesToDelete.length) return 0;
 
     const deletedCount = await this._models.GuardRole.destroy({
-      where: { name: rolesToDelete.map((d: any) => d.name) },
+      where: {
+        name: { [Op.in]: rolesToDelete.map((d) => d.name) },
+      },
     });
 
     this.emit('onRolesDeleted', rolesToDelete);

@@ -1,4 +1,4 @@
-import type { GuardPermissionModel, GuardRoleModel } from './models';
+import type { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
 
 /**
  * Result from role creation

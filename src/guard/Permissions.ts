@@ -2,7 +2,6 @@ import { differenceBy, concat } from 'lodash';
 import { Op } from 'sequelize';
 import type { SequelizeGuard } from '../SequelizeGuard';
 import type {
-  GuardPermissionModel,
   CreatePermsOptions,
   FindPermsArgs,
   BulkPermissionInput,
@@ -10,6 +9,7 @@ import type {
   GuardEventCallback,
   UnsubscribeFn,
 } from '../types';
+import { GuardPermissionModel } from '../sequelize-models';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {

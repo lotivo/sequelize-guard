@@ -1,5 +1,5 @@
 import type { Model, ModelStatic, Sequelize } from 'sequelize';
-import { GuardUserModel } from './models';
+import { GuardUserModel } from '../sequelize-models';
 
 /**
  * Configuration options for SequelizeGuard
