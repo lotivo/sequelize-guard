@@ -29,17 +29,18 @@ describe('Users', () => {
     describe('Assign roles', () => {
       it('should assign single role to user', async () => {
         const user = await context.sequelize.models.User.findByPk(1);
-        if (user && user.assignRole) {
-          const updatedUser = await user.assignRole('admin');
-          const roles = await updatedUser.getRoles!();
+        if (user) {
+          await user.assignRole!('admin');
+
+          const roles = await user.getRoles!();
           expect(roles?.length).toBe(1);
         }
       });
 
       it('should assign multiple roles without duplicates', async () => {
         const user = await context.sequelize.models.User.findByPk(1);
-        if (user && user.assignRoles) {
-          await user.assignRoles(['admin', 'superadmin', 'moderator']);
+        if (user) {
+          await user.assignRoles!(['admin', 'superadmin', 'moderator']);
 
           const roles = await user.getRoles!();
           expect(roles?.length).toBe(3);
@@ -51,8 +52,8 @@ describe('Users', () => {
       it('should remove single role from user', async () => {
         const user = await context.sequelize.models.User.findByPk(1);
 
-        if (user && user.rmAssignedRoles) {
-          await user.rmAssignedRoles(['admin']);
+        if (user) {
+          await user.rmAssignedRoles!(['admin']);
 
           const roles = await user.getRoles!();
           expect(roles?.length).toBe(2);
@@ -61,10 +62,10 @@ describe('Users', () => {
 
       it('should remove multiple roles from user', async () => {
         const user = await context.sequelize.models.User.findByPk(1);
-        if (user && user.rmAssignedRoles) {
-          await user.rmAssignedRoles(['superadmin', 'moderator', 'toddle']);
+        if (user) {
+          await user.rmAssignedRoles!(['superadmin', 'moderator', 'toddle']);
 
-          const roles = await user.getRoles?.();
+          const roles = await user.getRoles!();
           expect(roles?.length).toBe(0);
         }
       });

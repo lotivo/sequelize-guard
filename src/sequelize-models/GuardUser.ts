@@ -36,8 +36,25 @@ export interface GuardUserModel extends SequelizeModelClass<GuardUserModel> {
   isAn?: (role: string) => Promise<boolean>;
   isAllOf?: (roles: string[]) => Promise<boolean>;
   isAnyOf?: (roles: string[]) => Promise<boolean>;
+
+  /**
+   * Assign single role to user
+   * @param {{string}} role
+   * @returns GuardUserModel
+   */
   assignRole?: (role: string) => Promise<GuardUserModel>;
+
+  /**
+   * Assign multiple roles to user
+   * @param roles
+   * @returns void
+   */
   assignRoles?: (roles: string[]) => Promise<void>;
+  /**
+   * Remove assigned roles from user
+   * @param roles
+   * @returns void
+   */
   rmAssignedRoles?: (roles: string[]) => Promise<void>;
 }
 
