@@ -10,7 +10,7 @@ export function extendWithAuthorizeRoles(
   SequelizeGuard: SequelizeGuardType,
 ): void {
   /**
-   * Check if user has any of the given roles
+   * Check if user has `any` of the given roles
    * @param user
    * @param roles
    */

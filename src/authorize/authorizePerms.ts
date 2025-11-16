@@ -87,7 +87,7 @@ export function extendWithAuthorizePerms(
 }
 
 /**
- * Helper function to return true if any promise resolves to true
+ * Helper function to return true when first promise resolves to true
  * @param promises
  */
 function firstTrue(promises: Promise<boolean>[]): Promise<boolean> {

@@ -13,36 +13,40 @@ describe('Events', () => {
   });
 
   it('should register and listen on onRolesCreated event, remove with returned fn', async () => {
-    const rmCb = context.guard.onRolesCreated((data: any) => {
+    // setup
+    // execute
+    const rmCb = context.guard.onRolesCreated((data) => {
+      // assert
       expect(data.length).toBe(1);
       rmCb();
-      expect((context.guard as any)._ee.listenerCount('onRolesCreated')).toBe(
-        1,
-      );
+      expect(context.guard._ee.listenerCount('onRolesCreated')).toBe(1);
     });
-
-    expect((context.guard as any)._ee.listenerCount('onRolesCreated')).toBe(2);
+    expect(context.guard._ee.listenerCount('onRolesCreated')).toBe(2);
     await context.guard.makeRole('EventOnRolesCreatedRole');
   });
 
   it('should register and listen on someEvent event, removed AFTER one call', () => {
-    context.guard.once('someEvent', (data: any) => {
+    // setup
+    // execute
+    context.guard.once('someEvent', (data) => {
+      // assert
       expect(data.length).toBe(1);
-      expect((context.guard as any)._ee.listenerCount('someEvent')).toBe(0);
+      expect(context.guard._ee.listenerCount('someEvent')).toBe(0);
     });
-
-    expect((context.guard as any)._ee.listenerCount('someEvent')).toBe(1);
-    (context.guard as any)._ee.emit('someEvent', ['a']);
+    expect(context.guard._ee.listenerCount('someEvent')).toBe(1);
+    context.guard._ee.emit('someEvent', ['a']);
   });
 
   it('should register and listen on someEvent event, removed BEFORE one call', () => {
-    const cb = context.guard.once('someEvent', (data: any) => {
+    // setup
+    // execute
+    const cb = context.guard.once('someEvent', (data) => {
+      // assert
       expect(data).toBeUndefined();
     });
-
-    expect((context.guard as any)._ee.listenerCount('someEvent')).toBe(1);
+    expect(context.guard._ee.listenerCount('someEvent')).toBe(1);
     cb();
-    expect((context.guard as any)._ee.listenerCount('someEvent')).toBe(0);
-    (context.guard as any)._ee.emit('someEvent', ['a']);
+    expect(context.guard._ee.listenerCount('someEvent')).toBe(0);
+    context.guard._ee.emit('someEvent', ['a']);
   });
 });

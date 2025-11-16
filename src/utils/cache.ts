@@ -85,9 +85,9 @@ function mappedRolesToIds(
   }
 
   objects.forEach((obj) => {
-    // if (!obj.Permissions) {
-    //   obj.Permissions = [];
-    // }
+    if (!obj.Permissions) {
+      obj.Permissions = [];
+    }
 
     // if (obj.dataValues) {
     //   obj.dataValues.getPermissions = obj.Permissions;

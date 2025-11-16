@@ -17,12 +17,18 @@ describe('Miscellaneous', () => {
 
   describe('Cache operations', () => {
     it('should reset cache', () => {
+      // setup
+      // execute
       const cache = context.guard.resetCache();
+      // assert
       expect(cache.stats.keys).toBe(0);
     });
 
     it('should reset user cache', () => {
+      // setup
+      // execute
       const cache = context.guard.resetUserCache();
+      // assert
       expect(cache.stats.keys).toBe(0);
     });
   });
@@ -59,8 +65,11 @@ describe('Custom configuration - without user cache', () => {
   });
 
   it('should work without user cache', async () => {
+    // setup
+    // execute
     const user = await guard.makeUser();
     const roles = await guard.getUserRoles(user);
+    // assert
     expect(Array.isArray(roles)).toBe(true);
   });
 });

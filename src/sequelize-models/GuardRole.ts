@@ -35,6 +35,7 @@ export interface GuardRoleModel
   ChildRoles?: NonAttribute<GuardRoleModel[]>;
   Parent?: NonAttribute<GuardRoleModel>;
 
+  // TODO: Cleanup the association types
   // Methods added by associations
   getPermissions?: () => Promise<GuardPermissionModel[]>;
   addPermissions?: (

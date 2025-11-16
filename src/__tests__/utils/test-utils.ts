@@ -40,22 +40,18 @@ export async function seedTestData(
 
   // Assign roles to users
   // User 1: superadmin
-  if (users[0]) {
-    await guard.assignRole(users[0] as any, 'superadmin');
-  }
+  if (users.length === 4) {
+    await guard.assignRole(users[0], 'superadmin');
 
-  // User 2: admin + user
-  if (users[1]) {
-    await guard.assignRoles(users[1] as any, ['admin', 'user']);
-  }
+    // User 2: admin + user
+    await guard.assignRoles(users[1], ['admin', 'user']);
 
-  // User 3: analyst
-  if (users[2]) {
-    await guard.assignRole(users[2] as any, 'analyst');
-  }
+    // User 3: analyst
+    await guard.assignRole(users[2], 'analyst');
 
-  // User 4: user
-  if (users[3]) {
-    await guard.assignRole(users[3] as any, 'user');
+    // User 4: user
+    await guard.assignRole(users[3], 'user');
+  } else {
+    throw new Error('Failed to create test users for seeding data.');
   }
 }

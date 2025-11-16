@@ -23,6 +23,12 @@ export function setupGuardUserAssociations(
     return guard.assignRole(this, role);
   };
 
+  (GuardUser.prototype as GuardUserModel).roles = function (
+    this: GuardUserModel,
+  ) {
+    return this.getRoles!();
+  };
+
   (GuardUser.prototype as GuardUserModel).assignRoles = function (
     this: GuardUserModel,
     roles: string[],

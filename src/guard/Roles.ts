@@ -219,9 +219,8 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     await roleToUpdate.addPermissions!(perms2add);
 
     roleToUpdate.Permissions = [...assignedPerms, ...perms2add];
-    // (roleToUpdate as any).dataValues.Permissions = (
-    //   roleToUpdate as any
-    // ).Permissions;
+    // TODO: Check why this was in previous version.
+    // roleToUpdate.dataValues.Permissions = roleToUpdate.Permissions;
 
     this.emit('onPermsAddedToRole', roleToUpdate);
 

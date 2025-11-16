@@ -31,25 +31,36 @@ describe('SequelizeGuard Basic Tests', () => {
   });
 
   it('should create a guard instance', () => {
+    // setup
+    // execute & assert
     expect(guard).toBeDefined();
     expect(guard.models()).toBeDefined();
   });
 
   it('should create a role', async () => {
+    // setup
+    // execute
     const { role, created } = await guard.makeRole('admin');
+    // assert
     expect(role).toBeDefined();
     expect(role.name).toBe('admin');
     expect(created).toBe(true);
   });
 
   it('should create permissions', async () => {
+    // setup
+    // execute
     const perms = await guard.createPerms('blog', ['view', 'edit']);
+    // assert
     expect(perms).toBeDefined();
     expect(perms.length).toBeGreaterThan(0);
   });
 
   it('should assign permissions to role', async () => {
+    // setup
+    // execute
     const result = await guard.allow('editor', ['view', 'edit'], 'article');
+    // assert
     expect(result.role).toBeDefined();
     expect(result.permissions).toBeDefined();
   });

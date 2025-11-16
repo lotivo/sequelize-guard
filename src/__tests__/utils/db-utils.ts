@@ -18,7 +18,7 @@ export function ensureTestDbDir(): void {
 
 /**
  * Generate a unique database file path for a test suite
- * Cleans up any previous database files with the same prefix
+ * Cleans up previous database files with the same prefix
  */
 export function generateDbPath(prefix: string = 'test'): string {
   ensureTestDbDir();

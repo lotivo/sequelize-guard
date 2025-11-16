@@ -45,6 +45,11 @@ export interface GuardUserModel extends SequelizeModelClass<GuardUserModel> {
   assignRole?: (role: string) => Promise<GuardUserModel>;
 
   /**
+   * @deprecated Use `getRoles` association method instead
+   */
+  roles?: () => Promise<GuardRoleModel[]>;
+
+  /**
    * Assign multiple roles to user
    * @param roles
    * @returns void
