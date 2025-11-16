@@ -1,4 +1,4 @@
-name: "CI: Test & Coverage"
+name: "CI: test, coverage & build"
 
 on: [push, pull_request]
 
@@ -6,14 +6,19 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        # "node_js: - stable" logic (Node 24 is current LTS/stable)
+        node-version: [24.x]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 22.17.1
+          node-version: ${{ matrix.node-version }}
           cache: "yarn" # Automatic caching for Yarn
 
       - name: Install dependencies
@@ -38,4 +43,7 @@ jobs:
           # repo-token: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
           # Optional: Explicitly point to the file if it's not found automatically
-          path-to-lcov: ./coverage/lcov.info
+          # path-to-lcov: ./coverage/lcov.info
+
+      - name: Build the library
+        run: yarn build

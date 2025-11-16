@@ -1,6 +1,7 @@
 # SequelizeGuard
 
-[![Build Status](https://travis-ci.com/lotivo/sequelize-guard.svg?branch=master)](https://travis-ci.com/lotivo/sequelize-guard) [![Coverage Status](https://coveralls.io/repos/github/lotivo/sequelize-guard/badge.svg?branch=master)](https://coveralls.io/github/lotivo/sequelize-guard?branch=master)
+[![CI](https://github.com/lotivo/sequelize-guard/actions/workflows/ci-test.yml/badge.svg)](https://github.com/lotivo/sequelize-guard/actions/workflows/ci-test.yml)
+[![Coverage Status](https://coveralls.io/repos/github/lotivo/sequelize-guard/badge.svg)](https://coveralls.io/github/lotivo/sequelize-guard)
 
 An Authorization library for Sequelize.js.
 
