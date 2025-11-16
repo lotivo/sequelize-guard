@@ -28,7 +28,7 @@
   },
   "homepage": "https://github.com/lotivo/sequelize-guard#readme",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.17.1"
   },
   "main": "dist/index.js",
   "module": "dist/index.es.js",
@@ -51,8 +51,6 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "cover": "nyc yarn test:coverage && nyc report --reporter=lcov --reporter=text-summary",
-    "coverall": "nyc report --reporter=text-lcov | coveralls",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:prettier": "prettier -c src/",
@@ -71,7 +69,6 @@
     "@typescript-eslint/parser": "^8.46.4",
     "@vitest/coverage-v8": "4.0.9",
     "@vitest/ui": "^4.0.9",
-    "coveralls": "^3.1.1",
     "esdoc": "^1.1.0",
     "esdoc-standard-plugin": "^1.0.0",
     "eslint": "^9.39.1",
@@ -93,5 +90,8 @@
     "lodash": "^4.17.21",
     "node-cache": "^5.1.2",
     "sequelize": "^6.37.7"
+  },
+  "peerDependencies": {
+    "sequelize": ">=6.0.0"
   }
 }
