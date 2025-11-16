@@ -8,21 +8,26 @@
       "name": "Debug Tests",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-      "stopOnEntry": false,
-      "args": ["tests/runner.js"],
-      "cwd": "${workspaceFolder}/",
-      "runtimeExecutable": null,
-      "env": { "NODE_ENV": "production" }
-      // "console": "externalTerminal",
-      // "console": "integratedTerminal"
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["test"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug Current Test File",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["vitest", "run", "${relativeFile}"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Guard Debug",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "debug"],
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["debug"],
       "port": 9229,
       "skipFiles": ["<node_internals>/**"],
       "console": "externalTerminal"

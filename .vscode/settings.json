@@ -1,4 +1,4 @@
 {
-  "mocha.files.glob": "tests/runner.js ",
-  "mocha.coverage": null
+  "vitest.enable": true,
+  "vitest.commandLine": "yarn vitest"
 }

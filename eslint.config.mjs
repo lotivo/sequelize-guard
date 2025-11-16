@@ -54,7 +54,6 @@ export default [
       // TypeScript rules - type-aware
       ...tsEslintPlugin.configs.recommended.rules,
       ...tsEslintPlugin.configs['recommended-requiring-type-checking'].rules,
-      ...jsdocPlugin.configs.recommended.rules,
 
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
@@ -117,6 +116,8 @@ export default [
       ],
 
       'object-curly-spacing': ['error', 'always'],
+
+      ...jsdocPlugin.configs.recommended.rules,
     },
   },
   prettierConfig,
