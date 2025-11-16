@@ -1,5 +1,5 @@
-import { GuardControl } from './GuardControl';
 import type { AddPermsToRoleResult } from '../types';
+import { GuardControl } from './GuardControl';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {
@@ -14,6 +14,7 @@ declare module '../SequelizeGuard' {
 
 /**
  * Extend SequelizeGuard with GuardControl fluent API
+ * @param SequelizeGuard
  */
 export function extendWithGuardControl(
   SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
@@ -27,6 +28,9 @@ export function extendWithGuardControl(
 
   /**
    * Create guard statement in one line
+   * @param role
+   * @param actions
+   * @param resources
    */
   SequelizeGuard.prototype.allow = function (
     role: string,

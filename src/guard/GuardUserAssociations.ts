@@ -1,9 +1,10 @@
 import { isObjectLike } from 'lodash';
-import type { SequelizeGuard } from '../SequelizeGuard';
 import { GuardUserModel } from '../sequelize-models';
+import type { SequelizeGuard } from '../SequelizeGuard';
 
 /**
  * Setup associations and methods on User model
+ * @param guard
  */
 export function setupGuardUserAssociations(guard: SequelizeGuard): void {
   const { GuardUser } = guard._models;

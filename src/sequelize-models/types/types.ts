@@ -4,7 +4,6 @@ import type {
   InferCreationAttributes,
   Model,
 } from 'sequelize';
-
 import { GuardInternalOptions } from '../../types';
 
 export type GuardModelInitParams = {

@@ -1,7 +1,7 @@
-import NodeCache from 'node-cache';
 import { values } from 'lodash';
-import type { SequelizeGuard } from '../SequelizeGuard';
+import NodeCache from 'node-cache';
 import { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
+import type { SequelizeGuard } from '../SequelizeGuard';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {
@@ -30,7 +30,9 @@ export class GuardCache extends NodeCache {
     return this.set('perms', perms);
   }
 
-  async getRolesWithPerms(guard: SequelizeGuard): Promise<Record<number, any>> {
+  async getRolesWithPerms(
+    guard: SequelizeGuard,
+  ): Promise<Record<number, GuardRoleModel>> {
     const cRoles = values(this.getRoles());
     const r2Fetch = cRoles
       .filter((role) => !role.Permissions)
@@ -58,6 +60,7 @@ export class GuardCache extends NodeCache {
 
 /**
  * Map permissions to IDs
+ * @param objects
  */
 function mappedPermsToIds(
   objects: GuardPermissionModel[],
@@ -77,6 +80,7 @@ function mappedPermsToIds(
 
 /**
  * Map roles to IDs with permissions
+ * @param objects
  */
 function mappedRolesToIds(
   objects: GuardRoleModel[],
@@ -104,6 +108,7 @@ function mappedRolesToIds(
 
 /**
  * Extend SequelizeGuard with cache methods
+ * @param SequelizeGuard
  */
 export function extendWithCache(
   SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
@@ -159,6 +164,7 @@ export function extendWithCache(
 
 /**
  * Bind event listeners to keep cache in sync
+ * @param guard
  */
 function bindGuardListeners(guard: SequelizeGuard): void {
   const cache = guard._cache as GuardCache;

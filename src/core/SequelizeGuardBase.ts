@@ -34,6 +34,8 @@ export abstract class SequelizeGuardBase {
 
   /**
    * Subscribe to an event
+   * @param name
+   * @param fn
    * @internal
    */
   on(name: string, fn: (...args: any[]) => void): () => void {
@@ -43,6 +45,8 @@ export abstract class SequelizeGuardBase {
 
   /**
    * Subscribe to an event once
+   * @param name
+   * @param fn
    * @internal
    */
   once(name: string, fn: (...args: any[]) => void): () => void {
@@ -52,6 +56,8 @@ export abstract class SequelizeGuardBase {
 
   /**
    * Emit an event
+   * @param name
+   * @param {...any} args
    * @internal
    */
   emit(name: string, ...args: any[]): void {

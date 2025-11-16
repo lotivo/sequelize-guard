@@ -18,6 +18,7 @@ export class GuardUserCache extends NodeCache {
 
 /**
  * Extend SequelizeGuard with user cache methods
+ * @param SequelizeGuard
  */
 export function extendWithUserCache(
   SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,

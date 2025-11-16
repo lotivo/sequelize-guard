@@ -8,12 +8,13 @@ declare module '../SequelizeGuard' {
     assignRole(user: GuardUserModel, role: string): Promise<GuardUserModel>;
     assignRoles(user: GuardUserModel, roles: string[]): Promise<void>;
     rmAssignedRoles(user: GuardUserModel, roles: string[]): Promise<void>;
-    getUserRoles(user: GuardUserModel): Promise<any[]>;
+    getUserRoles(user: GuardUserModel): Promise<GuardRoleSerializable[]>;
   }
 }
 
 /**
  * Extend SequelizeGuard with user management methods
+ * @param SequelizeGuard
  */
 export function extendWithUsers(
   SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
@@ -28,6 +29,8 @@ export function extendWithUsers(
 
   /**
    * Assign role to user
+   * @param user
+   * @param role
    */
   SequelizeGuard.prototype.assignRole = async function (
     user: GuardUserModel,
@@ -40,6 +43,8 @@ export function extendWithUsers(
 
   /**
    * Assign multiple roles to user
+   * @param user
+   * @param roles
    */
   SequelizeGuard.prototype.assignRoles = async function (
     user: GuardUserModel,
@@ -53,6 +58,8 @@ export function extendWithUsers(
 
   /**
    * Remove roles from user
+   * @param user
+   * @param roles
    */
   SequelizeGuard.prototype.rmAssignedRoles = async function (
     user: GuardUserModel,
@@ -66,10 +73,11 @@ export function extendWithUsers(
 
   /**
    * Get user roles with caching
+   * @param user
    */
   SequelizeGuard.prototype.getUserRoles = async function (
     user: GuardUserModel,
-  ): Promise<any[]> {
+  ): Promise<GuardRoleSerializable[]> {
     const cacheKey = `user_${user.get(this.options.userPk)}`;
     const cache = this.getUserCache();
 

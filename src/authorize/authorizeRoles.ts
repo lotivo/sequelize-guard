@@ -11,12 +11,15 @@ declare module '../SequelizeGuard' {
 
 /**
  * Extend SequelizeGuard with role-based authorization
+ * @param SequelizeGuard
  */
 export function extendWithAuthorizeRoles(
   SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
 ): void {
   /**
    * Check if user has any of the given roles
+   * @param user
+   * @param roles
    */
   SequelizeGuard.prototype.userHasRoles = async function (
     user: GuardUserModel,
@@ -30,6 +33,8 @@ export function extendWithAuthorizeRoles(
 
   /**
    * Check if user has all of the given roles
+   * @param user
+   * @param roles
    */
   SequelizeGuard.prototype.userHasAllRoles = async function (
     user: GuardUserModel,
@@ -48,6 +53,8 @@ export function extendWithAuthorizeRoles(
 
   /**
    * Check if user has a specific role
+   * @param user
+   * @param role
    */
   SequelizeGuard.prototype.userIsA = async function (
     user: GuardUserModel,

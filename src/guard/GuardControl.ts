@@ -4,7 +4,6 @@ import type { AddPermsToRoleResult } from '../types';
 
 /**
  * GuardControl - Fluent API for creating guard statements
- *
  * @example
  * ```typescript
  * guard.init()
@@ -29,10 +28,8 @@ export class GuardControl {
 
   /**
    * Specify role to allow
-   *
    * @param roles - The name of role
    * @returns This GuardControl instance for chaining
-   *
    * @example
    * ```typescript
    * control.allow('admin')
@@ -47,10 +44,8 @@ export class GuardControl {
 
   /**
    * Specify actions for current control
-   *
    * @param actions - The name(s) of actions
    * @returns This GuardControl instance for chaining
-   *
    * @example
    * ```typescript
    * control.to('view')
@@ -71,10 +66,8 @@ export class GuardControl {
 
   /**
    * Specify resources for current control
-   *
    * @param resources - The name(s) of resources
    * @returns This GuardControl instance for chaining
-   *
    * @example
    * ```typescript
    * control.on('blog')
@@ -95,9 +88,7 @@ export class GuardControl {
 
   /**
    * Commit current control - saves to database
-   *
    * @returns Promise resolved with role and assigned permissions
-   *
    * @example
    * ```typescript
    * await control.commit()

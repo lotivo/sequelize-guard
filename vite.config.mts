@@ -1,7 +1,7 @@
-import { defineConfig } from 'vite';
-import { defineConfig as vitestDefineConfig } from 'vitest/config';
-import dts from 'vite-plugin-dts';
 import path, { resolve } from 'path';
+import { defineConfig } from 'vite';
+import dts from 'vite-plugin-dts';
+import { defineConfig as vitestDefineConfig } from 'vitest/config';
 
 const __dirname = process.cwd();
 

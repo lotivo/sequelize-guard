@@ -44,10 +44,10 @@ export function createQueryInterfaceStub() {
       dropTable: function (tableName: string) {
         migration.push(tableName);
       },
-      bulkInsert: async function (tableName: string) {
+      bulkInsert: function (tableName: string) {
         seeds.push(tableName);
       },
-      bulkDelete: async function (tableName: string) {
+      bulkDelete: function (tableName: string) {
         seeds.push(tableName);
       },
     },

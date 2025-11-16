@@ -4,13 +4,13 @@ import {
   ModelAttributes,
   ModelStatic,
 } from 'sequelize';
-import { GuardModelInitParams, SequelizeModelClass } from './types/types';
-import { modelOptions } from './utils';
 import {
   BaseModelType,
   getTableName,
   ModelClassNameMap,
 } from './types/ModelType';
+import { GuardModelInitParams, SequelizeModelClass } from './types/types';
+import { modelOptions } from './utils';
 
 /**
  * GuardAction Model - Represents actions in the system (e.g., create, read, update, delete)

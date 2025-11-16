@@ -4,13 +4,13 @@ import {
   ModelAttributes,
   ModelStatic,
 } from 'sequelize';
-import { modelOptions } from './utils';
-import { GuardModelInitParams, SequelizeModelClass } from './types/types';
 import {
   BaseModelType,
   getTableName,
   ModelClassNameMap,
 } from './types/ModelType';
+import { GuardModelInitParams, SequelizeModelClass } from './types/types';
+import { modelOptions } from './utils';
 
 /**
  * GuardResource Model - Represents resources in the system (e.g., blog, post, image)

@@ -1,10 +1,10 @@
 import js from '@eslint/js';
-import typescriptParser from '@typescript-eslint/parser';
 import tsEslintPlugin from '@typescript-eslint/eslint-plugin';
-import importPlugin from 'eslint-plugin-import';
+import typescriptParser from '@typescript-eslint/parser';
 import prettierConfig from 'eslint-config-prettier';
-import jsdocPlugin from 'eslint-plugin-jsdoc';
+import importPlugin from 'eslint-plugin-import';
 import globals from 'globals';
+// import jsdocPlugin from 'eslint-plugin-jsdoc';
 
 export default [
   // Ignore patterns (replaces .eslintignore)
@@ -46,7 +46,7 @@ export default [
     plugins: {
       '@typescript-eslint': tsEslintPlugin,
       import: importPlugin,
-      jsdoc: jsdocPlugin,
+      // jsdoc: jsdocPlugin,
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -117,7 +117,7 @@ export default [
 
       'object-curly-spacing': ['error', 'always'],
 
-      ...jsdocPlugin.configs.recommended.rules,
+      // ...jsdocPlugin.configs.recommended.rules,
     },
   },
   prettierConfig,

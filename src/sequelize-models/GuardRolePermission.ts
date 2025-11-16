@@ -6,18 +6,18 @@ import {
   ModelAttributes,
   ModelStatic,
 } from 'sequelize';
-import { GuardModelInitParams, SequelizeModelClass } from './types/types';
-import { modelOptions } from './utils';
-import { GuardRoleModel, GuardRoleModelStatic } from './GuardRole';
 import {
   GuardPermissionModel,
   GuardPermissionModelStatic,
 } from './GuardPermission';
+import { GuardRoleModel, GuardRoleModelStatic } from './GuardRole';
 import {
   AssociationModelType,
   getTableName,
   ModelClassNameMap,
 } from './types/ModelType';
+import { GuardModelInitParams, SequelizeModelClass } from './types/types';
+import { modelOptions } from './utils';
 
 /**
  * RolePermission Junction Model

@@ -1,20 +1,19 @@
 /**
  * SequelizeGuard - Authorization Library for Sequelize
- *
  * @packageDocumentation
  */
 
+import { extendWithAuthorizePerms } from './authorize/authorizePerms';
+import { extendWithAuthorizeRoles } from './authorize/authorizeRoles';
+import { extendWithGuardControl } from './guard/init';
+import { extendWithPermissions } from './guard/Permissions';
+import { extendWithRoles } from './guard/Roles';
+import { extendWithUsers } from './guard/Users';
 import { SequelizeGuard } from './SequelizeGuard';
 
 // Import all extension modules
 import { extendWithCache } from './utils/cache';
 import { extendWithUserCache } from './utils/userCache';
-import { extendWithGuardControl } from './guard/init';
-import { extendWithRoles } from './guard/Roles';
-import { extendWithPermissions } from './guard/Permissions';
-import { extendWithUsers } from './guard/Users';
-import { extendWithAuthorizePerms } from './authorize/authorizePerms';
-import { extendWithAuthorizeRoles } from './authorize/authorizeRoles';
 
 // Apply all extensions to SequelizeGuard
 const extensions = [

@@ -6,15 +6,15 @@ import {
   ModelStatic,
   NonAttribute,
 } from 'sequelize';
-import { modelOptions } from './utils';
-import { GuardModelInitParams, SequelizeModelClass } from './types/types';
+import { GuardPermissionModel } from './GuardPermission';
+import { GuardUserModel } from './GuardUser';
 import {
   BaseModelType,
   getTableName,
   ModelClassNameMap,
 } from './types/ModelType';
-import { GuardPermissionModel } from './GuardPermission';
-import { GuardUserModel } from './GuardUser';
+import { GuardModelInitParams, SequelizeModelClass } from './types/types';
+import { modelOptions } from './utils';
 
 /**
  * GuardPermission Model - Represents permissions (e.g., view blog, edit post)

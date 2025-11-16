@@ -57,12 +57,14 @@ declare module '../SequelizeGuard' {
 
 /**
  * Extend SequelizeGuard with role management methods
+ * @param SequelizeGuard
  */
 export function extendWithRoles(
   SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
 ): void {
   /**
    * Creates a new role if not already present
+   * @param role
    */
   SequelizeGuard.prototype.makeRole = async function (
     role: string,
@@ -83,11 +85,13 @@ export function extendWithRoles(
     });
 
     this.emit('onRolesCreated', [createdRole]);
-    return { role: createdRole as GuardRoleModel, created };
+    return { role: createdRole, created };
   };
 
   /**
    * Create multiple roles
+   * @param roles
+   * @param options
    */
   SequelizeGuard.prototype.makeRoles = async function (
     roles: string[],
@@ -127,6 +131,7 @@ export function extendWithRoles(
 
   /**
    * Delete multiple roles
+   * @param roles
    */
   SequelizeGuard.prototype.deleteRoles = async function (
     roles: string[],
@@ -164,6 +169,7 @@ export function extendWithRoles(
 
   /**
    * Get role by name
+   * @param role
    */
   SequelizeGuard.prototype.getRole = async function (
     role: string,
@@ -177,6 +183,7 @@ export function extendWithRoles(
 
   /**
    * Find roles
+   * @param args
    */
   SequelizeGuard.prototype.findRoles = async function (
     args: FindRolesArgs = {},
@@ -207,11 +214,14 @@ export function extendWithRoles(
     }
 
     const roles = await this._models.GuardRole.findAll(cond);
-    return roles as GuardRoleModel[];
+    return roles;
   };
 
   /**
    * Add permissions to role
+   * @param role
+   * @param actions
+   * @param resources
    */
   SequelizeGuard.prototype.addPermsToRole = async function (
     role: string,
@@ -246,6 +256,9 @@ export function extendWithRoles(
 
   /**
    * Remove permissions from role
+   * @param role
+   * @param actions
+   * @param resources
    */
   SequelizeGuard.prototype.rmPermsFromRole = async function (
     role: string,
@@ -283,6 +296,7 @@ export function extendWithRoles(
 
   /**
    * Event listeners
+   * @param cb
    */
   SequelizeGuard.prototype.onRolesCreated = function (
     cb: GuardEventCallback<GuardRoleModel[]>,
@@ -311,6 +325,7 @@ export function extendWithRoles(
 
 /**
  * Helper functions
+ * @param role
  */
 function makeRoleData(role: string): RoleData {
   if (typeof role === 'string') {
@@ -319,6 +334,10 @@ function makeRoleData(role: string): RoleData {
   return { name: '' };
 }
 
+/**
+ *
+ * @param roles
+ */
 function sanitizeRolesInput(roles: string[]): RoleData[] {
   if (typeof roles === 'string') {
     roles = [roles] as any;

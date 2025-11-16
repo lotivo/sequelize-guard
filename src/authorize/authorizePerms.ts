@@ -13,12 +13,15 @@ declare module '../SequelizeGuard' {
 
 /**
  * Extend SequelizeGuard with permission-based authorization
+ * @param SequelizeGuard
  */
 export function extendWithAuthorizePerms(
   SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
 ): void {
   /**
    * Check if user has permission
+   * @param user
+   * @param permission
    */
   SequelizeGuard.prototype.userCan = async function (
     user: GuardUserModel,
@@ -38,6 +41,8 @@ export function extendWithAuthorizePerms(
 
   /**
    * Check if user doesn't have permission
+   * @param user
+   * @param permission
    */
   SequelizeGuard.prototype.userCant = async function (
     user: GuardUserModel,
@@ -48,6 +53,8 @@ export function extendWithAuthorizePerms(
 
   /**
    * Resolve permission from given permissions
+   * @param givenPermissions
+   * @param wantedPermission
    */
   SequelizeGuard.prototype.resolvePermission = function (
     givenPermissions: any[],
@@ -85,6 +92,7 @@ export function extendWithAuthorizePerms(
 
 /**
  * Helper function to return true if any promise resolves to true
+ * @param promises
  */
 function firstTrue(promises: Promise<boolean>[]): Promise<boolean> {
   const newPromises = promises.map((p) => {

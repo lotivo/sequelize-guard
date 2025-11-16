@@ -1,10 +1,10 @@
 import type { SequelizeGuard } from '../SequelizeGuard';
 import { GuardActionModelStatic, initGuardAction } from './GuardAction';
-import { GuardResourceModelStatic, initGuardResource } from './GuardResource';
 import {
   GuardPermissionModelStatic,
   initGuardPermission,
 } from './GuardPermission';
+import { GuardResourceModelStatic, initGuardResource } from './GuardResource';
 import { GuardRoleModelStatic, initGuardRole } from './GuardRole';
 import {
   GuardRolePermissionModelStatic,
@@ -15,6 +15,7 @@ import { GuardUserModelStatic, initOrSetupGuardUser } from './GuardUser';
 
 /**
  * Initialize and return all Guard models
+ * @param guard
  */
 export function initGuardModels(guard: SequelizeGuard): GuardModels {
   const GuardAction = initGuardAction(guard);

@@ -6,8 +6,6 @@ import {
   ModelAttributes,
   ModelStatic,
 } from 'sequelize';
-import { GuardModelInitParams, SequelizeModelClass } from './types/types';
-import { modelOptions } from './utils';
 import { GuardRoleModel, GuardRoleModelStatic } from './GuardRole';
 import { GuardUserModel, GuardUserModelStatic } from './GuardUser';
 import {
@@ -15,6 +13,8 @@ import {
   getTableName,
   ModelClassNameMap,
 } from './types/ModelType';
+import { GuardModelInitParams, SequelizeModelClass } from './types/types';
+import { modelOptions } from './utils';
 
 /**
  * RoleUser Junction Model

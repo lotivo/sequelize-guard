@@ -1,5 +1,6 @@
 import { differenceBy, concat } from 'lodash';
 import { Op } from 'sequelize';
+import { GuardPermissionModel } from '../sequelize-models';
 import type { SequelizeGuard } from '../SequelizeGuard';
 import type {
   CreatePermsOptions,
@@ -9,7 +10,6 @@ import type {
   GuardEventCallback,
   UnsubscribeFn,
 } from '../types';
-import { GuardPermissionModel } from '../sequelize-models';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {
@@ -31,12 +31,16 @@ declare module '../SequelizeGuard' {
 
 /**
  * Extend SequelizeGuard with permission management methods
+ * @param SequelizeGuard
  */
 export function extendWithPermissions(
   SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
 ): void {
   /**
    * Create permissions
+   * @param resources
+   * @param actions
+   * @param options
    */
   SequelizeGuard.prototype.createPerms = async function (
     resources: string | string[],
@@ -49,6 +53,8 @@ export function extendWithPermissions(
 
   /**
    * Create permissions in bulk
+   * @param permissions
+   * @param options
    */
   SequelizeGuard.prototype.createPermsBulk = async function (
     permissions: BulkPermissionInput[],
@@ -71,6 +77,7 @@ export function extendWithPermissions(
 
   /**
    * Find permissions
+   * @param args
    */
   SequelizeGuard.prototype.findPerms = async function (
     args: FindPermsArgs = {},
@@ -99,11 +106,14 @@ export function extendWithPermissions(
     }
 
     const perms = await this._models.GuardPermission.findAll(cond);
-    return perms as GuardPermissionModel[];
+    return perms;
   };
 
   /**
    * Sanitize permission input
+   * @param resources
+   * @param actions
+   * @param options
    */
   SequelizeGuard.prototype._sanitizePermsInput = function (
     resources: string | string[],
@@ -132,6 +142,7 @@ export function extendWithPermissions(
 
   /**
    * Event listener
+   * @param cb
    */
   SequelizeGuard.prototype.onPermsCreated = function (
     cb: GuardEventCallback<GuardPermissionModel[]>,
@@ -142,6 +153,9 @@ export function extendWithPermissions(
 
 /**
  * Helper function to insert permissions to database
+ * @param guard
+ * @param permissions
+ * @param options
  */
 async function insertPermissionsToDb(
   guard: SequelizeGuard,
