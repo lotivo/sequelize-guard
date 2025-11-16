@@ -14,6 +14,7 @@ import {
   InferCreationAttributes,
 } from 'sequelize';
 import type { GuardRoleModel } from '../sequelize-models';
+import type { SequelizeGuardType } from '../SequelizeGuard';
 import type {
   RoleCreationResult,
   FindRolesArgs,
@@ -23,58 +24,20 @@ import type {
   RemovePermsFromRoleResult,
   UnsubscribeFn,
   GuardEventCallback,
-  CreatePermsOptions,
-  PermissionData,
+  RoleCreationParam,
 } from '../types';
-
-declare module '../SequelizeGuard' {
-  interface SequelizeGuard {
-    makeRole(role: string): Promise<RoleCreationResult>;
-    makeRoles(
-      roles: string[],
-      options?: CreateRolesOptions,
-    ): Promise<GuardRoleModel[]>;
-    deleteRoles(roles: string[]): Promise<number>;
-    allRoles(): Promise<GuardRoleModel[]>;
-    getRole(role: string): Promise<GuardRoleModel | null>;
-    findRoles(args?: FindRolesArgs): Promise<GuardRoleModel[]>;
-    addPermsToRole(
-      role: string,
-      actions: string | string[],
-      resources: string | string[],
-    ): Promise<AddPermsToRoleResult>;
-    rmPermsFromRole(
-      role: string,
-      actions: string | string[],
-      resources: string | string[],
-    ): Promise<RemovePermsFromRoleResult>;
-    onRolesCreated(cb: GuardEventCallback<GuardRoleModel[]>): UnsubscribeFn;
-    onRolesDeleted(cb: GuardEventCallback<GuardRoleModel[]>): UnsubscribeFn;
-    onPermsAddedToRole(cb: GuardEventCallback<GuardRoleModel>): UnsubscribeFn;
-    onPermsRemovedFromRole(
-      cb: GuardEventCallback<GuardRoleModel>,
-    ): UnsubscribeFn;
-    _sanitizePermsInput(
-      resources: string | string[],
-      actions: string | string[],
-      options?: CreatePermsOptions,
-    ): PermissionData[];
-  }
-}
 
 /**
  * Extend SequelizeGuard with role management methods
  * @param SequelizeGuard
  */
-export function extendWithRoles(
-  SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
-): void {
+export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   /**
    * Creates a new role if not already present
    * @param role
    */
   SequelizeGuard.prototype.makeRole = async function (
-    role: string,
+    role: RoleCreationParam,
     description?: string,
   ): Promise<RoleCreationResult> {
     if (!role) throw new Error('Role must be string with length not zero');
@@ -108,7 +71,7 @@ export function extendWithRoles(
    * @param options
    */
   SequelizeGuard.prototype.makeRoles = async function (
-    roles: string[],
+    roles: RoleCreationParam[],
     options: CreateRolesOptions = { json: true },
   ): Promise<GuardRoleModel[]> {
     const sanitizedRoles = sanitizeRolesInput(roles);
@@ -148,7 +111,7 @@ export function extendWithRoles(
    * @param roles
    */
   SequelizeGuard.prototype.deleteRoles = async function (
-    roles: string[],
+    roles: string | RoleCreationParam[] | GuardRoleModel[],
   ): Promise<number> {
     const sanitizedRoles = sanitizeRolesInput(roles);
     const cache = await this.getCache();
@@ -156,7 +119,7 @@ export function extendWithRoles(
     const roleNames = sanitizedRoles.map((d) => d.name);
     const rolesToDelete = filter(
       cacheRoles,
-      (role: GuardRoleModel) => roleNames.indexOf(role.name) >= 0,
+      (role) => roleNames.indexOf(role.name) >= 0,
     );
 
     if (!rolesToDelete.length) return 0;
@@ -238,7 +201,7 @@ export function extendWithRoles(
    * @param resources
    */
   SequelizeGuard.prototype.addPermsToRole = async function (
-    role: string,
+    role: string | GuardRoleModel,
     actions: string | string[],
     resources: string | string[],
   ): Promise<AddPermsToRoleResult> {
@@ -340,21 +303,25 @@ export function extendWithRoles(
  * Helper functions
  * @param role
  */
-function makeRoleData(role: string): RoleData {
+function makeRoleData(role: RoleCreationParam): RoleData {
   if (typeof role === 'string') {
     return { name: role.toLowerCase() };
   }
-  return { name: '' };
+  return {
+    ...role,
+    name: role.name.toLowerCase(),
+  };
 }
 
 /**
  *
  * @param roles
  */
-function sanitizeRolesInput(roles: string[]): RoleData[] {
+function sanitizeRolesInput(roles: string | RoleCreationParam[]): RoleData[] {
   if (typeof roles === 'string') {
-    roles = [roles];
+    return [makeRoleData(roles)];
   }
+
   return roles
     .map((role) => makeRoleData(role))
     .filter((role) => typeof role.name === 'string' && role.name.length > 0);

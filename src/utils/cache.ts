@@ -1,14 +1,7 @@
 import { values } from 'lodash';
 import NodeCache from 'node-cache';
 import { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
-import type { SequelizeGuard } from '../SequelizeGuard';
-
-declare module '../SequelizeGuard' {
-  interface SequelizeGuard {
-    resetCache(): GuardCache;
-    getCache(): Promise<GuardCache>;
-  }
-}
+import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
 
 /**
  * Extended NodeCache with Guard-specific methods
@@ -110,9 +103,7 @@ function mappedRolesToIds(
  * Extend SequelizeGuard with cache methods
  * @param SequelizeGuard
  */
-export function extendWithCache(
-  SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
-): void {
+export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
   /**
    * Reset and initialize cache
    */

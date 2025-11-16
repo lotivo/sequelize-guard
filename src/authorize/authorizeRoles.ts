@@ -1,20 +1,13 @@
 import { includes } from 'lodash';
 import { GuardUserModel } from '../sequelize-models';
-
-declare module '../SequelizeGuard' {
-  interface SequelizeGuard {
-    userHasRoles(user: GuardUserModel, roles: string[]): Promise<boolean>;
-    userHasAllRoles(user: GuardUserModel, roles: string[]): Promise<boolean>;
-    userIsA(user: GuardUserModel, role: string): Promise<boolean>;
-  }
-}
+import type { SequelizeGuardType } from '../SequelizeGuard';
 
 /**
  * Extend SequelizeGuard with role-based authorization
  * @param SequelizeGuard
  */
 export function extendWithAuthorizeRoles(
-  SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
+  SequelizeGuard: SequelizeGuardType,
 ): void {
   /**
    * Check if user has any of the given roles

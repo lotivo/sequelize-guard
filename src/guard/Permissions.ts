@@ -7,7 +7,7 @@ import {
   InferCreationAttributes,
 } from 'sequelize';
 import { GuardPermissionModel } from '../sequelize-models';
-import type { SequelizeGuard } from '../SequelizeGuard';
+import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
 import type {
   CreatePermsOptions,
   FindPermsArgs,
@@ -17,30 +17,12 @@ import type {
   UnsubscribeFn,
 } from '../types';
 
-declare module '../SequelizeGuard' {
-  interface SequelizeGuard {
-    createPerms(
-      resources: string | string[],
-      actions: string | string[],
-      options?: CreatePermsOptions,
-    ): Promise<GuardPermissionModel[]>;
-    createPermsBulk(
-      permissions: BulkPermissionInput[],
-      options?: CreatePermsOptions,
-    ): Promise<GuardPermissionModel[]>;
-    findPerms(args?: FindPermsArgs): Promise<GuardPermissionModel[]>;
-    onPermsCreated(
-      cb: GuardEventCallback<GuardPermissionModel[]>,
-    ): UnsubscribeFn;
-  }
-}
-
 /**
  * Extend SequelizeGuard with permission management methods
  * @param SequelizeGuard
  */
 export function extendWithPermissions(
-  SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
+  SequelizeGuard: SequelizeGuardType,
 ): void {
   /**
    * Create permissions

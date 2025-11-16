@@ -1,4 +1,4 @@
-import type { GuardUserModel } from '../sequelize-models';
+import type { GuardUserModel, GuardUserModelStatic } from '../sequelize-models';
 import type { SequelizeGuard } from '../SequelizeGuard';
 
 /**
@@ -11,7 +11,9 @@ import type { SequelizeGuard } from '../SequelizeGuard';
  * @export
  * @param {SequelizeGuard} guard
  */
-export function setupGuardUserAssociations(guard: SequelizeGuard): void {
+export function setupGuardUserAssociations(
+  guard: SequelizeGuard,
+): GuardUserModelStatic {
   const { GuardUser } = guard._models;
 
   /**
@@ -103,4 +105,6 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
       return guard.userCant(this, permission);
     },
   });
+
+  return GuardUser;
 }

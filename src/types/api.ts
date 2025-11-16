@@ -3,6 +3,11 @@ import type { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
 /**
  * Result from role creation
  */
+export type RoleCreationParam = string | RoleData;
+
+/**
+ * Result from role creation
+ */
 export interface RoleCreationResult {
   role: GuardRoleModel;
   created: boolean;

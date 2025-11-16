@@ -35,7 +35,6 @@ export * from './types';
 
 // Export migration and seeder
 export { default as migration } from './migrations/guard-migrations';
-export { default as seeder } from './seeder';
 
 // Default export
 export default SequelizeGuard;

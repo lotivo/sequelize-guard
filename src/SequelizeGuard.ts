@@ -2,7 +2,6 @@ import type { Sequelize } from 'sequelize';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
 import migration from './migrations/guard-migrations';
-import seeder from './seeder';
 import { GuardModel, GuardModels, initGuardModels } from './sequelize-models';
 import type { GuardOptions } from './types';
 import { SequelizeWithGuard } from './types/helpers';
@@ -50,10 +49,8 @@ export class SequelizeGuard extends SequelizeGuardBase {
     // Attach guard to sequelize instance
     this.sequelize.guard = this;
     this.sequelize.models.GuardModels = this._models;
-    this.sequelize.models.User = this._models.GuardUser;
-
     // Setup user associations
-    setupGuardUserAssociations(this);
+    this.sequelize.models.User = setupGuardUserAssociations(this);
 
     // Sync models if enabled
     if (this.options.sync) {
@@ -87,9 +84,6 @@ export class SequelizeGuard extends SequelizeGuardBase {
    * Migration utilities
    */
   static migration = migration;
-
-  /**
-   * Seeder utilities
-   */
-  static seeder = seeder;
 }
+
+export type SequelizeGuardType = typeof SequelizeGuard;

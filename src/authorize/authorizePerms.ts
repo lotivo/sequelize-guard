@@ -1,22 +1,12 @@
 import { GuardUserModel } from '../sequelize-models';
-
-declare module '../SequelizeGuard' {
-  interface SequelizeGuard {
-    userCan(user: GuardUserModel, permission: string): Promise<boolean>;
-    userCant(user: GuardUserModel, permission: string): Promise<boolean>;
-    resolvePermission(
-      givenPermissions: { action: string; resource: string }[],
-      wantedPermission: string,
-    ): boolean;
-  }
-}
+import type { SequelizeGuardType } from '../SequelizeGuard';
 
 /**
  * Extend SequelizeGuard with permission-based authorization
  * @param SequelizeGuard
  */
 export function extendWithAuthorizePerms(
-  SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
+  SequelizeGuard: SequelizeGuardType,
 ): void {
   /**
    * Check if user has permission

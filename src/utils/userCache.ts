@@ -1,11 +1,5 @@
 import NodeCache from 'node-cache';
-
-declare module '../SequelizeGuard' {
-  interface SequelizeGuard {
-    resetUserCache(): GuardUserCache;
-    getUserCache(): GuardUserCache;
-  }
-}
+import type { SequelizeGuardType } from '../SequelizeGuard';
 
 /**
  * User-specific cache for storing user roles
@@ -20,9 +14,7 @@ export class GuardUserCache extends NodeCache {
  * Extend SequelizeGuard with user cache methods
  * @param SequelizeGuard
  */
-export function extendWithUserCache(
-  SequelizeGuard: typeof import('../SequelizeGuard').SequelizeGuard,
-): void {
+export function extendWithUserCache(SequelizeGuard: SequelizeGuardType): void {
   /**
    * Reset user cache
    */
