@@ -1,7 +1,11 @@
 import { merge } from 'lodash';
 import type { QueryInterface, Sequelize } from 'sequelize';
 import { defaultOptions } from '../constants';
-import { getTableName } from '../sequelize-models';
+import {
+  AssociationModelType,
+  BaseModelType,
+  getTableName,
+} from '../sequelize-models';
 import type { GuardOptions } from '../types';
 import { schemas, timestamps } from './guard-schema';
 
@@ -39,6 +43,14 @@ async function up(
     ...dateColumns,
   });
 
+  // Create users table only if UserModel is not provided
+  if (!opts.UserModel) {
+    await queryInterface.createTable(getTableName('users', opts), {
+      ...schemas.users,
+      ...dateColumns,
+    });
+  }
+
   await queryInterface.createTable(getTableName('role_permission', opts), {
     ...schemas.role_permission,
     ...dateColumns,
@@ -48,14 +60,6 @@ async function up(
     ...schemas.role_user,
     ...dateColumns,
   });
-
-  // Create users table only if UserModel is not provided
-  if (!opts.UserModel) {
-    await queryInterface.createTable(getTableName('users', opts), {
-      ...schemas.users,
-      ...dateColumns,
-    });
-  }
 }
 
 /**
@@ -81,6 +85,25 @@ async function down(
     await queryInterface.dropTable(getTableName('users', opts));
   }
 }
+
+export const migrationOrder = {
+  up: [
+    BaseModelType.Resources,
+    BaseModelType.Permissions,
+    BaseModelType.Roles,
+    BaseModelType.Users,
+    AssociationModelType.RolePermission,
+    AssociationModelType.RoleUser,
+  ],
+  down: [
+    AssociationModelType.RoleUser,
+    AssociationModelType.RolePermission,
+    BaseModelType.Roles,
+    BaseModelType.Permissions,
+    BaseModelType.Resources,
+    BaseModelType.Users,
+  ],
+};
 
 export default {
   up,

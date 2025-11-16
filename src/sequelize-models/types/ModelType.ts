@@ -16,12 +16,12 @@ export const tablesMap = {
   [BaseModelType.Resources]: 'resources',
   [BaseModelType.Permissions]: 'permissions',
   [BaseModelType.Roles]: 'roles',
-  [AssociationModelType.RoleUser]: 'role_user',
   [AssociationModelType.RolePermission]: 'role_permission',
+  [AssociationModelType.RoleUser]: 'role_user',
   [BaseModelType.Users]: 'users',
 } as const;
 
-export const tableNames = Object.values(tablesMap);
+export const defaultTableNames = Object.values(tablesMap);
 
 export const baseModelsNameMap = {
   [BaseModelType.Resources]: 'resource',

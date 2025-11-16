@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Sequelize } from 'sequelize';
 import { SequelizeGuard } from '../index';
 import { createTestDatabase, closeTestDatabase, TestContext } from './setup';
+import { generateDbPath, cleanupDbFile } from './utils/db-utils';
 
 describe('Miscellaneous', () => {
   let context: TestContext;
@@ -30,11 +31,14 @@ describe('Miscellaneous', () => {
 describe('Custom configuration - without user cache', () => {
   let seqMem: Sequelize;
   let guard: SequelizeGuard;
+  let dbPath: string;
 
   beforeAll(async () => {
+    dbPath = generateDbPath('test_misc_custom');
+
     seqMem = new Sequelize({
       dialect: 'sqlite',
-      storage: ':memory:',
+      storage: dbPath,
       logging: false,
     });
 
@@ -46,11 +50,12 @@ describe('Custom configuration - without user cache', () => {
       userCache: false,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await guard.ready;
   });
 
   afterAll(async () => {
     await seqMem?.close();
+    cleanupDbFile(dbPath);
   });
 
   it('should work without user cache', async () => {

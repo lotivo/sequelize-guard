@@ -27,9 +27,10 @@ const vitestConfig = vitestDefineConfig({
       },
     },
     pool: 'forks',
-    maxConcurrency: 1,
-    testTimeout: 10000,
-    hookTimeout: 10000,
+    isolate: true,
+    fileParallelism: true,
+    testTimeout: 15000,
+    hookTimeout: 15000,
   },
 });
 

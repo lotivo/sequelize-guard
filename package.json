@@ -51,7 +51,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "prepare": "yarn build",
+    "prepublishOnly": "yarn build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:prettier": "prettier -c src/",

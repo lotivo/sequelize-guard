@@ -1,13 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Sequelize } from 'sequelize';
 import { SequelizeGuard } from '../index';
+import { generateDbPath, cleanupDbFile } from './utils/db-utils';
 
 describe('SequelizeGuard Basic Tests', () => {
   let sequelize: Sequelize;
   let guard: SequelizeGuard;
+  let dbPath: string;
 
   beforeAll(async () => {
-    sequelize = new Sequelize('sqlite::memory:', {
+    dbPath = generateDbPath('test_basic');
+
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: dbPath,
       logging: false,
     });
 
@@ -16,11 +22,12 @@ describe('SequelizeGuard Basic Tests', () => {
       debug: false,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await guard.ready;
   });
 
   afterAll(async () => {
     await sequelize.close();
+    cleanupDbFile(dbPath);
   });
 
   it('should create a guard instance', () => {

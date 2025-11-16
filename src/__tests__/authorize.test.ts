@@ -5,7 +5,7 @@ describe('Authorization', () => {
   let context: TestContext;
 
   beforeAll(async () => {
-    context = await createTestDatabase();
+    context = await createTestDatabase({ seedData: true });
   });
 
   afterAll(async () => {

@@ -1,29 +1,35 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Sequelize } from 'sequelize';
-import { GuardUserModel, SequelizeGuard } from '../index';
-import { schemas, tablesMap } from '../migrations/guard-schema';
-import migration from '../migrations/guard-migrations';
-import seeder from '../seeder';
+import { schemas } from '../migrations/guard-schema';
+import migration, { migrationOrder } from '../migrations/guard-migrations';
 import {
   createTestDatabase,
   closeTestDatabase,
   createQueryInterfaceStub,
   TestContext,
 } from './setup';
+import { SequelizeGuard } from '../SequelizeGuard';
+import { getTableName, GuardUserModel, tablesMap } from '../sequelize-models';
+import { generateDbPath, cleanupDbFile } from './utils/db-utils';
 
 describe('SequelizeGuard Initialization', () => {
   let seqMem1: Sequelize;
   let seqMem2: Sequelize;
+  let dbPath1: string;
+  let dbPath2: string;
 
   beforeAll(async () => {
+    dbPath1 = generateDbPath('test_init_1');
+    dbPath2 = generateDbPath('test_init_2');
+
     seqMem1 = new Sequelize({
       dialect: 'sqlite',
-      storage: ':memory:',
+      storage: dbPath1,
       logging: false,
     });
     seqMem2 = new Sequelize({
       dialect: 'sqlite',
-      storage: ':memory:',
+      storage: dbPath2,
       logging: false,
     });
   });
@@ -31,6 +37,8 @@ describe('SequelizeGuard Initialization', () => {
   afterAll(async () => {
     await seqMem1?.close();
     await seqMem2?.close();
+    cleanupDbFile(dbPath1);
+    cleanupDbFile(dbPath2);
   });
 
   describe('Custom config initialization', () => {
@@ -42,13 +50,16 @@ describe('SequelizeGuard Initialization', () => {
           tableName: 'guard_users',
         },
       );
+
       const seqGuard = new SequelizeGuard(seqMem1, {
-        sync: false,
+        sync: true,
         debug: false,
         timestamps: true,
         paranoid: true,
         UserModel: GuardUser,
       });
+
+      await seqGuard.ready;
 
       expect(seqGuard).toBeDefined();
     });
@@ -56,10 +67,13 @@ describe('SequelizeGuard Initialization', () => {
     it('should be initialized with various options', async () => {
       const seqGuard = new SequelizeGuard(seqMem2, {
         sync: true,
-        debug: true,
+        debug: false,
         timestamps: true,
         paranoid: false,
       });
+
+      // Wait for sync to complete before test ends
+      await seqGuard.ready;
 
       expect(seqGuard).toBeDefined();
     });
@@ -80,20 +94,22 @@ describe('SequelizeGuard Setup', () => {
   describe('Migrations', () => {
     it('should run up migration', async () => {
       const { stub, migration: migrationArr } = createQueryInterfaceStub();
-      const tables = Object.values(tablesMap);
-      const expected = tables.map((t: string) => 'guard_' + t);
+      const expected = migrationOrder.up.map((m) =>
+        getTableName(m, { prefix: 'guard_' }),
+      );
 
-      await migration.up(stub as any, context.guard.sequelize);
+      await migration.up(stub, context.guard.sequelize);
 
       expect(migrationArr).toEqual(expected);
     });
 
     it('should run up migration with options', async () => {
       const { stub, migration: migrationArr } = createQueryInterfaceStub();
-      const tables = Object.values(tablesMap);
-      const expected = tables.map((t: string) => 'guard_' + t);
+      const expected = migrationOrder.up.map((m) =>
+        getTableName(m, { prefix: 'guard_' }),
+      );
 
-      await migration.up(stub as any, context.guard.sequelize, {
+      await migration.up(stub, context.guard.sequelize, {
         prefix: 'guard_',
         timestamps: true,
         paranoid: true,
@@ -104,17 +120,21 @@ describe('SequelizeGuard Setup', () => {
 
     it('should run down migrations', async () => {
       const { stub, migration: migrationArr } = createQueryInterfaceStub();
-      const tables = Object.values(tablesMap);
-      const expected = tables.map((t: string) => 'guard_' + t);
 
-      await migration.down(stub as any, context.guard.sequelize);
+      const expected = migrationOrder.down.map((m) =>
+        getTableName(m, { prefix: 'guard_' }),
+      );
+
+      await migration.down(stub, context.guard.sequelize);
       expect(migrationArr).toEqual(expected);
     });
 
     it('should run down migrations with options', async () => {
       const { stub, migration: migrationArr } = createQueryInterfaceStub();
-      const tables = Object.values(tablesMap);
-      const expected = tables.map((t: string) => 'guard_' + t);
+
+      const expected = migrationOrder.down.map((m) =>
+        getTableName(m, { prefix: 'guard_' }),
+      );
 
       await migration.down(stub as any, context.guard.sequelize, {
         prefix: 'guard_',
@@ -123,12 +143,12 @@ describe('SequelizeGuard Setup', () => {
     });
   });
 
-  describe('Seeders', () => {
-    it.skip('should run up seeder (seeder not yet implemented)', async () => {
-      // TODO: Implement seeder tests once seeder is implemented
-      expect(seeder).toBeDefined();
-    });
-  });
+  // describe('Seeders', () => {
+  //   it.skip('should run up seeder (seeder not yet implemented)', async () => {
+  //     // TODO: Implement seeder tests once seeder is implemented
+  //     expect(seeder).toBeDefined();
+  //   });
+  // });
 
   describe('Models', () => {
     it('should return all guard models (6 models)', () => {
