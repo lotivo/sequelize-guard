@@ -93,6 +93,6 @@ export interface RoleData {
 /**
  * Event callback types
  */
-export type GuardEventCallback<T = any> = (data: T) => void;
+export type GuardEventCallback<T> = (data: T) => void;
 
 export type UnsubscribeFn = () => void;

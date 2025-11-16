@@ -38,9 +38,10 @@ export abstract class SequelizeGuardBase {
    * @param fn
    * @internal
    */
-  on(name: string, fn: (...args: any[]) => void): () => void {
-    this._ee.on(name, fn);
-    return () => this._ee.off(name, fn);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(name: string, cb: (...args: any[]) => void): () => void {
+    this._ee.on(name, cb);
+    return () => this._ee.off(name, cb);
   }
 
   /**
@@ -49,9 +50,13 @@ export abstract class SequelizeGuardBase {
    * @param fn
    * @internal
    */
-  once(name: string, fn: (...args: any[]) => void): () => void {
-    this._ee.once(name, fn);
-    return () => this._ee.off(name, fn);
+  once(
+    name: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    cb: (...args: any[]) => void,
+  ): () => void {
+    this._ee.once(name, cb);
+    return () => this._ee.off(name, cb);
   }
 
   /**
@@ -60,7 +65,9 @@ export abstract class SequelizeGuardBase {
    * @param {...any} args
    * @internal
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   emit(name: string, ...args: any[]): void {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     this._ee.emit(name, ...args);
   }
 }

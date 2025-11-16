@@ -99,6 +99,6 @@ export class GuardControl {
     const actions = this._actions;
     const resources = this._resources;
 
-    return (this.guard as any).addPermsToRole(roles, actions, resources);
+    return this.guard.addPermsToRole(roles, actions, resources);
   }
 }

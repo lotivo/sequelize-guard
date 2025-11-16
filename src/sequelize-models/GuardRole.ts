@@ -16,15 +16,19 @@ import {
 import { GuardModelInitParams, SequelizeModelClass } from './types/types';
 import { modelOptions } from './utils';
 
-/**
- * GuardPermission Model - Represents permissions (e.g., view blog, edit post)
- */
-export interface GuardRoleModel extends SequelizeModelClass<GuardRoleModel> {
+export type GuardRoleData = {
   id: CreationOptional<number>;
   name: string;
   description?: string;
   parent_id?: ForeignKey<GuardRoleModel['id']>;
+};
 
+/**
+ * GuardPermission Model - Represents permissions (e.g., view blog, edit post)
+ */
+export interface GuardRoleModel
+  extends SequelizeModelClass<GuardRoleModel>,
+    GuardRoleData {
   // Associations
   Permissions?: NonAttribute<GuardPermissionModel[]>;
   Users?: NonAttribute<GuardUserModel[]>;
@@ -95,5 +99,3 @@ export const getGuardRoleSchema = () => {
 
   return schema;
 };
-
-export type GuardRoleSerializable = ReturnType<GuardRoleModel['toJSON']>;

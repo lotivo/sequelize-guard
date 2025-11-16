@@ -1,6 +1,6 @@
 import { differenceBy } from 'lodash';
 import { Op } from 'sequelize';
-import { GuardRoleSerializable, GuardUserModel } from '../sequelize-models';
+import { GuardRoleData, GuardUserModel } from '../sequelize-models';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {
@@ -8,7 +8,7 @@ declare module '../SequelizeGuard' {
     assignRole(user: GuardUserModel, role: string): Promise<GuardUserModel>;
     assignRoles(user: GuardUserModel, roles: string[]): Promise<void>;
     rmAssignedRoles(user: GuardUserModel, roles: string[]): Promise<void>;
-    getUserRoles(user: GuardUserModel): Promise<GuardRoleSerializable[]>;
+    getUserRoles(user: GuardUserModel): Promise<GuardRoleData[]>;
   }
 }
 
@@ -77,13 +77,13 @@ export function extendWithUsers(
    */
   SequelizeGuard.prototype.getUserRoles = async function (
     user: GuardUserModel,
-  ): Promise<GuardRoleSerializable[]> {
+  ): Promise<GuardRoleData[]> {
     const cacheKey = `user_${String(user.get(this.options.userPk))}`;
     const cache = this.getUserCache();
 
-    let cacheRoles: GuardRoleSerializable[] | undefined = undefined;
+    let cacheRoles: GuardRoleData[] | undefined = undefined;
     if (this.options.userCache) {
-      cacheRoles = cache.get<GuardRoleSerializable[]>(cacheKey);
+      cacheRoles = cache.get<GuardRoleData[]>(cacheKey);
     }
 
     if (cacheRoles) {

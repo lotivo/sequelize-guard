@@ -1,5 +1,11 @@
 import { differenceBy, concat } from 'lodash';
-import { Op } from 'sequelize';
+import {
+  Op,
+  FindOptions,
+  WhereOptions,
+  InferAttributes,
+  InferCreationAttributes,
+} from 'sequelize';
 import { GuardPermissionModel } from '../sequelize-models';
 import type { SequelizeGuard } from '../SequelizeGuard';
 import type {
@@ -82,8 +88,10 @@ export function extendWithPermissions(
   SequelizeGuard.prototype.findPerms = async function (
     args: FindPermsArgs = {},
   ): Promise<GuardPermissionModel[]> {
-    const wheres: any[] = [];
-    const cond: any = { where: {} };
+    const wheres: WhereOptions<InferAttributes<GuardPermissionModel>>[] = [];
+    const cond: FindOptions<InferAttributes<GuardPermissionModel>> = {
+      where: {},
+    };
 
     if (args.search) {
       if (args.name) {
@@ -118,10 +126,12 @@ export function extendWithPermissions(
   SequelizeGuard.prototype._sanitizePermsInput = function (
     resources: string | string[],
     actions: string | string[],
-    options: any = {},
+    options: CreatePermsOptions = {},
   ): PermissionData[] {
     let _acts: string[] = [];
     let _res: string[] = [];
+
+    const optionsNames = options.names || [];
 
     if (typeof resources === 'string') _res = [resources];
     if (Array.isArray(resources)) _res = resources;
@@ -129,10 +139,8 @@ export function extendWithPermissions(
     if (typeof actions === 'string') _acts = [actions];
     if (Array.isArray(actions)) _acts = actions;
 
-    if (!options.names) options.names = [];
-
     const permissions = _res.map((r, i) => ({
-      name: options.names[i] || `${r}:[${_acts.toString()}]`,
+      name: optionsNames[i] || `${r}:[${_acts.toString()}]`,
       resource: r,
       action: JSON.stringify(_acts),
     }));
@@ -166,25 +174,21 @@ async function insertPermissionsToDb(
     where: { name: permissions.map((d) => d.name.toLowerCase()) },
   });
 
-  const perms2insert = differenceBy(
-    permissions,
-    existPerms,
-    (r: any) => r.name,
-  );
+  const perms2insert = differenceBy(permissions, existPerms, (r) => r.name);
 
   const perms = await guard._models.GuardPermission.bulkCreate(
-    perms2insert as any,
+    perms2insert as Array<InferCreationAttributes<GuardPermissionModel>>,
   );
 
   guard.emit('onPermsCreated', perms);
 
-  let result: any = perms;
+  let result: GuardPermissionModel[] = perms;
   if (options.all) {
     result = concat(existPerms, perms);
   }
   if (options.json) {
-    return result.map((perm: any) => perm.toJSON());
+    return result.map((perm) => perm.toJSON());
   }
 
-  return result as GuardPermissionModel[];
+  return result;
 }

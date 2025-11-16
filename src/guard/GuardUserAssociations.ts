@@ -1,3 +1,4 @@
+import type { GuardUserModel } from '../sequelize-models';
 import type { SequelizeGuard } from '../SequelizeGuard';
 
 /**
@@ -17,7 +18,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    * Assign single role to user
    */
   Object.defineProperty(GuardUser.prototype, 'assignRole', {
-    value: function (role: string) {
+    value: function (this: GuardUserModel, role: string) {
       return guard.assignRole(this, role);
     },
   });
@@ -26,7 +27,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    * Assign multiple roles to user
    */
   Object.defineProperty(GuardUser, 'assignRoles', {
-    value: function (roles: string[]) {
+    value: function (this: GuardUserModel, roles: string[]) {
       return guard.assignRoles(this, roles);
     },
   });
@@ -35,7 +36,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    * Remove assigned roles from user
    */
   Object.defineProperty(GuardUser.prototype, 'rmAssignedRoles', {
-    value: function (roles: string[]) {
+    value: function (this: GuardUserModel, roles: string[]) {
       return guard.rmAssignedRoles(this, roles);
     },
   });
@@ -44,7 +45,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    * Get all roles assigned to user
    */
   Object.defineProperty(GuardUser.prototype, 'roles', {
-    value: function () {
+    value: function (this: GuardUserModel) {
       return guard.getUserRoles(this);
     },
   });
@@ -53,7 +54,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    * Check if user has all of the given roles
    */
   Object.defineProperty(GuardUser.prototype, 'isAllOf', {
-    value: function (roles: string[]) {
+    value: function (this: GuardUserModel, roles: string[]) {
       return guard.userHasAllRoles(this, roles);
     },
   });
@@ -62,7 +63,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    * Check if user has any of the given roles
    */
   Object.defineProperty(GuardUser.prototype, 'isAnyOf', {
-    value: function (roles: string[]) {
+    value: function (this: GuardUserModel, roles: string[]) {
       return guard.userHasRoles(this, roles);
     },
   });
@@ -71,7 +72,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    * Check if user has a specific role
    */
   Object.defineProperty(GuardUser.prototype, 'isA', {
-    value: function (role: string) {
+    value: function (this: GuardUserModel, role: string) {
       return guard.userIsA(this, role);
     },
   });
@@ -80,7 +81,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    * Alias for isA
    */
   Object.defineProperty(GuardUser.prototype, 'isAn', {
-    value: function (role: string) {
+    value: function (this: GuardUserModel, role: string) {
       return guard.userIsA(this, role);
     },
   });
@@ -89,7 +90,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    * Check if user can perform action
    */
   Object.defineProperty(GuardUser.prototype, 'can', {
-    value: function (permission: string) {
+    value: function (this: GuardUserModel, permission: string) {
       return guard.userCan(this, permission);
     },
   });
@@ -98,7 +99,7 @@ export function setupGuardUserAssociations(guard: SequelizeGuard): void {
    *  Check if user cannot perform action
    */
   Object.defineProperty(GuardUser.prototype, 'cant', {
-    value: function (permission: string) {
+    value: function (this: GuardUserModel, permission: string) {
       return guard.userCant(this, permission);
     },
   });

@@ -44,7 +44,7 @@ export class GuardCache extends NodeCache {
 
     const roles = await guard.models().GuardRole.findAll({
       where: { id: r2Fetch },
-      include: 'Permissions' as any,
+      include: guard.models().GuardPermission,
     });
 
     const mappedRoles = mappedRolesToIds(roles);
@@ -134,7 +134,7 @@ export function extendWithCache(
 
       try {
         const roles = await this.models().GuardRole.findAll({
-          include: 'Permissions' as any,
+          include: this.models().GuardPermission,
         });
 
         const mappedRoles = mappedRolesToIds(roles);

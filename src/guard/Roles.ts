@@ -6,7 +6,13 @@ import {
   without,
   intersectionBy,
 } from 'lodash';
-import { Op } from 'sequelize';
+import {
+  Op,
+  FindOptions,
+  WhereOptions,
+  InferAttributes,
+  InferCreationAttributes,
+} from 'sequelize';
 import type { GuardRoleModel } from '../sequelize-models';
 import type {
   RoleCreationResult,
@@ -17,6 +23,8 @@ import type {
   RemovePermsFromRoleResult,
   UnsubscribeFn,
   GuardEventCallback,
+  CreatePermsOptions,
+  PermissionData,
 } from '../types';
 
 declare module '../SequelizeGuard' {
@@ -49,8 +57,8 @@ declare module '../SequelizeGuard' {
     _sanitizePermsInput(
       resources: string | string[],
       actions: string | string[],
-      options?: any,
-    ): any[];
+      options?: CreatePermsOptions,
+    ): PermissionData[];
   }
 }
 
@@ -67,20 +75,27 @@ export function extendWithRoles(
    */
   SequelizeGuard.prototype.makeRole = async function (
     role: string,
+    description?: string,
   ): Promise<RoleCreationResult> {
     if (!role) throw new Error('Role must be string with length not zero');
 
     const roleData = makeRoleData(role);
     const cache = await this.getCache();
     const roles = Object.values(cache.getRoles());
-    const existingRole = find(roles, roleData);
+    const existingRole = find<GuardRoleModel>(roles, roleData);
 
     if (existingRole) {
-      return { role: existingRole as any, created: false };
+      return { role: existingRole, created: false };
     }
 
     const [createdRole, created] = await this._models.GuardRole.findOrCreate({
-      where: roleData as any,
+      where: {
+        name: roleData.name,
+      },
+      defaults: {
+        ...roleData,
+        description,
+      },
     });
 
     this.emit('onRolesCreated', [createdRole]);
@@ -101,31 +116,31 @@ export function extendWithRoles(
 
     const cache = await this.getCache();
     const existRoles = Object.values(cache.getRoles());
-    const rNames = existRoles.map((d: any) => d.name);
+    const rNames = existRoles.map((d) => d.name);
     const toRemove = roles2insert.filter((r) => rNames.indexOf(r.name) >= 0);
     roles2insert = roles2insert.filter((r) => rNames.indexOf(r.name) < 0);
 
     const insertedRoles = await this._models.GuardRole.bulkCreate(
-      roles2insert as any,
+      roles2insert as Array<InferCreationAttributes<GuardRoleModel>>,
     );
 
     if (insertedRoles.length) {
       this.emit('onRolesCreated', insertedRoles);
     }
 
-    let result: any[] = insertedRoles;
+    let result = insertedRoles;
     if (options.json) {
       result = result.map((role) => role.toJSON());
     }
 
     if (options.all) {
-      const existingFiltered = filter(existRoles, (r: any) =>
+      const existingFiltered = filter(existRoles, (r) =>
         toRemove.map((t) => t.name).includes(r.name),
       );
       result = concat(existingFiltered, result);
     }
 
-    return result as GuardRoleModel[];
+    return result;
   };
 
   /**
@@ -187,8 +202,8 @@ export function extendWithRoles(
   SequelizeGuard.prototype.findRoles = async function (
     args: FindRolesArgs = {},
   ): Promise<GuardRoleModel[]> {
-    const wheres: any[] = [];
-    const cond: any = { where: {} };
+    const wheres: WhereOptions<InferAttributes<GuardRoleModel>>[] = [];
+    const cond: FindOptions<InferAttributes<GuardRoleModel>> = { where: {} };
 
     if (args.names && args.names.length) {
       if (args.search) {
@@ -227,7 +242,7 @@ export function extendWithRoles(
     actions: string | string[],
     resources: string | string[],
   ): Promise<AddPermsToRoleResult> {
-    const perms = await (this as any).createPerms(resources, actions, {
+    const perms = await this.createPerms(resources, actions, {
       all: true,
     });
 
@@ -236,20 +251,20 @@ export function extendWithRoles(
     const roleToUpdate = roles[0];
 
     const assignedPerms = await roleToUpdate.getPermissions!();
-    const perms2add = differenceBy(perms, assignedPerms, (r: any) => r.name);
+    const perms2add = differenceBy(perms, assignedPerms, (r) => r.name);
 
-    await roleToUpdate.addPermissions!(perms2add as any);
+    await roleToUpdate.addPermissions!(perms2add);
 
-    (roleToUpdate as any).Permissions = [...assignedPerms, ...perms2add];
-    (roleToUpdate as any).dataValues.Permissions = (
-      roleToUpdate as any
-    ).Permissions;
+    roleToUpdate.Permissions = [...assignedPerms, ...perms2add];
+    // (roleToUpdate as any).dataValues.Permissions = (
+    //   roleToUpdate as any
+    // ).Permissions;
 
     this.emit('onPermsAddedToRole', roleToUpdate);
 
     return {
       role: roleToUpdate,
-      permissions: (roleToUpdate as any).Permissions,
+      permissions: roleToUpdate.Permissions,
     };
   };
 
@@ -274,21 +289,20 @@ export function extendWithRoles(
     const perms2rm = intersectionBy(
       assignedPerms,
       perms2rmIn,
-      (r: any) => r.resource + r.action,
+      (r) => r.resource + r.action,
     );
 
-    await roleToUpdate.removePermissions!(perms2rm as any);
+    await roleToUpdate.removePermissions!(perms2rm);
 
-    (roleToUpdate as any).Permissions = without(assignedPerms, ...perms2rm);
-    (roleToUpdate as any).dataValues.Permissions = (
-      roleToUpdate as any
-    ).Permissions;
+    roleToUpdate.Permissions = without(assignedPerms, ...perms2rm);
+    // roleToUpdate.dataValues.Permissions = roleToUpdate.Permissions;
 
+    //TODO: Make enum for all the events, create proper event management system
     this.emit('onPermsRemovedFromRole', roleToUpdate);
 
     return {
       role: roleToUpdate,
-      permissions: (roleToUpdate as any).Permissions,
+      permissions: roleToUpdate.Permissions,
       permsRemoved: perms2rm,
     };
   };
@@ -304,7 +318,7 @@ export function extendWithRoles(
   };
 
   SequelizeGuard.prototype.onRolesDeleted = function (
-    cb: GuardEventCallback<any[]>,
+    cb: GuardEventCallback<GuardRoleModel[]>,
   ): UnsubscribeFn {
     return this.on('onRolesDeleted', cb);
   };
@@ -339,7 +353,7 @@ function makeRoleData(role: string): RoleData {
  */
 function sanitizeRolesInput(roles: string[]): RoleData[] {
   if (typeof roles === 'string') {
-    roles = [roles] as any;
+    roles = [roles];
   }
   return roles
     .map((role) => makeRoleData(role))

@@ -3,7 +3,7 @@ import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
 import migration from './migrations/guard-migrations';
 import seeder from './seeder';
-import { GuardModels, initGuardModels } from './sequelize-models';
+import { GuardModel, GuardModels, initGuardModels } from './sequelize-models';
 import type { GuardOptions } from './types';
 import { SequelizeWithGuard } from './types/helpers';
 
@@ -58,7 +58,7 @@ export class SequelizeGuard extends SequelizeGuardBase {
     // Sync models if enabled
     if (this.options.sync) {
       Promise.all(
-        Object.values(this._models).map((model) =>
+        Object.values(this._models).map((model: GuardModel) =>
           model.sync({
             logging: this.options.debug ? console.log : false,
           }),

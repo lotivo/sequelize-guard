@@ -25,7 +25,7 @@ const extensions = [
   extendWithAuthorizeRoles,
 ];
 
-extensions.forEach((extension) => extension(SequelizeGuard as any));
+extensions.forEach((extension) => extension(SequelizeGuard));
 
 // Export the fully extended SequelizeGuard
 export { SequelizeGuard };

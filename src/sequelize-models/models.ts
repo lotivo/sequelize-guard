@@ -58,3 +58,5 @@ export interface GuardModels {
   GuardUser: GuardUserModelStatic;
   RoleUser: GuardRoleUserModelStatic;
 }
+
+export type GuardModel = GuardModels[keyof GuardModels];

@@ -5,7 +5,7 @@ declare module '../SequelizeGuard' {
     userCan(user: GuardUserModel, permission: string): Promise<boolean>;
     userCant(user: GuardUserModel, permission: string): Promise<boolean>;
     resolvePermission(
-      givenPermissions: any[],
+      givenPermissions: { action: string; resource: string }[],
       wantedPermission: string,
     ): boolean;
   }
@@ -34,7 +34,13 @@ export function extendWithAuthorizePerms(
         this.getCache()
           .then((cache) => cache.getRolesWithPerms(this))
           .then((roles) => roles[role.id].Permissions)
-          .then((perms) => this.resolvePermission(perms, permission)),
+          .then((perms) => {
+            if (!perms) {
+              return false;
+            }
+
+            return this.resolvePermission(perms, permission);
+          }),
       ),
     );
   };
@@ -57,9 +63,9 @@ export function extendWithAuthorizePerms(
    * @param wantedPermission
    */
   SequelizeGuard.prototype.resolvePermission = function (
-    givenPermissions: any[],
-    wantedPermission: string,
-  ): boolean {
+    givenPermissions,
+    wantedPermission,
+  ) {
     const allSymbol = '*';
     if (wantedPermission === '*') wantedPermission = '* *';
 
@@ -67,20 +73,20 @@ export function extendWithAuthorizePerms(
     const wAction = wPerms[0];
     const wResource = wPerms[1];
 
-    const gA: string[][] = [];
-    const gR: string[] = [];
+    const gActions: string[][] = [];
+    const gResources: string[] = [];
 
     givenPermissions.forEach((p) => {
-      gA.push(JSON.parse(p.action));
-      gR.push(p.resource);
+      gActions.push(JSON.parse(p.action) as string[]);
+      gResources.push(p.resource);
     });
 
-    for (let i = 0; i <= gR.length; i++) {
+    for (let i = 0; i <= gResources.length; i++) {
       if (
-        (gR[i] === allSymbol &&
-          (gA[i].includes('*') || gA[i].includes(wAction))) ||
-        (gR[i] === wResource &&
-          (gA[i].includes('*') || gA[i].includes(wAction)))
+        (gResources[i] === allSymbol &&
+          (gActions[i]?.includes('*') || gActions[i]?.includes(wAction))) ||
+        (gResources[i] === wResource &&
+          (gActions[i]?.includes('*') || gActions[i]?.includes(wAction)))
       ) {
         return true;
       }
@@ -96,9 +102,9 @@ export function extendWithAuthorizePerms(
  */
 function firstTrue(promises: Promise<boolean>[]): Promise<boolean> {
   const newPromises = promises.map((p) => {
-    return new Promise<boolean>((resolve, reject) =>
-      p.then((v) => v && resolve(true), reject),
-    );
+    return new Promise<boolean>((resolve, reject) => {
+      void p.then((v) => v && resolve(true), reject);
+    });
   });
   newPromises.push(Promise.all(promises).then(() => false));
   return Promise.race(newPromises);

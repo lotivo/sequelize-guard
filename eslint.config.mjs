@@ -23,16 +23,32 @@ export default [
     ],
   },
 
-  // Base configuration for all files
+  // Configuration for config files without type checking
+  {
+    files: ['*.config.{js,mjs,ts,mts}', 'eslint.config.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+    },
+  },
+
+  // Base configuration for all files with type checking
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+    ignores: ['*.config.{js,mjs,ts,mts}', 'eslint.config.mjs'],
     languageOptions: {
       ecmaVersion: 2018,
       sourceType: 'module',
       parser: typescriptParser,
       parserOptions: {
-        project: ['./tsconfig.json', './tsconfig.eslint.json'],
-        ignores: ['dist/**', 'node_modules/**', '.nx/**'],
+        project: './tsconfig.eslint.json',
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
         ...globals.browser,
@@ -43,7 +59,7 @@ export default [
     settings: {
       'import/resolver': {
         typescript: {
-          project: ['./tsconfig.json', './tsconfig.eslint.json'],
+          project: './tsconfig.eslint.json',
         },
       },
     },
