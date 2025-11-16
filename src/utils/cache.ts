@@ -138,17 +138,19 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
 
         bindGuardListeners(this);
       } catch (error) {
-        console.log('====================================');
-        console.log(
+        console.log(`
+          ====================================
           '\tTables for Guard not created, make sure you have run migrations or enabled sync option',
-        );
-        console.log(
-          (error as Error).message ||
-            'Unknown error during cache initialization',
-        );
-        console.log('====================================');
+
+          ERROR: ${
+            (error as Error).message ||
+            'Unknown error during cache initialization'
+          }
+          ====================================
+          `);
       }
     }
+
     return this._cache;
   };
 }
