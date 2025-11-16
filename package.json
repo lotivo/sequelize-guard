@@ -53,7 +53,6 @@
     "test:coverage": "vitest run --coverage",
     "cover": "nyc yarn test:coverage && nyc report --reporter=lcov --reporter=text-summary",
     "coverall": "nyc report --reporter=text-lcov | coveralls",
-    "prepublishOnly": "yarn build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:prettier": "prettier -c src/",
@@ -61,8 +60,8 @@
     "format:staged": "prettier --write",
     "lint:staged": "eslint --fix --max-warnings 0",
     "lint:staged:js": "eslint --fix",
-    "pre-commit-backup": "yarn lint-staged && yarn type-check",
-    "pre-commit": "echo a"
+    "pre-commit": "yarn lint-staged && yarn typecheck",
+    "prepublishOnly": "yarn build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
