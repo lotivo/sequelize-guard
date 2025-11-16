@@ -1,7 +1,7 @@
 import NodeCache from 'node-cache';
 import { values } from 'lodash';
 import type { SequelizeGuard } from '../SequelizeGuard';
-import { GuardPermissionModel } from '../sequelize-models';
+import { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {
@@ -14,19 +14,19 @@ declare module '../SequelizeGuard' {
  * Extended NodeCache with Guard-specific methods
  */
 export class GuardCache extends NodeCache {
-  getRoles(): Record<number, any> {
+  getRoles(): Record<number, GuardRoleModel> {
     return this.get('roles') || {};
   }
 
-  getPerms(): Record<number, any> {
+  getPerms(): Record<number, GuardPermissionModel> {
     return this.get('perms') || {};
   }
 
-  setRoles(roles: Record<number, any>): boolean {
+  setRoles(roles: Record<number, GuardRoleModel>): boolean {
     return this.set('roles', roles);
   }
 
-  setPerms(perms: Record<number, any>): boolean {
+  setPerms(perms: Record<number, GuardPermissionModel>): boolean {
     return this.set('perms', perms);
   }
 
@@ -45,7 +45,7 @@ export class GuardCache extends NodeCache {
       include: 'Permissions' as any,
     });
 
-    const mappedRoles = mappedRolesToIds(roles as any);
+    const mappedRoles = mappedRolesToIds(roles);
     const roles2Save = {
       ...this.getRoles(),
       ...mappedRoles,
@@ -61,13 +61,15 @@ export class GuardCache extends NodeCache {
  */
 function mappedPermsToIds(
   objects: GuardPermissionModel[],
-  id: string = 'id',
-): Record<number, any> {
-  if (!objects) return {};
-  const mappedObj: Record<number, any> = {};
+): Record<number, GuardPermissionModel> {
+  const mappedObj: Record<number, GuardPermissionModel> = {};
+
+  if (!objects) {
+    return mappedObj;
+  }
 
   objects.forEach((obj) => {
-    mappedObj[(obj as any)[id]] = obj.toJSON ? obj.toJSON() : obj;
+    mappedObj[obj['id']] = obj.toJSON ? obj.toJSON() : obj;
   });
 
   return mappedObj;
@@ -77,22 +79,24 @@ function mappedPermsToIds(
  * Map roles to IDs with permissions
  */
 function mappedRolesToIds(
-  objects: any[],
-  id: string = 'id',
-): Record<number, any> {
-  if (!objects) return {};
-  const mappedObj: Record<number, any> = {};
+  objects: GuardRoleModel[],
+): Record<number, GuardRoleModel> {
+  const mappedObj: Record<number, GuardRoleModel> = {};
+
+  if (!objects.length) {
+    return mappedObj;
+  }
 
   objects.forEach((obj) => {
-    if (!obj.Permissions) {
-      obj.Permissions = false;
-    }
+    // if (!obj.Permissions) {
+    //   obj.Permissions = [];
+    // }
 
-    if (obj.dataValues) {
-      obj.dataValues.Permissions = obj.Permissions;
-    }
+    // if (obj.dataValues) {
+    //   obj.dataValues.getPermissions = obj.Permissions;
+    // }
 
-    mappedObj[obj[id]] = obj;
+    mappedObj[obj['id']] = obj;
   });
 
   return mappedObj;
@@ -119,34 +123,37 @@ export function extendWithCache(
    * Get or create cache instance
    */
   SequelizeGuard.prototype.getCache = async function (): Promise<GuardCache> {
-    return new Promise(async (resolve) => {
-      if (!this._cache) {
-        const cache = this.resetCache();
+    if (!this._cache) {
+      const cache = this.resetCache();
+      this._cache = cache;
 
-        try {
-          const roles = await this.models().GuardRole.findAll({
-            include: 'Permissions' as any,
-          });
+      try {
+        const roles = await this.models().GuardRole.findAll({
+          include: 'Permissions' as any,
+        });
 
-          const mappedRoles = mappedRolesToIds(roles as any);
+        const mappedRoles = mappedRolesToIds(roles);
 
-          const perms = await this.models().GuardPermission.findAll();
-          const mappedPerms = mappedPermsToIds(perms as any);
+        const perms = await this.models().GuardPermission.findAll();
+        const mappedPerms = mappedPermsToIds(perms);
 
-          cache.setRoles(mappedRoles);
-          cache.setPerms(mappedPerms);
+        cache.setRoles(mappedRoles);
+        cache.setPerms(mappedPerms);
 
-          bindGuardListeners(this);
-        } catch (error) {
-          console.log('====================================');
-          console.log(
-            '\tTables for Guard not created, make sure you have run migrations or enabled sync option',
-          );
-          console.log('====================================');
-        }
+        bindGuardListeners(this);
+      } catch (error) {
+        console.log('====================================');
+        console.log(
+          '\tTables for Guard not created, make sure you have run migrations or enabled sync option',
+        );
+        console.log(
+          (error as Error).message ||
+            'Unknown error during cache initialization',
+        );
+        console.log('====================================');
       }
-      resolve(this._cache as GuardCache);
-    });
+    }
+    return this._cache;
   };
 }
 
@@ -156,13 +163,10 @@ export function extendWithCache(
 function bindGuardListeners(guard: SequelizeGuard): void {
   const cache = guard._cache as GuardCache;
 
-  (guard as any).onRolesCreated((roles: any[]) => {
+  guard.onRolesCreated((roles) => {
     const rolesData = roles.map((role) => {
-      const r = role as any;
-      r.Permissions = false;
-      if (r.dataValues) {
-        r.dataValues.Permissions = false;
-      }
+      const r = role;
+      r.Permissions = [];
       return r;
     });
 
@@ -173,13 +177,13 @@ function bindGuardListeners(guard: SequelizeGuard): void {
     });
   });
 
-  (guard as any).onRolesDeleted((roles: any[]) => {
+  guard.onRolesDeleted((roles) => {
     const existRoles = cache.getRoles();
     roles.forEach((role) => delete existRoles[role.id]);
     cache.setRoles(existRoles);
   });
 
-  (guard as any).onPermsCreated((perms: GuardPermissionModel[]) => {
+  guard.onPermsCreated((perms: GuardPermissionModel[]) => {
     const mappedPerms = mappedPermsToIds(perms);
     cache.setPerms({
       ...cache.getPerms(),
@@ -187,7 +191,7 @@ function bindGuardListeners(guard: SequelizeGuard): void {
     });
   });
 
-  (guard as any).onPermsAddedToRole((role: any) => {
+  guard.onPermsAddedToRole((role) => {
     const roles = [role];
     const mappedRoles = mappedRolesToIds(roles);
     cache.setRoles({
@@ -196,7 +200,7 @@ function bindGuardListeners(guard: SequelizeGuard): void {
     });
   });
 
-  (guard as any).onPermsRemovedFromRole((role: any) => {
+  guard.onPermsRemovedFromRole((role) => {
     const roles = [role];
     const mappedRoles = mappedRolesToIds(roles);
     cache.setRoles({

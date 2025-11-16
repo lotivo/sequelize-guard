@@ -95,3 +95,5 @@ export const getGuardRoleSchema = () => {
 
   return schema;
 };
+
+export type GuardRoleSerializable = ReturnType<GuardRoleModel['toJSON']>;

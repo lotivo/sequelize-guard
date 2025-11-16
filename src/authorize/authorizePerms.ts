@@ -1,6 +1,4 @@
-import { includes } from 'lodash';
-import type { SequelizeGuard } from '../SequelizeGuard';
-import type { GuardUserModel } from '../types';
+import { GuardUserModel } from '../sequelize-models';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {

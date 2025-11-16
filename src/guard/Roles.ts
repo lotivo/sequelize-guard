@@ -28,8 +28,8 @@ declare module '../SequelizeGuard' {
       options?: CreateRolesOptions,
     ): Promise<GuardRoleModel[]>;
     deleteRoles(roles: string[]): Promise<number>;
-    allRoles(): Promise<any[]>;
-    getRole(role: string): Promise<any | null>;
+    allRoles(): Promise<GuardRoleModel[]>;
+    getRole(role: string): Promise<GuardRoleModel | null>;
     findRoles(args?: FindRolesArgs): Promise<GuardRoleModel[]>;
     addPermsToRole(
       role: string,
@@ -42,7 +42,7 @@ declare module '../SequelizeGuard' {
       resources: string | string[],
     ): Promise<RemovePermsFromRoleResult>;
     onRolesCreated(cb: GuardEventCallback<GuardRoleModel[]>): UnsubscribeFn;
-    onRolesDeleted(cb: GuardEventCallback<any[]>): UnsubscribeFn;
+    onRolesDeleted(cb: GuardEventCallback<GuardRoleModel[]>): UnsubscribeFn;
     onPermsAddedToRole(cb: GuardEventCallback<GuardRoleModel>): UnsubscribeFn;
     onPermsRemovedFromRole(
       cb: GuardEventCallback<GuardRoleModel>,
@@ -155,7 +155,9 @@ export function extendWithRoles(
   /**
    * Get all available roles
    */
-  SequelizeGuard.prototype.allRoles = async function (): Promise<any[]> {
+  SequelizeGuard.prototype.allRoles = async function (): Promise<
+    GuardRoleModel[]
+  > {
     const cache = await this.getCache();
     return Object.values(cache.getRoles());
   };
@@ -165,10 +167,10 @@ export function extendWithRoles(
    */
   SequelizeGuard.prototype.getRole = async function (
     role: string,
-  ): Promise<any | null> {
+  ): Promise<GuardRoleModel | null> {
     const cache = await this.getCache();
     const roles = Object.values(cache.getRoles()).filter(
-      (r: any) => r.name === role.toLowerCase(),
+      (r) => r.name === role.toLowerCase(),
     );
     return roles.length ? roles[0] : null;
   };

@@ -1,8 +1,9 @@
 import { Sequelize } from 'sequelize';
 import { SequelizeGuard } from '../index';
+import { SequelizeWithGuard } from '../types/helpers';
 
 export interface TestContext {
-  sequelize: Sequelize;
+  sequelize: SequelizeWithGuard;
   guard: SequelizeGuard;
 }
 
@@ -22,7 +23,7 @@ export async function createTestDatabase(): Promise<TestContext> {
   // Wait for initialization
   await new Promise((resolve) => setTimeout(resolve, 200));
 
-  return { sequelize, guard };
+  return { sequelize: guard.sequelize, guard };
 }
 
 export async function closeTestDatabase(context: TestContext): Promise<void> {

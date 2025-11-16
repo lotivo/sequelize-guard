@@ -40,7 +40,7 @@ export const ModelClassNameMap = {
   [BaseModelType.Roles]: 'GuardRole',
   [AssociationModelType.RolePermission]: 'RolePermission',
   [AssociationModelType.RoleUser]: 'RoleUser',
-  [BaseModelType.Users]: 'GuardUser',
+  [BaseModelType.Users]: 'User',
 } as const;
 
 export const getTableName = (

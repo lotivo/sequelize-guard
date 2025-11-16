@@ -1,10 +1,9 @@
 import NodeCache from 'node-cache';
-import type { SequelizeGuard } from '../SequelizeGuard';
 
 declare module '../SequelizeGuard' {
   interface SequelizeGuard {
     resetUserCache(): GuardUserCache;
-    getUserCache(): Promise<GuardUserCache>;
+    getUserCache(): GuardUserCache;
   }
 }
 
@@ -37,11 +36,10 @@ export function extendWithUserCache(
   /**
    * Get or create user cache
    */
-  SequelizeGuard.prototype.getUserCache =
-    async function (): Promise<GuardUserCache> {
-      if (this._userCache) {
-        return this._userCache;
-      }
-      return this.resetUserCache();
-    };
+  SequelizeGuard.prototype.getUserCache = function (): GuardUserCache {
+    if (this._userCache) {
+      return this._userCache;
+    }
+    return this.resetUserCache();
+  };
 }

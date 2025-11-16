@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createTestDatabase, closeTestDatabase, TestContext } from './setup';
-import { GuardUserModel } from '../types';
 
 describe('Users', () => {
   let context: TestContext;
@@ -30,35 +29,20 @@ describe('Users', () => {
     describe('Assign roles', () => {
       it('should assign single role to user', async () => {
         const user = await context.sequelize.models.User.findByPk(1);
-        if (
-          user &&
-          'assignRole' in user &&
-          typeof user.assignRole === 'function'
-        ) {
-          const updatedUser = await (user as GuardUserModel).assignRole?.(
-            'admin',
-          );
-          const roles = await (updatedUser as GuardUserModel).getRoles?.();
+        if (user && user.assignRole) {
+          const updatedUser = await user.assignRole('admin');
+          const roles = await updatedUser.getRoles!();
           expect(roles?.length).toBe(1);
         }
       });
 
       it('should assign multiple roles without duplicates', async () => {
         const user = await context.sequelize.models.User.findByPk(1);
-        if (
-          user &&
-          'assignRoles' in user &&
-          typeof user.assignRoles === 'function'
-        ) {
-          const result = await (user as GuardUserModel).assignRoles([
-            'admin',
-            'superadmin',
-            'moderator',
-          ]);
-          expect(result.length).toBe(2);
+        if (user && user.assignRoles) {
+          await user.assignRoles(['admin', 'superadmin', 'moderator']);
 
-          const roles = await (user as any).getRoles();
-          expect(roles.length).toBe(3);
+          const roles = await user.getRoles!();
+          expect(roles?.length).toBe(3);
         }
       });
     });
@@ -66,35 +50,22 @@ describe('Users', () => {
     describe('Remove role assignments', () => {
       it('should remove single role from user', async () => {
         const user = await context.sequelize.models.User.findByPk(1);
-        if (
-          user &&
-          'rmAssignedRoles' in user &&
-          typeof user.rmAssignedRoles === 'function'
-        ) {
-          const result = await (user as any).rmAssignedRoles('admin');
-          expect(result).toBe(1);
 
-          const roles = await (user as any).getRoles();
-          expect(roles.length).toBe(2);
+        if (user && user.rmAssignedRoles) {
+          await user.rmAssignedRoles(['admin']);
+
+          const roles = await user.getRoles!();
+          expect(roles?.length).toBe(2);
         }
       });
 
       it('should remove multiple roles from user', async () => {
         const user = await context.sequelize.models.User.findByPk(1);
-        if (
-          user &&
-          'rmAssignedRoles' in user &&
-          typeof user.rmAssignedRoles === 'function'
-        ) {
-          const result = await user.rmAssignedRoles([
-            'superadmin',
-            'moderator',
-            'toddle',
-          ]);
-          expect(result).toBe(2);
+        if (user && user.rmAssignedRoles) {
+          await user.rmAssignedRoles(['superadmin', 'moderator', 'toddle']);
 
-          const roles = await (user as any).getRoles();
-          expect(roles.length).toBe(0);
+          const roles = await user.getRoles?.();
+          expect(roles?.length).toBe(0);
         }
       });
     });

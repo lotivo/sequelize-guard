@@ -1,16 +1,14 @@
-import { EventEmitter } from 'events';
-import { merge } from 'lodash';
 import type { Sequelize } from 'sequelize';
-import type { GuardOptions, GuardInternalOptions } from './types';
-import { defaultOptions } from './constants';
-import { GuardModels, initGuardModels } from './sequelize-models/models';
+import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
 import migration from './migrations/guard-migrations';
 import seeder from './seeder';
+import { GuardModels, initGuardModels } from './sequelize-models';
+import type { GuardOptions } from './types';
+import { SequelizeWithGuard } from './types/helpers';
 
 /**
  * SequelizeGuard - Authorization library for Sequelize
- *
  * @example
  * ```typescript
  * const sequelize = new Sequelize(...);
@@ -26,42 +24,33 @@ import seeder from './seeder';
  * const canEdit = await user.can('edit blog');
  * ```
  */
-export class SequelizeGuard {
+export class SequelizeGuard extends SequelizeGuardBase {
   /** Sequelize instance */
-  public readonly sequelize: Sequelize;
+  public readonly sequelize: SequelizeWithGuard;
 
-  /** Guard configuration options */
-  public readonly options: GuardInternalOptions;
-
-  /** Event emitter for guard events */
-  private readonly _ee: EventEmitter;
-
-  /** Guard models */
+  /**
+   * @internal
+   * Guard models - internal use only
+   */
   public _models!: GuardModels;
-
-  /** Cache instance */
-  public _cache?: any;
-
-  /** User cache instance */
-  public _userCache?: any;
 
   /**
    * Creates a SequelizeGuard instance
-   *
    * @param sequelize - A Sequelize instance
    * @param options - Custom configuration options
    */
   constructor(sequelize: Sequelize, options: GuardOptions = {}) {
-    this.sequelize = sequelize;
-    this.options = merge({}, defaultOptions, options) as GuardInternalOptions;
-    this._ee = new EventEmitter();
+    super(options);
 
-    // Attach guard to sequelize instance
-    (sequelize as any).guard = this;
+    this.sequelize = sequelize as SequelizeWithGuard<Sequelize, GuardOptions>;
 
     // Initialize models
     this._models = initGuardModels(this);
-    (sequelize.models as any).GuardModels = this._models;
+
+    // Attach guard to sequelize instance
+    this.sequelize.guard = this;
+    this.sequelize.models.GuardModels = this._models;
+    this.sequelize.models.User = this._models.GuardUser;
 
     // Setup user associations
     setupGuardUserAssociations(this);
@@ -84,42 +73,14 @@ export class SequelizeGuard {
 
   /**
    * Get all Guard models
-   *
    * @example
    * ```typescript
    * const models = guard.models();
    * ```
-   *
    * @returns Array of models used in authorization
    */
   models(): GuardModels {
     return this._models;
-  }
-
-  /**
-   * Subscribe to an event
-   * @internal
-   */
-  on(name: string, fn: (...args: any[]) => void): () => void {
-    this._ee.on(name, fn);
-    return () => this._ee.off(name, fn);
-  }
-
-  /**
-   * Subscribe to an event once
-   * @internal
-   */
-  once(name: string, fn: (...args: any[]) => void): () => void {
-    this._ee.once(name, fn);
-    return () => this._ee.off(name, fn);
-  }
-
-  /**
-   * Emit an event
-   * @internal
-   */
-  emit(name: string, ...args: any[]): void {
-    this._ee.emit(name, ...args);
   }
 
   /**
