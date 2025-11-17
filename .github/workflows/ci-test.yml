@@ -44,6 +44,7 @@ jobs:
 
           # Optional: Explicitly point to the file if it's not found automatically
           # path-to-lcov: ./coverage/lcov.info
+          debug: true
 
       - name: Build the library
         run: yarn build

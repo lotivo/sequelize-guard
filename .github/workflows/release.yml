@@ -27,17 +27,31 @@ jobs:
           cache: "yarn" # Automatic caching for Yarn
           registry-url: "https://registry.npmjs.org"
 
+      - name: Set Version from Tag
+        run: |
+          # 1. Strip the 'v' prefix from the tag (v1.0.5 -> 1.0.5)
+          VERSION=${{ github.ref_name }}
+          VERSION=${VERSION#v}
+
+          echo "Setting package version to $VERSION"
+
+          # 2. Update package.json without creating a git commit/tag
+          # Even if you use Yarn, 'npm version' is the safest tool for this specific task
+          npm version $VERSION --no-git-tag-version
+
       - name: Install dependencies
-        # --frozen-lockfile ensures yarn.lock is respected exactly
         run: yarn install --frozen-lockfile
 
       - name: Build
-        # Ensure you build your project before publishing!
         run: yarn build
-        # If you don't have a build script, you can remove this step.
 
       - name: Publish to NPM
-        run: npm publish --provenance --access public
+        run: |
+          if [[ "${{ github.ref_name }}" == *"-"* ]]; then
+            npm publish --provenance --access public --tag next
+          else
+            npm publish --provenance --access public
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

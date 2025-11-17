@@ -11,7 +11,7 @@ const vitestConfig = vitestDefineConfig({
     environment: 'node',
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      reporter: ['text', 'text-summary', 'json', 'html', 'lcov'],
       include: ['src/**/*.ts'],
       exclude: [
         'src/**/*.test.ts',
@@ -19,12 +19,6 @@ const vitestConfig = vitestDefineConfig({
         'src/**/__tests__/**',
         'src/**/types/**',
       ],
-      thresholds: {
-        lines: 0,
-        functions: 0,
-        branches: 0,
-        statements: 0,
-      },
     },
     pool: 'forks',
     isolate: true,
