@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required to create the GitHub Release
+      id-token: write # Required for actions/setup-node to authenticate with npm
 
     strategy:
       matrix:

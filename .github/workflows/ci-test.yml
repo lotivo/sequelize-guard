@@ -33,18 +33,11 @@ jobs:
         # This runs vitest with coverage enabled
         run: yarn test:coverage
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@v2
-        with:
-          # AUTOMATIC FOR PUBLIC REPOS:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-          # REQUIRED FOR PRIVATE REPOS:
-          # repo-token: ${{ secrets.COVERALLS_REPO_TOKEN }}
-
-          # Optional: Explicitly point to the file if it's not found automatically
-          # path-to-lcov: ./coverage/lcov.info
-          debug: true
+      - name: Upload to Coveralls
+        run: yarn coveralls
+        env:
+          # REQUIRED: The script needs this to know where to upload
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
       - name: Build the library
         run: yarn build
