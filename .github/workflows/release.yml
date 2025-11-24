@@ -29,6 +29,15 @@ jobs:
           cache: "yarn" # Automatic caching for Yarn
           registry-url: "https://registry.npmjs.org"
 
+      # Ensure npm 11.5.1 or later is installed
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      #  Todo: add tests step here
+
       - name: Set Version from Tag
         run: |
           # 1. Strip the 'v' prefix from the tag (v1.0.5 -> 1.0.5)
@@ -41,15 +50,12 @@ jobs:
           # Even if you use Yarn, 'npm version' is the safest tool for this specific task
           npm version $VERSION --no-git-tag-version
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
       - name: Publish to NPM
         run: |
           if [[ "${{ github.ref_name }}" == *"-"* ]]; then
-            npm publish --provenance --access public --tag next
+            npm publish --access public --tag next
           else
-            npm publish --provenance --access public
+            npm publish --access public
           fi
 
       - name: ⬆️ Upload NPM Debug Log on Failure
