@@ -1,6 +1,6 @@
 {
   "name": "sequelize-guard",
-  "version": "6.0.1",
+  "version": "6.0.1-dev",
   "description": "An Authorization Library for Sequelize",
   "repository": {
     "type": "git",
