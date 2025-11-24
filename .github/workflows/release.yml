@@ -50,12 +50,18 @@ jobs:
           # Even if you use Yarn, 'npm version' is the safest tool for this specific task
           npm version $VERSION --no-git-tag-version
 
+      - name: Build the library
+        run: yarn build
+
       - name: Publish to NPM
+        env:
+          NPM_CONFIG_PROVENANCE: true
+
         run: |
           if [[ "${{ github.ref_name }}" == *"-"* ]]; then
-            npm publish --access public --tag next
+            npm publish --provenance --access public --tag next
           else
-            npm publish --access public
+            npm publish --provenance --access public
           fi
 
       - name: ⬆️ Upload NPM Debug Log on Failure
