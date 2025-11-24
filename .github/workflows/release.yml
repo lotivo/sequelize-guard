@@ -7,6 +7,7 @@ on:
 
 jobs:
   release:
+    name: "Release to NPM"
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required to create the GitHub Release
@@ -50,6 +51,17 @@ jobs:
           else
             npm publish --provenance --access public
           fi
+
+      - name: ⬆️ Upload NPM Debug Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          # This name is what the file will be called when you download it
+          name: npm-debug-log
+          # Specify the exact path where npm saves its log on the runner
+          path: /home/runner/.npm/_logs/*debug-*.log
+          # Ignore the step if the file is not found (e.g., if the failure was not an npm error)
+          if-no-files-found: ignore
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
