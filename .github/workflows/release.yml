@@ -7,7 +7,9 @@ on:
 
 jobs:
   release:
+    name: "Release to NPM"
     runs-on: ubuntu-latest
+    environment: npm-publish
     permissions:
       contents: write # Required to create the GitHub Release
       id-token: write # Required for actions/setup-node to authenticate with npm
@@ -28,6 +30,19 @@ jobs:
           cache: "yarn" # Automatic caching for Yarn
           registry-url: "https://registry.npmjs.org"
 
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run lint
+        # This runs lint with eslint
+        run: yarn lint
+
+      - name: Run tests with coverage
+        run: yarn test:coverage
+
       - name: Set Version from Tag
         run: |
           # 1. Strip the 'v' prefix from the tag (v1.0.5 -> 1.0.5)
@@ -40,10 +55,7 @@ jobs:
           # Even if you use Yarn, 'npm version' is the safest tool for this specific task
           npm version $VERSION --no-git-tag-version
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Build
+      - name: Build the library
         run: yarn build
 
       - name: Publish to NPM
@@ -53,6 +65,17 @@ jobs:
           else
             npm publish --provenance --access public
           fi
+
+      - name: Upload NPM Debug Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          # This name is what the file will be called when you download it
+          name: npm-debug-log
+          # Specify the exact path where npm saves its log on the runner
+          path: /home/runner/.npm/_logs/*debug-*.log
+          # Ignore the step if the file is not found (e.g., if the failure was not an npm error)
+          if-no-files-found: ignore
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

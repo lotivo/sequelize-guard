@@ -1,10 +1,10 @@
 {
   "name": "sequelize-guard",
-  "version": "6.0.1",
+  "version": "6.0.1-dev",
   "description": "An Authorization Library for Sequelize",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lotivo/sequelize-guard.git"
+    "url": "https://github.com/lotivo/sequelize-guard.git"
   },
   "keywords": [
     "sequelize-guard",
@@ -43,6 +43,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
@@ -59,8 +63,7 @@
     "format:staged": "prettier --write",
     "lint:staged": "eslint --fix --max-warnings 0",
     "lint:staged:js": "eslint --fix",
-    "pre-commit": "yarn lint-staged && yarn typecheck",
-    "prepublishOnly": "yarn build"
+    "pre-commit": "yarn lint-staged && yarn typecheck"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
