@@ -31,15 +31,26 @@ const vitestConfig = vitestDefineConfig({
 export default defineConfig({
   plugins: [
     dts({
-      include: ['src/**/*'],
-      exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      include: ['./src/**/*'],
+      exclude: ['./src/**/*.test.ts', './src/**/*.spec.ts'],
       outDir: 'dist',
       rollupTypes: true,
       copyDtsFiles: false,
       strictOutput: true,
     }),
   ],
+  root: __dirname,
+  cacheDir: path.resolve(
+    __dirname,
+    '../../node_modules/.vite/packages/sequelize-guard',
+  ),
   build: {
+    outDir: path.resolve(__dirname, '../../dist/packages/sequelize-guard'),
+    emptyOutDir: true,
+    reportCompressedSize: true,
+    sourcemap: true,
+    minify: 'esbuild',
+    target: 'es2020',
     lib: {
       entry: resolve(__dirname, './src/index.ts'),
       name: 'SequelizeGuard',
@@ -64,11 +75,6 @@ export default defineConfig({
         moduleSideEffects: false,
       },
     },
-    sourcemap: true,
-    minify: 'esbuild',
-    target: 'es2020',
-    outDir: './dist',
-    emptyOutDir: true,
   },
   resolve: {
     alias: {

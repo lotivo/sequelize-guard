@@ -6,5 +6,9 @@
     "eslint.config.mjs",
     "src/**/*.test.ts"
   ],
-  "exclude": [".backup"]
+  "references": [
+    {
+      "path": "./packages/sequelize-guard/tsconfig.eslint.json"
+    }
+  ]
 }

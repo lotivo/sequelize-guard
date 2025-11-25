@@ -1,0 +1,23 @@
+{
+  "name": "sequelize-guard",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "{projectRoot}/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "cache": true,
+      "executor": "@nx/vite:build",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/{projectRoot}",
+        "main": "{projectRoot}/src/index.ts",
+        "tsConfig": "{projectRoot}/tsconfig.lib.json",
+        "viteConfig": "{projectRoot}/vite.config.mts",
+        "buildTargetName": "build"
+      }
+    }
+  }
+}

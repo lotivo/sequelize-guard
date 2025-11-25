@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["vite.config.mts", "src/**/*"],
+  "compilerOptions": {}
+}
