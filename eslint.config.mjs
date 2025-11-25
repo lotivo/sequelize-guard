@@ -20,6 +20,8 @@ export default [
       'src/**/*.test.ts',
       'src/**/__tests__/**',
       'index.d.ts',
+      '**/vite.config.*.timestamp*',
+      '**/vitest.config.*.timestamp*',
     ],
   },
 

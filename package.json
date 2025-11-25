@@ -1,5 +1,5 @@
 {
-  "name": "sequelize-guard",
+  "name": "sequelize-guard-monorepo",
   "version": "6.0.1-dev",
   "description": "An Authorization Library for Sequelize",
   "repository": {
@@ -67,6 +67,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@nx/eslint": "22.1.1",
+    "@nx/node": "22.1.1",
     "@types/lodash": "^4.17.20",
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.46.4",
@@ -84,6 +86,7 @@
     "globals": "^16.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.6",
+    "nx": "22.1.1",
     "nyc": "^17.1.0",
     "prettier": "^3.6.2",
     "sqlite3": "^5.1.7",
@@ -99,5 +102,6 @@
   },
   "peerDependencies": {
     "sequelize": ">=6.0.0"
-  }
+  },
+  "nx": {}
 }
