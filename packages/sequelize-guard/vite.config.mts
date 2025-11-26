@@ -18,7 +18,6 @@ const vitestConfig = vitestDefineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'json', 'html', 'lcov'],
-      reportsDirectory: path.resolve(__dirname, '../../coverage/'),
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/**/__tests__/**', 'src/**/types/**'],
     },
