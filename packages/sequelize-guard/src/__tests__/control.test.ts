@@ -27,6 +27,7 @@ describe('Control and Guard Setup', () => {
       const res = context.guard
         .init()
         .allow('admin')
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
         .allow(3 as any);
       // assert
       expect(res._roles).toContain('admin');
@@ -73,7 +74,7 @@ describe('Control and Guard Setup', () => {
         .to(['view', 'edit'])
         .on('blog')
         .commit();
-      debugger;
+
       expect(data.permissions.length).toBe(1);
       expect(data.role.name).toBe('admin');
     });
