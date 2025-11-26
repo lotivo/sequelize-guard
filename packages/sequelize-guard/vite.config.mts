@@ -6,6 +6,11 @@ import { defineConfig as vitestDefineConfig } from 'vitest/config';
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
+const outputDirBase = path.resolve(
+  __dirname,
+  '../../build/packages/sequelize-guard',
+);
+
 const vitestConfig = vitestDefineConfig({
   test: {
     globals: true,
@@ -13,6 +18,10 @@ const vitestConfig = vitestDefineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'json', 'html', 'lcov'],
+      reportsDirectory: path.resolve(
+        __dirname,
+        '../../coverage/sequelize-guard',
+      ),
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/**/__tests__/**', 'src/**/types/**'],
     },
@@ -23,11 +32,6 @@ const vitestConfig = vitestDefineConfig({
     hookTimeout: 15000,
   },
 });
-
-const outputDirBase = path.resolve(
-  __dirname,
-  '../../build/packages/sequelize-guard',
-);
 
 const outputDirDts = path.resolve(outputDirBase, 'types');
 

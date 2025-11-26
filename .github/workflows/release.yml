@@ -43,7 +43,17 @@ jobs:
       - name: Run tests with coverage
         run: yarn test:coverage
 
+      - name: Upload to Coveralls
+        run: yarn coveralls
+        env:
+          # REQUIRED: The script needs this to know where to upload
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+
+      - name: Build the library
+        run: yarn build
+
       - name: Set Version from Tag
+        working-directory: ./build/packages/sequelize-guard
         run: |
           # 1. Strip the 'v' prefix from the tag (v1.0.5 -> 1.0.5)
           VERSION=${{ github.ref_name }}
@@ -55,10 +65,8 @@ jobs:
           # Even if you use Yarn, 'npm version' is the safest tool for this specific task
           npm version $VERSION --no-git-tag-version
 
-      - name: Build the library
-        run: yarn build
-
       - name: Publish to NPM
+        working-directory: ./build/packages/sequelize-guard
         run: |
           if [[ "${{ github.ref_name }}" == *"-"* ]]; then
             npm publish --provenance --access public --tag next
