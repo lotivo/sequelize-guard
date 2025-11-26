@@ -4,9 +4,7 @@
   "plugins": [
     {
       "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "eslint:lint"
-      }
+      "options": { "targetName": "eslint:lint" }
     },
     {
       "plugin": "@nx/vite/plugin",
@@ -29,5 +27,6 @@
       "dependsOn": ["^build"],
       "inputs": ["default", "^default"]
     }
-  }
+  },
+  "nxCloudId": "6926732bc3d8b52522afb790"
 }
