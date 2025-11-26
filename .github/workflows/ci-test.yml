@@ -40,24 +40,6 @@ jobs:
         # This runs vitest with coverage enabled
         run: yarn test:coverage
 
-      - name: Debug coverage file
-        run: |
-          echo "Repo pwd: $(pwd)"
-          echo "coverage file exists:" && [ -f coverage/lcov.info ] && ls -l coverage/lcov.info || echo "no coverage/lcov.info"
-          echo "size:" && wc -c coverage/lcov.info || true
-          echo "preview:" && head -n 60 coverage/lcov.info || true
-
-      - name: Sanitize LCOV
-        run: |
-          if [ -f coverage/lcov.info ]; then
-            # Remove stray lines that are exactly 'SF' (no filename) which break some parsers
-            grep -v '^SF$' coverage/lcov.info > coverage/lcov.info.tmp || true
-            mv coverage/lcov.info.tmp coverage/lcov.info || true
-            echo "Sanitized LCOV size:" && wc -c coverage/lcov.info || true
-          else
-            echo "No coverage/lcov.info found to sanitize"
-          fi
-
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@v2
         with:
