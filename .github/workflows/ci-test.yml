@@ -68,8 +68,7 @@ jobs:
         uses: coverallsapp/github-action@v2
 
         with:
-          format: lcov
-          file: "coverage/lcov.info"
+          base-path: coverage
 
       # - name: Upload to Coveralls
       #   run: yarn coveralls
