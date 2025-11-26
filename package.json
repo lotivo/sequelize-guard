@@ -1,79 +1,55 @@
 {
-  "name": "sequelize-guard",
-  "version": "6.0.1-dev",
-  "description": "An Authorization Library for Sequelize",
+  "name": "sequelize-guard-monorepo",
+  "description": "Monorepo for Sequelize guard: An Authorization Library for Sequelize",
+  "version": "0.0.0",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/lotivo/sequelize-guard.git"
   },
-  "keywords": [
-    "sequelize-guard",
-    "guard",
-    "sequelize",
-    "authorize",
-    "authorization",
-    "guard-sequelize",
-    "role",
-    "permission",
-    "acl",
-    "sequelize-acl"
-  ],
   "author": {
     "name": "Pankaj Vaghela",
     "email": "vpankaj1998official@gmail.com"
   },
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/lotivo/sequelize-guard/issues"
-  },
-  "homepage": "https://github.com/lotivo/sequelize-guard#readme",
   "engines": {
     "node": ">=22.17.1"
   },
-  "main": "dist/index.js",
-  "module": "dist/index.es.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "import": "./dist/index.es.js",
-      "require": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist"
+  "workspaces": [
+    "packages/*"
   ],
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
-    "coveralls": "cat ./coverage/lcov.info | coveralls",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "check:prettier": "prettier -c src/",
-    "format:prettier": "prettier -w src/",
+    "build": "nx run sequelize-guard:build",
+    "dev": "nx run sequelize-guard:dev",
+    "typecheck": "nx run sequelize-guard:typecheck",
+    "test": "nx run sequelize-guard:test",
+    "test:watch": "nx run sequelize-guard:test:watch",
+    "test:ui": "nx run sequelize-guard:test:ui",
+    "test:coverage": "nx run sequelize-guard:test:coverage",
+    "lint": "nx run sequelize-guard:lint",
+    "lint:fix": "nx run sequelize-guard:lint:fix",
+    "check:prettier": "nx run sequelize-guard:check:prettier",
+    "format:prettier": "nx run sequelize-guard:format:prettier",
     "format:staged": "prettier --write",
     "lint:staged": "eslint --fix --max-warnings 0",
     "lint:staged:js": "eslint --fix",
-    "pre-commit": "yarn lint-staged && yarn typecheck"
+    "pre-commit": "yarn lint-staged && tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@nx/eslint": "22.1.1",
+    "@nx/js": "22.1.1",
+    "@nx/node": "22.1.1",
+    "@nx/vite": "22.1.1",
+    "@nx/web": "22.1.1",
+    "@swc-node/register": "~1.9.1",
+    "@swc/core": "~1.5.7",
+    "@swc/helpers": "~0.5.11",
     "@types/lodash": "^4.17.20",
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.46.4",
     "@typescript-eslint/parser": "^8.46.4",
     "@vitest/coverage-v8": "4.0.9",
     "@vitest/ui": "^4.0.9",
-    "coveralls": "^3.1.1",
     "esdoc": "^1.1.0",
     "esdoc-standard-plugin": "^1.0.0",
     "eslint": "^9.39.1",
@@ -83,21 +59,19 @@
     "eslint-plugin-jsdoc": "^61.2.1",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
+    "jiti": "2.4.2",
     "lint-staged": "^16.2.6",
+    "nx": "22.1.1",
     "nyc": "^17.1.0",
     "prettier": "^3.6.2",
+    "rollup": "^4.53.3",
     "sqlite3": "^5.1.7",
+    "tslib": "^2.3.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.2",
     "vite-plugin-dts": "^4.5.4",
+    "vite-plugin-static-copy": "^3.1.4",
     "vitest": "^4.0.9"
   },
-  "dependencies": {
-    "lodash": "^4.17.21",
-    "node-cache": "^5.1.2",
-    "sequelize": "^6.37.7"
-  },
-  "peerDependencies": {
-    "sequelize": ">=6.0.0"
-  }
+  "nx": {}
 }

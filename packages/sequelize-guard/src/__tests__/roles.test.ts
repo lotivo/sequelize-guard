@@ -172,6 +172,7 @@ describe('Roles', () => {
 
     it('should throw error for invalid argument', async () => {
       // setup
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const roles = [3 as any, 'analyst', { name: 'moderator' }];
       // execute & assert
       await expect(context.guard.deleteRoles(roles)).rejects.toThrow();

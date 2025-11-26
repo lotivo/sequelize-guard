@@ -1,0 +1,80 @@
+{
+  "name": "sequelize-guard",
+  "version": "6.0.1",
+  "description": "An Authorization Library for Sequelize",
+  "license": "MIT",
+  "keywords": [
+    "sequelize-guard",
+    "guard",
+    "sequelize",
+    "authorize",
+    "authorization",
+    "guard-sequelize",
+    "role",
+    "permission",
+    "acl",
+    "sequelize-acl"
+  ],
+  "author": {
+    "name": "Pankaj Vaghela",
+    "email": "vpankaj1998official@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lotivo/sequelize-guard.git",
+    "directory": "packages/sequelize-guard"
+  },
+  "bugs": {
+    "url": "https://github.com/lotivo/sequelize-guard/issues"
+  },
+  "homepage": "https://github.com/lotivo/sequelize-guard#readme",
+  "engines": {
+    "node": ">=22.17.1"
+  },
+  "type": "module",
+  "main": "dist/cjs/index.cjs.js",
+  "module": "dist/esm/index.esm.js",
+  "types": "types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./dist/esm/index.esm.js",
+      "require": "./dist/cjs/index.cjs.js"
+    }
+  },
+  "files": [
+    "dist",
+    "types",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check:prettier": "prettier -c src/",
+    "format:prettier": "prettier -w src/",
+    "format:staged": "prettier --write",
+    "lint:staged": "eslint --fix --max-warnings 0",
+    "lint:staged:js": "eslint --fix",
+    "pre-commit": "yarn lint-staged && yarn typecheck"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "lodash": "^4.17.21",
+    "node-cache": "^5.1.2",
+    "sequelize": "^6.37.7"
+  },
+  "peerDependencies": {
+    "sequelize": ">=6.0.0"
+  }
+}

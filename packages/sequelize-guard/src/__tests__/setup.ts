@@ -1,8 +1,8 @@
 import { QueryInterface, Sequelize } from 'sequelize';
 import { SequelizeGuard } from '../index';
 import { SequelizeWithGuard } from '../types/helpers';
-import { seedTestData } from './utils/test-utils';
 import { generateDbPath, cleanupDbFile } from './utils/db-utils';
+import { seedTestData } from './utils/test-utils';
 
 export interface TestContext {
   sequelize: SequelizeWithGuard;

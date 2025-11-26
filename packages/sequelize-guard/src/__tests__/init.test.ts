@@ -1,15 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Sequelize } from 'sequelize';
-import { schemas } from '../migrations/guard-schema';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import migration, { migrationOrder } from '../migrations/guard-migrations';
+import { schemas } from '../migrations/guard-schema';
+import { getTableName, GuardUserModel } from '../sequelize-models';
+import { SequelizeGuard } from '../SequelizeGuard';
 import {
   createTestDatabase,
   closeTestDatabase,
   createQueryInterfaceStub,
   TestContext,
 } from './setup';
-import { SequelizeGuard } from '../SequelizeGuard';
-import { getTableName, GuardUserModel, tablesMap } from '../sequelize-models';
 import { generateDbPath, cleanupDbFile } from './utils/db-utils';
 
 describe('SequelizeGuard Initialization', () => {
@@ -18,7 +18,7 @@ describe('SequelizeGuard Initialization', () => {
   let dbPath1: string;
   let dbPath2: string;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     dbPath1 = generateDbPath('test_init_1');
     dbPath2 = generateDbPath('test_init_2');
 

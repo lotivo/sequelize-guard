@@ -1,34 +1,35 @@
-# SequelizeGuard
+# Sequelize Guard
+
+**A powerful, fast, and flexible authorization library for Sequelize.js**
+
+<div align="left">
 
 [![CI](https://github.com/lotivo/sequelize-guard/actions/workflows/ci-test.yml/badge.svg)](https://github.com/lotivo/sequelize-guard/actions/workflows/ci-test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/lotivo/sequelize-guard/badge.svg)](https://coveralls.io/github/lotivo/sequelize-guard)
+[![npm version](https://badge.fury.io/js/sequelize-guard.svg)](https://www.npmjs.com/package/sequelize-guard)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An Authorization library for Sequelize.js.
+[Documentation](https://lotivo.github.io/sequelize-guard/) • [NPM Package](https://www.npmjs.com/package/sequelize-guard) • [Report Bug](https://github.com/lotivo/sequelize-guard/issues) • [Request Feature](https://github.com/lotivo/sequelize-guard/issues)
 
-Fast, Easy, Roles & Permissions based Authorization.
-
-- Fluent, easy to use semantic API.
-- Assign multiple Roles, Permissions to User.
-- Super FAST cache based permission resolution system.
-- Listen for Events related to authorization. Check [Events](#events)
-- No dependency on Node-acl.
-
-to know more see [documentation](https://sequelizeguard.web.app).
-
-let me know how you feela about this library:
-
-- twitter : [@impankajv1](https://twitter.com/impankajv1)
+</div>
 
 ---
 
-- [SequelizeGuard](#sequelizeguard)
-  - [Demo](#demo)
+## Table of Contents
+
+- [Sequelize Guard](#sequelize-guard)
+  - [Table of Contents](#table-of-contents)
+  - [About](#about)
+  - [Features](#features)
   - [Installation](#installation)
+  - [Demo](#demo)
+  - [Installation](#installation-1)
   - [Usage](#usage)
     - [Getting Started](#getting-started)
-      - [Migrations](#migrations)
-      - [1. Create Sequelize Object](#1-create-sequelize-object)
-      - [2. Initialize Sequelize-guard](#2-initialize-sequelize-guard)
+    - [Migrations](#migrations)
+    - [Initialization](#initialization)
+      - [Step 1: Create Sequelize Object](#step-1-create-sequelize-object)
+      - [Step 2: Initialize SequelizeGuard](#step-2-initialize-sequelizeguard)
     - [Expert Mode](#expert-mode)
       - [Options](#options)
   - [Assigning Roles and Permissions](#assigning-roles-and-permissions)
@@ -41,11 +42,58 @@ let me know how you feela about this library:
         - [user.can()](#usercan)
       - [Role based authorization](#role-based-authorization)
     - [Events](#events)
-  - [Road map](#road-map)
-  - [Influences](#influences)
-  - [Alternative](#alternative)
-  - [Contributions](#contributions)
+  - [API Reference](#api-reference)
+  - [Examples](#examples)
+  - [Contributing](#contributing)
+    - [How to Contribute](#how-to-contribute)
+    - [Development Guidelines](#development-guidelines)
+    - [Reporting Issues](#reporting-issues)
+    - [Code of Conduct](#code-of-conduct)
+  - [Release Process](#release-process)
+    - [For Maintainers](#for-maintainers)
+      - [Creating a Release](#creating-a-release)
+    - [Versioning Strategy](#versioning-strategy)
+    - [NPM Distribution Tags](#npm-distribution-tags)
+    - [Troubleshooting Releases](#troubleshooting-releases)
+  - [Roadmap](#roadmap)
+    - [Current Focus](#current-focus)
+    - [Future Plans](#future-plans)
   - [License](#license)
+  - [Acknowledgments](#acknowledgments)
+    - [Influences](#influences)
+    - [Alternatives](#alternatives)
+  - [Support](#support)
+
+## About
+
+SequelizeGuard is a comprehensive authorization library for Sequelize.js that provides a robust, performant, and easy-to-use role-based access control (RBAC) system. It enables you to manage complex permission structures with a clean, fluent API.
+
+## Features
+
+- 🚀 **Fast & Efficient** - Cache-based permission resolution for optimal performance
+- 🎯 **Intuitive API** - Fluent, semantic API that reads like natural language
+- 🔐 **Flexible RBAC** - Assign multiple roles and permissions to users
+- 📊 **Event-Driven** - Listen for authorization events for logging and auditing
+- 🔌 **Zero Dependencies** - No dependency on Node-ACL or other external libraries
+- 💾 **Smart Caching** - Configurable user permission caching
+- 🛡️ **Safe Operations** - Built-in safeguards for role and permission deletions
+- 📦 **TypeScript Support** - Full TypeScript definitions included
+
+## Installation
+
+Install with yarn:
+
+```bash
+yarn add sequelize-guard
+```
+
+Or with npm:
+
+```bash
+npm install sequelize-guard
+```
+
+**Prerequisites:** Make sure Sequelize is set up in your project. If not, follow the [Sequelize Getting Started Guide](https://sequelize.org/master/manual/getting-started.html).
 
 ## Demo
 
@@ -116,7 +164,7 @@ If not, follow Sequelize [Getting Started](https://sequelize.org/master/manual/g
 
 ### Getting Started
 
-#### Migrations
+### Migrations
 
 sequelize-guard will automatically register and sync needed schemas.
 
@@ -135,14 +183,14 @@ module.exports = {
 };
 ```
 
-#### 1. Create Sequelize Object
+### Initialization
 
-Create sequelize object with your database configuration.
+#### Step 1: Create Sequelize Object
 
-For example we have used default Sequelize setup file for models.
+Create a Sequelize object with your database configuration.
 
 ```js
-//models/index.js
+// models/index.js
 
 let sequelize;
 if (config.use_env_variable) {
@@ -152,34 +200,31 @@ if (config.use_env_variable) {
 }
 ```
 
-#### 2. Initialize Sequelize-guard
+#### Step 2: Initialize SequelizeGuard
 
-Initialize SequelizeGuard object **after** you have already initialized your models.
+Initialize SequelizeGuard **after** initializing your models.
 
 ```js
-//Import library
-var SequelizeGuard = require('sequelize-guard');
+// Import library
+const SequelizeGuard = require('sequelize-guard');
 
-...
-//initialize Sequelize
-...
+// ... initialize Sequelize ...
 
-//initialize SequelizeGuard & add to db for global use
-var guard = new SequelizeGuard(sequelize, options);
+// Initialize SequelizeGuard and add to db for global use
+const guard = new SequelizeGuard(sequelize, options);
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
-db.guard = guard;  // <---------- Add this line
+db.guard = guard; // <-- Add this line
 
 module.exports = db;
-
 ```
 
-Please Note:
+**Important Notes:**
 
-- Make sure you pass same same options to migration and SequelizeGuard constructor,
-- If you have your own User Model implemented, make sure you pass it during initialization,
-  - not required for migrations.
+- Pass the same options to both migration and SequelizeGuard constructor
+- If you have a custom User Model, pass it during initialization (not required for migrations)
+- SequelizeGuard must be initialized after your models are defined
 
 ### Expert Mode
 
@@ -354,30 +399,268 @@ You can listen to following events. They can be helpful for logging or updating 
 - **onPermsAddedToRole** : with data after permissions added
 - **onPermsRemovedFromRole** : with data after permissions are removed
 
-## Road map
+## API Reference
 
-- Make seeders better, see branch [dev-seeder](https://github.com/lotivo/sequelize-guard/blob/dev-seeder/README.md) for progress.
-- Implement "allow except" kind of permissions.
-- Role priority, which will allow to do things like
+For detailed API documentation, visit [SequelizeGuard API Reference](https://sequelizeguard.web.app/api).
+
+## Examples
+
+For more examples and use cases, check out the [Examples Documentation](docs/EXAMPLES.md).
+
+## Contributing
+
+We love contributions! SequelizeGuard is open source and we welcome contributions of all kinds:
+
+- 🐛 Bug fixes
+- ✨ New features
+- 📝 Documentation improvements
+- ✅ Test coverage improvements
+- 💡 Ideas and suggestions
+
+### How to Contribute
+
+1. **Fork the Repository**
+
+   Fork the project to your own GitHub account.
+
+2. **Clone Your Fork**
+
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/sequelize-guard.git
+   cd sequelize-guard
+   ```
+
+3. **Create a Branch**
+
+   Create a new branch for your changes:
+
+   ```bash
+   git checkout -b feature/your-feature-name
+   # or
+   git checkout -b fix/your-bug-fix
+   ```
+
+4. **Install Dependencies**
+
+   ```bash
+   yarn install
+   ```
+
+5. **Make Your Changes**
+   - Write clean, maintainable code
+   - Follow the existing code style
+   - Add tests for new features
+   - Update documentation as needed
+
+6. **Run Tests**
+
+   Ensure all tests pass:
+
+   ```bash
+   yarn test
+   ```
+
+   Run tests with coverage:
+
+   ```bash
+   yarn test:coverage
+   ```
+
+7. **Run Linting**
+
+   ```bash
+   yarn lint
+   ```
+
+8. **Commit Your Changes**
+
+   Write clear, descriptive commit messages:
+
+   ```bash
+   git add .
+   git commit -m "feat: add new permission caching strategy"
+   ```
+
+   We follow [Conventional Commits](https://www.conventionalcommits.org/) format:
+   - `feat:` for new features
+   - `fix:` for bug fixes
+   - `docs:` for documentation changes
+   - `test:` for test additions or changes
+   - `refactor:` for code refactoring
+   - `chore:` for maintenance tasks
+
+9. **Push to Your Fork**
+
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+10. **Open a Pull Request**
+    - Go to the original repository on GitHub
+    - Click "New Pull Request"
+    - Select your fork and branch
+    - Provide a clear description of your changes
+    - Reference any related issues
+
+### Development Guidelines
+
+- **Code Style:** Follow the existing code style and conventions
+- **Tests:** Add tests for all new features and bug fixes
+- **Documentation:** Update README and docs for new features
+- **Commits:** Use clear, descriptive commit messages
+- **Pull Requests:** Keep PRs focused on a single feature or fix
+
+### Reporting Issues
+
+Found a bug? Have a feature request?
+
+1. Check if the issue already exists in [GitHub Issues](https://github.com/lotivo/sequelize-guard/issues)
+2. If not, create a new issue with:
+   - Clear, descriptive title
+   - Detailed description of the problem or feature
+   - Steps to reproduce (for bugs)
+   - Expected vs actual behavior
+   - Your environment (Node version, Sequelize version, etc.)
+
+### Code of Conduct
+
+This project adheres to a code of conduct. By participating, you are expected to:
+
+- Be respectful and inclusive
+- Welcome newcomers and help them learn
+- Focus on what is best for the community
+- Show empathy towards other community members
+
+## Release Process
+
+SequelizeGuard uses an automated release process through GitHub Actions.
+
+### For Maintainers
+
+#### Creating a Release
+
+1. **Ensure All Changes Are Merged**
+
+   Make sure all intended changes are merged into the `dev-v6` branch (or your target branch).
+
+2. **Update Version and Changelog**
+   - Update any necessary documentation
+   - Ensure all tests pass: `yarn test`
+   - Ensure linting passes: `yarn lint`
+
+3. **Create and Push a Tag**
+
+   Create a version tag following semantic versioning:
+
+   ```bash
+   # For a regular release
+   git tag v1.2.3
+   git push origin v1.2.3
+
+   # For a pre-release (beta, alpha, rc)
+   git tag v1.2.3-beta.1
+   git push origin v1.2.3-beta.1
+   ```
+
+4. **Automated Release Pipeline**
+
+   When you push a tag starting with `v`, GitHub Actions automatically:
+   - ✅ Runs linting checks
+   - ✅ Runs the full test suite with coverage
+   - 📝 Updates `package.json` version to match the tag
+   - 🏗️ Builds the library
+   - 📦 Publishes to NPM with provenance (`npm publish --access public`)
+     - NPM automatically tags pre-releases based on version string (e.g., `v1.0.0-beta.1`)
+   - 🎉 Creates a GitHub Release (draft) with auto-generated release notes
+
+5. **Finalize the GitHub Release**
+   - Go to [GitHub Releases](https://github.com/lotivo/sequelize-guard/releases)
+   - Find the draft release created by the action
+   - Edit and enhance the release notes if needed
+   - Publish the release
+
+### Versioning Strategy
+
+We follow [Semantic Versioning](https://semver.org/):
+
+- **MAJOR** (`v2.0.0`): Breaking changes
+- **MINOR** (`v1.1.0`): New features, backward compatible
+- **PATCH** (`v1.0.1`): Bug fixes, backward compatible
+- **PRE-RELEASE** (`v1.0.0-beta.1`): Beta, alpha, or release candidates
+
+### NPM Distribution Tags
+
+NPM automatically assigns distribution tags based on the version string in your tag:
+
+- `latest`: Stable releases without pre-release identifiers (e.g., `v1.2.3`)
+- `beta`, `alpha`, `rc`: Pre-release versions are automatically tagged (e.g., `v1.0.0-beta.1` gets the `beta` tag)
+
+### Troubleshooting Releases
+
+If a release fails:
+
+1. Check the [GitHub Actions](https://github.com/lotivo/sequelize-guard/actions) log
+2. Common issues:
+   - Test failures: Fix tests before releasing
+   - Lint errors: Run `yarn lint` and fix issues
+   - NPM authentication: Verify NPM token in repository secrets
+3. Delete the tag if needed and recreate after fixing:
+   ```bash
+   git tag -d v1.2.3
+   git push origin :refs/tags/v1.2.3
+   ```
+
+## Roadmap
+
+### Current Focus
+
+- 🌱 Improve seeders (see [dev-seeder branch](https://github.com/lotivo/sequelize-guard/blob/dev-seeder/README.md))
+- 🚫 Implement "allow except" permissions
+- 📊 Role priority system:
   - `user.atleast('admin')`
   - `user.atmost('admin')`
 
-## Influences
+### Future Plans
 
-- Spaties's Laravel-permission, Authorization Library for Laravel.
-- Node-ACL for Node.js
+- Enhanced caching strategies
+- GraphQL support
+- More granular permission scoping
+- Performance optimizations
+- Extended event system
 
-## Alternative
-
-- Node-ACL is versatile library which has support for most ORMs.
-  I actually tried to use that before writing this, but somehow wasn't feeling the power or freedom I wanted. But it is quite popular and mostly used.
-
-## Contributions
-
-For docs or tests or even code, feel free to send Pull Requests.
-
-Feel free to create issues.
+See [open issues](https://github.com/lotivo/sequelize-guard/issues) for a full list of proposed features and known issues.
 
 ## License
 
-The MIT License (MIT). Please see [License File](https://github.com/lotivo/sequelize-guard/blob/master/LICENSE) for more information.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+### Influences
+
+- [**Spatie's Laravel-permission**](https://github.com/spatie/laravel-permission) - Authorization library for Laravel
+- [**Node-ACL**](https://github.com/OptimalBits/node_acl) - Access Control List for Node.js
+
+### Alternatives
+
+- [**Node-ACL**](https://github.com/OptimalBits/node_acl) - A versatile library with support for most ORMs
+- [**AccessControl**](https://github.com/onury/accesscontrol) - Role and attribute-based access control
+- [**CASL**](https://casl.js.org/) - Isomorphic authorization library
+
+## Support
+
+Need help? Here's how to get support:
+
+- 📖 **Documentation:** [https://sequelizeguard.web.app](https://sequelizeguard.web.app)
+- 🐛 **Bug Reports:** [GitHub Issues](https://github.com/lotivo/sequelize-guard/issues)
+- 💬 **Questions:** [GitHub Discussions](https://github.com/lotivo/sequelize-guard/discussions)
+
+---
+
+<div align="center">
+
+Made with ❤️ by [Pankaj Vaghela](https://github.com/pankajvaghela)
+
+If you find this project helpful, please consider giving it a ⭐️!
+
+</div>

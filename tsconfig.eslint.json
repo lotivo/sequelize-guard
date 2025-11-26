@@ -1,10 +1,9 @@
 {
   "extends": "./tsconfig.json",
-  "include": [
-    "src/**/*",
-    "vite.config.mts",
-    "eslint.config.mjs",
-    "src/**/*.test.ts"
-  ],
-  "exclude": [".backup"]
+  "include": ["vite.config.mts", "eslint.config.mjs"],
+  "references": [
+    {
+      "path": "./packages/sequelize-guard/tsconfig.eslint.json"
+    }
+  ]
 }

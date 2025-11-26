@@ -1,5 +1,5 @@
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
 
 // Test database directory - in project root .sandbox/db
 export const TEST_DB_DIR = path.resolve(__dirname, '../../../.sandbox/db');
@@ -39,7 +39,7 @@ export function cleanupDbFile(dbPath: string): void {
   if (dbPath && fs.existsSync(dbPath)) {
     try {
       fs.unlinkSync(dbPath);
-    } catch (error) {
+    } catch (_error) {
       // Ignore cleanup errors in tests
       console.warn(`Failed to delete test database: ${dbPath}`);
     }

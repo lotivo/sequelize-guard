@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Sequelize } from 'sequelize';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { SequelizeGuard } from '../index';
 import { generateDbPath, cleanupDbFile } from './utils/db-utils';
 
