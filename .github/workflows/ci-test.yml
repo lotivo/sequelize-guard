@@ -58,11 +58,18 @@ jobs:
             echo "No coverage/lcov.info found to sanitize"
           fi
 
+      # - name: Upload coverage reports to Codecov
+      #   uses: codecov/codecov-action@v5
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     files: "./coverage"
+
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@v2
+
         with:
           format: lcov
-          file: ./coverage/lcov.info
+          file: "coverage/lcov.info"
 
       # - name: Upload to Coveralls
       #   run: yarn coveralls
