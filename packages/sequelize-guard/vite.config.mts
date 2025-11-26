@@ -1,9 +1,10 @@
-import path, { resolve } from 'path';
+import path from 'path';
 import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
+import dtsPlugin from 'vite-plugin-dts';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { defineConfig as vitestDefineConfig } from 'vitest/config';
 
-const __dirname = process.cwd();
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 const vitestConfig = vitestDefineConfig({
   test: {
@@ -13,12 +14,7 @@ const vitestConfig = vitestDefineConfig({
       provider: 'v8',
       reporter: ['text', 'text-summary', 'json', 'html', 'lcov'],
       include: ['src/**/*.ts'],
-      exclude: [
-        'src/**/*.test.ts',
-        'src/**/*.spec.ts',
-        'src/**/__tests__/**',
-        'src/**/types/**',
-      ],
+      exclude: ['src/**/*.test.ts', 'src/**/__tests__/**', 'src/**/types/**'],
     },
     pool: 'forks',
     isolate: true,
@@ -28,15 +24,32 @@ const vitestConfig = vitestDefineConfig({
   },
 });
 
+const outputDirBase = path.resolve(
+  __dirname,
+  '../../build/packages/sequelize-guard',
+);
+
+const outputDirDts = path.resolve(outputDirBase, 'types');
+
 export default defineConfig({
   plugins: [
-    dts({
-      include: ['./src/**/*'],
-      exclude: ['./src/**/*.test.ts', './src/**/*.spec.ts'],
-      outDir: 'dist',
-      rollupTypes: true,
-      copyDtsFiles: false,
-      strictOutput: true,
+    dtsPlugin({
+      root: __dirname,
+      outDir: outputDirDts,
+      tsconfigPath: path.resolve(__dirname, 'tsconfig.lib.json'),
+      pathsToAliases: true,
+    }),
+    viteStaticCopy({
+      targets: [
+        {
+          src: path.resolve(__dirname, '../../README.md'),
+          dest: './',
+        },
+        {
+          src: path.resolve(__dirname, '../../LICENSE'),
+          dest: './',
+        },
+      ],
     }),
   ],
   root: __dirname,
@@ -45,18 +58,20 @@ export default defineConfig({
     '../../node_modules/.vite/packages/sequelize-guard',
   ),
   build: {
-    outDir: path.resolve(__dirname, '../../dist/packages/sequelize-guard'),
+    // outDir: outputDirBase,
     emptyOutDir: true,
     reportCompressedSize: true,
     sourcemap: true,
     minify: 'esbuild',
     target: 'es2020',
     lib: {
-      entry: resolve(__dirname, './src/index.ts'),
+      entry: './src/index.ts',
       name: 'SequelizeGuard',
-      formats: ['es', 'cjs'],
-      fileName: (format) => `index.${format === 'es' ? 'es.js' : 'js'}`,
+      formats: ['es'], // 'cjs for CommonJS, 'es' for ES Modules
+      fileName: (format) =>
+        format === 'es' ? `dist/esm/index.esm.js` : `dist/cjs/index.cjs.js`,
     },
+
     rollupOptions: {
       external: ['sequelize', 'lodash', 'node-cache', 'events'],
       output: {

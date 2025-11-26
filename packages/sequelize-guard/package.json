@@ -1,7 +1,6 @@
 {
   "name": "sequelize-guard",
-  "version": "6.0.1-dev",
-  "type": "commonjs",
+  "version": "6.0.1",
   "description": "An Authorization Library for Sequelize",
   "license": "MIT",
   "keywords": [
@@ -32,18 +31,22 @@
   "engines": {
     "node": ">=22.17.1"
   },
-  "main": "dist/index.js",
-  "module": "dist/index.es.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "dist/cjs/index.cjs.js",
+  "module": "dist/esm/index.esm.js",
+  "types": "types/index.d.ts",
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": "./dist/index.es.js",
-      "require": "./dist/index.js"
+      "types": "./types/index.d.ts",
+      "import": "./dist/esm/index.esm.js",
+      "require": "./dist/cjs/index.cjs.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "types",
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public",
@@ -65,41 +68,6 @@
     "lint:staged": "eslint --fix --max-warnings 0",
     "lint:staged:js": "eslint --fix",
     "pre-commit": "yarn lint-staged && yarn typecheck"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@nx/eslint": "22.1.1",
-    "@nx/js": "22.1.1",
-    "@nx/node": "22.1.1",
-    "@swc-node/register": "~1.9.1",
-    "@swc/core": "~1.5.7",
-    "@swc/helpers": "~0.5.11",
-    "@types/lodash": "^4.17.20",
-    "@types/node": "^24.10.1",
-    "@typescript-eslint/eslint-plugin": "^8.46.4",
-    "@typescript-eslint/parser": "^8.46.4",
-    "@vitest/coverage-v8": "4.0.9",
-    "@vitest/ui": "^4.0.9",
-    "coveralls": "^3.1.1",
-    "esdoc": "^1.1.0",
-    "esdoc-standard-plugin": "^1.0.0",
-    "eslint": "^9.39.1",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-import-resolver-typescript": "^4.4.4",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-jsdoc": "^61.2.1",
-    "globals": "^16.5.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.6",
-    "nx": "22.1.1",
-    "nyc": "^17.1.0",
-    "prettier": "^3.6.2",
-    "sqlite3": "^5.1.7",
-    "tslib": "^2.3.0",
-    "typescript": "^5.9.3",
-    "vite": "^7.2.2",
-    "vite-plugin-dts": "^4.5.4",
-    "vitest": "^4.0.9"
   },
   "dependencies": {
     "tslib": "^2.3.0",
