@@ -1,6 +1,13 @@
 name: "CI: test & build"
 
-on: [push, pull_request]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - master
+      - dev
+      - dev-v6
 
 jobs:
   build-and-test:
@@ -33,11 +40,17 @@ jobs:
         # This runs vitest with coverage enabled
         run: yarn test:coverage
 
-      - name: Upload to Coveralls
-        run: yarn coveralls
-        env:
-          # REQUIRED: The script needs this to know where to upload
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          format: lcov
+          file: ./coverage/lcov.info
+
+      # - name: Upload to Coveralls
+      #   run: yarn coveralls
+      #   env:
+      #     # REQUIRED: The script needs this to know where to upload
+      #     COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
       - name: Build the library
         run: yarn build
