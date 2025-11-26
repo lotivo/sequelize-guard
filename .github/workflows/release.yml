@@ -1,4 +1,4 @@
-name: "CD: Release version on tag push"
+name: "CD: NPM publish with tag push"
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   release:
-    name: "Release to NPM"
+    name: "Publish on NPM"
     runs-on: ubuntu-latest
     environment: npm-publish
     permissions:
