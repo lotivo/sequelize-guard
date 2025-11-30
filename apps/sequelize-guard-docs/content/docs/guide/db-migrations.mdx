@@ -1,0 +1,381 @@
+---
+title: Database Migrations
+description: Set up and manage your database schema for Sequelize Guard.
+icon: Database
+---
+
+# Migrations
+
+Set up and manage your database schema for Sequelize Guard.
+
+## Overview
+
+Sequelize Guard provides built-in migration support to create all necessary database tables for roles, permissions, users, and their associations.
+
+## Running Migrations
+
+### Initialize Database
+
+The simplest way to set up your database:
+
+```typescript
+import { SequelizeGuard } from 'sequelize-guard';
+import { Sequelize } from 'sequelize';
+
+const sequelize = new Sequelize({
+  dialect: 'postgres',
+  host: 'localhost',
+  database: 'myapp',
+  username: 'user',
+  password: 'pass',
+});
+
+const guard = new SequelizeGuard(sequelize);
+
+// Initialize Guard (defines models)
+await guard.init();
+
+// Run migrations (creates tables)
+await guard.migrations.run();
+```
+
+### Migration Options
+
+```typescript
+await guard.migrations.run({
+  force: false, // Drop tables if they exist
+  alter: false, // Alter existing tables to match models
+});
+```
+
+## Database Schema
+
+### Tables Created
+
+Sequelize Guard creates the following tables:
+
+1. **guard_users** - User accounts
+2. **guard_roles** - Role definitions
+3. **guard_permissions** - Permission definitions
+4. **guard_resources** - Resource definitions
+5. **guard_role_users** - User-role associations (many-to-many)
+6. **guard_role_permissions** - Role-permission associations (many-to-many)
+
+### Table Structure
+
+#### guard_users
+
+```sql
+CREATE TABLE guard_users (
+  id VARCHAR(255) PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  metadata JSONB,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+```
+
+#### guard_roles
+
+```sql
+CREATE TABLE guard_roles (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) UNIQUE NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+```
+
+#### guard_permissions
+
+```sql
+CREATE TABLE guard_permissions (
+  id SERIAL PRIMARY KEY,
+  action VARCHAR(255) NOT NULL,
+  resource VARCHAR(255) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  UNIQUE(action, resource)
+);
+```
+
+#### guard_role_users
+
+```sql
+CREATE TABLE guard_role_users (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) REFERENCES guard_users(id),
+  role_id INTEGER REFERENCES guard_roles(id),
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  UNIQUE(user_id, role_id)
+);
+```
+
+#### guard_role_permissions
+
+```sql
+CREATE TABLE guard_role_permissions (
+  id SERIAL PRIMARY KEY,
+  role_id INTEGER REFERENCES guard_roles(id),
+  permission_id INTEGER REFERENCES guard_permissions(id),
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  UNIQUE(role_id, permission_id)
+);
+```
+
+## Custom Table Prefix
+
+Add a custom prefix to all Guard tables:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  prefix: 'app_', // Tables will be: app_guard_users, app_guard_roles, etc.
+});
+```
+
+## Seeding Data
+
+### Create Initial Roles and Permissions
+
+```typescript filename="seeds/guard-seed.ts"
+import { SequelizeGuard } from 'sequelize-guard';
+
+export async function seedGuardData(guard: SequelizeGuard) {
+  // Create roles
+  const adminRole = await guard.roles.createRole(
+    'admin',
+    'Administrator with full access',
+  );
+
+  const editorRole = await guard.roles.createRole('editor', 'Content editor');
+
+  const userRole = await guard.roles.createRole('user', 'Regular user');
+
+  // Create permissions
+  const resources = ['posts', 'comments', 'users'];
+  const actions = ['create', 'read', 'update', 'delete'];
+
+  for (const resource of resources) {
+    for (const action of actions) {
+      const permission = await guard.permissions.createPermission(
+        action,
+        resource,
+        `Can ${action} ${resource}`,
+      );
+
+      // Admin gets all permissions
+      await guard.roles.assignPermission(adminRole.id, permission.id);
+
+      // Editor gets create, read, update on posts and comments
+      if (resource !== 'users' && action !== 'delete') {
+        await guard.roles.assignPermission(editorRole.id, permission.id);
+      }
+
+      // User gets only read permissions
+      if (action === 'read') {
+        await guard.roles.assignPermission(userRole.id, permission.id);
+      }
+    }
+  }
+
+  console.log('✅ Guard data seeded successfully');
+}
+
+// Run the seed
+seedGuardData(guard);
+```
+
+## Migration Scripts
+
+### Setup Script
+
+```typescript filename="scripts/setup-guard.ts"
+import { Sequelize } from 'sequelize';
+import { SequelizeGuard } from 'sequelize-guard';
+import { seedGuardData } from './seeds/guard-seed';
+
+async function setup() {
+  const sequelize = new Sequelize(process.env.DATABASE_URL!);
+
+  try {
+    // Test connection
+    await sequelize.authenticate();
+    console.log('✅ Database connected');
+
+    // Initialize Guard
+    const guard = new SequelizeGuard(sequelize);
+    await guard.init();
+
+    // Run migrations
+    console.log('Running migrations...');
+    await guard.migrations.run();
+    console.log('✅ Migrations completed');
+
+    // Seed data
+    console.log('Seeding data...');
+    await seedGuardData(guard);
+
+    console.log('🎉 Setup completed successfully');
+  } catch (error) {
+    console.error('❌ Setup failed:', error);
+    process.exit(1);
+  } finally {
+    await sequelize.close();
+  }
+}
+
+setup();
+```
+
+Add to package.json:
+
+```json
+{
+  "scripts": {
+    "setup:guard": "tsx scripts/setup-guard.ts"
+  }
+}
+```
+
+### Reset Script
+
+```typescript filename="scripts/reset-guard.ts"
+async function reset() {
+  const sequelize = new Sequelize(process.env.DATABASE_URL!);
+  const guard = new SequelizeGuard(sequelize);
+
+  try {
+    await guard.init();
+
+    // Drop and recreate tables
+    await guard.migrations.run({ force: true });
+
+    // Re-seed data
+    await seedGuardData(guard);
+
+    console.log('✅ Reset completed');
+  } catch (error) {
+    console.error('❌ Reset failed:', error);
+  } finally {
+    await sequelize.close();
+  }
+}
+```
+
+## Working with Existing Schema
+
+### Using Existing User Table
+
+If you have an existing user table:
+
+```typescript
+// Don't use Guard's user management
+// Only use roles and permissions
+
+// Create your own user-role mapping
+const UserRole = sequelize.define('UserRole', {
+  userId: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: 'users', // Your existing user table
+      key: 'id',
+    },
+  },
+  roleId: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: 'guard_roles',
+      key: 'id',
+    },
+  },
+});
+```
+
+### Integrating with Existing Tables
+
+```typescript
+// Use Guard for authorization only
+// Manage users in your own system
+
+async function assignRoleToExistingUser(
+  existingUserId: number,
+  roleName: string,
+) {
+  // Get or create Guard user
+  let guardUser = await guard.users.getUserByEmail(
+    `user-${existingUserId}@internal`,
+  );
+
+  if (!guardUser) {
+    guardUser = await guard.users.createUser(`user-${existingUserId}@internal`);
+  }
+
+  // Assign role
+  const role = await guard.roles.getRole(roleName);
+  await guard.users.assignRole(guardUser.id, role.id);
+}
+```
+
+## Backup and Restore
+
+### Backup Guard Data
+
+```typescript
+async function backupGuardData(guard: SequelizeGuard) {
+  const roles = await guard.roles.listRoles();
+  const permissions = await guard.permissions.listPermissions();
+
+  // Export to JSON
+  const backup = {
+    roles: roles.map((r) => ({
+      name: r.name,
+      description: r.description,
+    })),
+    permissions: permissions.map((p) => ({
+      action: p.action,
+      resource: p.resource,
+      description: p.description,
+    })),
+    rolePermissions: [], // Add role-permission mappings
+  };
+
+  await fs.writeFile('guard-backup.json', JSON.stringify(backup, null, 2));
+}
+```
+
+### Restore Guard Data
+
+```typescript
+async function restoreGuardData(guard: SequelizeGuard, backupFile: string) {
+  const backup = JSON.parse(await fs.readFile(backupFile, 'utf-8'));
+
+  // Restore roles
+  for (const role of backup.roles) {
+    await guard.roles.createRole(role.name, role.description);
+  }
+
+  // Restore permissions
+  for (const perm of backup.permissions) {
+    await guard.permissions.createPermission(
+      perm.action,
+      perm.resource,
+      perm.description,
+    );
+  }
+
+  // Restore role-permission mappings
+  // ...
+}
+```
+
+## Best Practices
+
+1. **Version Control**: Keep migration scripts in version control
+2. **Environment Separation**: Use different databases for dev/staging/prod
+3. **Backup Before Migration**: Always backup before running migrations
+4. **Idempotent Seeds**: Make seed scripts safe to run multiple times
+5. **Test Migrations**: Test migration scripts on a copy of production data

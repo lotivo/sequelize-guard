@@ -1,0 +1,357 @@
+---
+title: Caching
+description: Learn how to optimize performance with Sequelize Guard's built-in caching system.
+icon: Database
+---
+
+## Overview
+
+Sequelize Guard includes a built-in caching layer using `node-cache` to improve performance by reducing database queries for frequently accessed authorization data.
+
+## Configuration
+
+### Enable Caching
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: true,
+    ttl: 300, // Time to live in seconds (default: 300)
+    checkPeriod: 600, // Check period for expired keys (default: 600)
+  },
+});
+```
+
+### Disable Caching
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: false,
+  },
+});
+```
+
+## How Caching Works
+
+### Cached Operations
+
+The following operations are cached:
+
+- User role lookups
+- Role permission lookups
+- Permission checks
+- User permission lookups
+
+### Cache Keys
+
+Keys are generated automatically based on:
+
+- User IDs
+- Role IDs
+- Permission actions and resources
+
+Example cache keys:
+
+```
+user:123:roles
+role:456:permissions
+permission:user:123:create:posts
+```
+
+## Cache Management
+
+### Clear All Cache
+
+```typescript
+guard.cache.flushAll();
+```
+
+### Clear Specific Keys
+
+```typescript
+// Clear user's roles cache
+guard.cache.del(`user:${userId}:roles`);
+
+// Clear role's permissions cache
+guard.cache.del(`role:${roleId}:permissions`);
+```
+
+### Get Cache Statistics
+
+```typescript
+const stats = guard.cache.getStats();
+console.log('Cache hits:', stats.hits);
+console.log('Cache misses:', stats.misses);
+console.log('Cache keys:', stats.keys);
+```
+
+## Cache Invalidation
+
+### Manual Invalidation
+
+When you modify roles or permissions, invalidate the cache:
+
+```typescript
+// After assigning a role to a user
+await guard.users.assignRole(userId, roleId);
+guard.cache.del(`user:${userId}:roles`);
+guard.cache.del(`user:${userId}:permissions`);
+
+// After assigning a permission to a role
+await guard.roles.assignPermission(roleId, permissionId);
+guard.cache.del(`role:${roleId}:permissions`);
+```
+
+### Automatic Invalidation
+
+Create a helper class for automatic cache invalidation:
+
+```typescript
+class CachedGuard {
+  constructor(private guard: SequelizeGuard) {}
+
+  async assignRole(userId: string, roleId: number) {
+    await this.guard.users.assignRole(userId, roleId);
+
+    // Invalidate cache
+    this.guard.cache.del(`user:${userId}:roles`);
+    this.guard.cache.del(`user:${userId}:permissions`);
+  }
+
+  async removeRole(userId: string, roleId: number) {
+    await this.guard.users.removeRole(userId, roleId);
+
+    // Invalidate cache
+    this.guard.cache.del(`user:${userId}:roles`);
+    this.guard.cache.del(`user:${userId}:permissions`);
+  }
+
+  async assignPermission(roleId: number, permissionId: number) {
+    await this.guard.roles.assignPermission(roleId, permissionId);
+
+    // Invalidate role cache
+    this.guard.cache.del(`role:${roleId}:permissions`);
+
+    // Invalidate all users with this role
+    const users = await this.getUsersWithRole(roleId);
+    users.forEach((userId) => {
+      this.guard.cache.del(`user:${userId}:permissions`);
+    });
+  }
+
+  private async getUsersWithRole(roleId: number): Promise<string[]> {
+    // Implementation to get all users with a specific role
+    return [];
+  }
+}
+```
+
+## Best Practices
+
+### 1. Use Longer TTL in Production
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: true,
+    ttl: process.env.NODE_ENV === 'production' ? 600 : 60,
+  },
+});
+```
+
+### 2. Disable Cache in Tests
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: process.env.NODE_ENV !== 'test',
+  },
+});
+```
+
+### 3. Clear Cache After Bulk Operations
+
+```typescript
+async function bulkAssignRoles(userIds: string[], roleId: number) {
+  for (const userId of userIds) {
+    await guard.users.assignRole(userId, roleId);
+  }
+
+  // Clear cache for all affected users
+  userIds.forEach((userId) => {
+    guard.cache.del(`user:${userId}:roles`);
+    guard.cache.del(`user:${userId}:permissions`);
+  });
+}
+```
+
+### 4. Monitor Cache Performance
+
+```typescript
+// Log cache statistics periodically
+setInterval(() => {
+  const stats = guard.cache.getStats();
+  console.log('Cache statistics:', {
+    hits: stats.hits,
+    misses: stats.misses,
+    hitRate: stats.hits / (stats.hits + stats.misses),
+    keys: stats.keys,
+  });
+}, 60000); // Every minute
+```
+
+## Performance Tips
+
+### 1. Batch Permission Checks
+
+```typescript
+// Instead of checking permissions sequentially
+const canCreate = await guard.authorize.checkPermission(
+  userId,
+  'create',
+  'posts',
+);
+const canUpdate = await guard.authorize.checkPermission(
+  userId,
+  'update',
+  'posts',
+);
+const canDelete = await guard.authorize.checkPermission(
+  userId,
+  'delete',
+  'posts',
+);
+
+// Check in parallel to benefit from cache
+const [canCreate, canUpdate, canDelete] = await Promise.all([
+  guard.authorize.checkPermission(userId, 'create', 'posts'),
+  guard.authorize.checkPermission(userId, 'update', 'posts'),
+  guard.authorize.checkPermission(userId, 'delete', 'posts'),
+]);
+```
+
+### 2. Preload User Permissions
+
+```typescript
+async function preloadUserPermissions(userId: string) {
+  // This will cache the user's roles and permissions
+  await guard.users.getUserWithRoles(userId);
+
+  // Subsequent permission checks will use the cache
+}
+```
+
+### 3. Cache Warming
+
+```typescript
+async function warmCache() {
+  // Preload common roles
+  const commonRoles = ['admin', 'editor', 'user'];
+  await Promise.all(
+    commonRoles.map((roleName) => guard.roles.getRole(roleName)),
+  );
+
+  // Preload common permissions
+  const commonPermissions = [
+    { action: 'create', resource: 'posts' },
+    { action: 'read', resource: 'posts' },
+    { action: 'update', resource: 'posts' },
+    { action: 'delete', resource: 'posts' },
+  ];
+
+  await Promise.all(
+    commonPermissions.map((p) =>
+      guard.permissions.getPermission(p.action, p.resource),
+    ),
+  );
+}
+
+// Run on application startup
+warmCache();
+```
+
+## Advanced Caching
+
+### Custom Cache Implementation
+
+You can extend Guard with a custom cache implementation:
+
+```typescript
+import Redis from 'ioredis';
+
+class RedisCache {
+  private redis: Redis;
+
+  constructor() {
+    this.redis = new Redis();
+  }
+
+  async get(key: string): Promise<any> {
+    const value = await this.redis.get(key);
+    return value ? JSON.parse(value) : null;
+  }
+
+  async set(key: string, value: any, ttl: number): Promise<void> {
+    await this.redis.setex(key, ttl, JSON.stringify(value));
+  }
+
+  async del(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
+
+  async flushAll(): Promise<void> {
+    await this.redis.flushall();
+  }
+}
+
+// Use custom cache
+const customCache = new RedisCache();
+// Implement wrapper to use customCache with Guard
+```
+
+## Troubleshooting
+
+### Cache Not Working
+
+1. Verify cache is enabled:
+
+```typescript
+console.log(guard.cache.enabled);
+```
+
+2. Check cache statistics:
+
+```typescript
+const stats = guard.cache.getStats();
+console.log('Cache stats:', stats);
+```
+
+### Stale Data
+
+If you're seeing stale data, ensure you're invalidating the cache properly:
+
+```typescript
+// Always clear cache after modifications
+await guard.users.assignRole(userId, roleId);
+guard.cache.del(`user:${userId}:roles`);
+```
+
+### High Memory Usage
+
+Reduce TTL or clear cache more frequently:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: true,
+    ttl: 60, // Shorter TTL
+    checkPeriod: 120,
+  },
+});
+
+// Clear cache periodically
+setInterval(() => {
+  guard.cache.flushAll();
+}, 300000); // Every 5 minutes
+```

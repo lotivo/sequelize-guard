@@ -1,0 +1,11 @@
+{
+  "root": true,
+  "defaultOpen": true,
+  "pages": [
+    "index",
+    "guide",
+    "examples",
+    "--- API ---",
+    "api"
+  ]
+}

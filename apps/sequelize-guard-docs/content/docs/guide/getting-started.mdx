@@ -1,0 +1,252 @@
+---
+title: Getting Started
+description: Learn how to set up Sequelize Guard in your project.
+icon: BookOpen
+---
+
+## Basic Setup
+
+### 1. Initialize Sequelize
+
+First, set up your Sequelize instance:
+
+```typescript filename="database.ts"
+import { Sequelize } from 'sequelize';
+
+export const sequelize = new Sequelize({
+  dialect: 'postgres',
+  host: 'localhost',
+  database: 'myapp',
+  username: 'user',
+  password: 'pass',
+  logging: false,
+});
+```
+
+### 2. Initialize Sequelize Guard
+
+Create and initialize the guard instance:
+
+```typescript filename="guard.ts"
+import { SequelizeGuard } from 'sequelize-guard';
+import { sequelize } from './database';
+
+export const guard = new SequelizeGuard(sequelize, {
+  prefix: 'app_', // Optional: prefix for table names
+  cache: {
+    enabled: true,
+    ttl: 300, // Cache TTL in seconds
+  },
+});
+
+// Initialize the guard system
+export async function initializeGuard() {
+  await guard.init();
+  console.log('Guard initialized successfully');
+}
+```
+
+### 3. Run Migrations
+
+Create the required database tables:
+
+```typescript filename="setup.ts"
+import { guard } from './guard';
+
+async function setup() {
+  // This will create all necessary tables
+  await guard.migrations.run();
+  console.log('Database tables created');
+}
+
+setup();
+```
+
+## Core Concepts
+
+### Roles
+
+Roles define a set of permissions that can be assigned to users:
+
+```typescript
+// Create a role
+const adminRole = await guard.roles.createRole('admin', 'Administrator');
+const editorRole = await guard.roles.createRole('editor', 'Content Editor');
+
+// Get a role
+const role = await guard.roles.getRole('admin');
+
+// List all roles
+const allRoles = await guard.roles.listRoles();
+
+// Delete a role
+await guard.roles.deleteRole(adminRole.id);
+```
+
+### Permissions
+
+Permissions define what actions can be performed on specific resources:
+
+```typescript
+// Create permissions
+const createPost = await guard.permissions.createPermission(
+  'create',
+  'posts',
+  'Can create posts',
+);
+
+const editPost = await guard.permissions.createPermission(
+  'update',
+  'posts',
+  'Can edit posts',
+);
+
+const deletePost = await guard.permissions.createPermission(
+  'delete',
+  'posts',
+  'Can delete posts',
+);
+
+// Assign permission to role
+await guard.roles.assignPermission(editorRole.id, createPost.id);
+await guard.roles.assignPermission(editorRole.id, editPost.id);
+```
+
+### Users
+
+Create and manage users with role assignments:
+
+```typescript
+// Create a user
+const user = await guard.users.createUser('john@example.com', {
+  name: 'John Doe',
+  username: 'johndoe',
+});
+
+// Assign role to user
+await guard.users.assignRole(user.id, editorRole.id);
+
+// Get user with roles
+const userWithRoles = await guard.users.getUser(user.id);
+console.log(userWithRoles.roles);
+
+// Remove role from user
+await guard.users.removeRole(user.id, editorRole.id);
+```
+
+## Authorization
+
+Check if a user has permission to perform an action:
+
+```typescript
+// Check if user can create posts
+const canCreatePost = await guard.authorize.checkPermission(
+  user.id,
+  'create',
+  'posts',
+);
+
+if (canCreatePost) {
+  // User can create posts
+  console.log('User authorized to create posts');
+} else {
+  // User cannot create posts
+  console.log('User not authorized');
+}
+
+// Check if user has a specific role
+const isEditor = await guard.authorize.checkRole(user.id, 'editor');
+```
+
+## Complete Example
+
+Here's a complete example putting it all together:
+
+```typescript filename="example.ts"
+import { Sequelize } from 'sequelize';
+import { SequelizeGuard } from 'sequelize-guard';
+
+async function main() {
+  // 1. Setup database
+  const sequelize = new Sequelize('sqlite::memory:');
+  const guard = new SequelizeGuard(sequelize);
+
+  // 2. Initialize
+  await guard.init();
+  await guard.migrations.run();
+
+  // 3. Create roles
+  const adminRole = await guard.roles.createRole('admin', 'Administrator');
+  const userRole = await guard.roles.createRole('user', 'Regular User');
+
+  // 4. Create permissions
+  const createPerm = await guard.permissions.createPermission(
+    'create',
+    'articles',
+    'Can create articles',
+  );
+
+  const readPerm = await guard.permissions.createPermission(
+    'read',
+    'articles',
+    'Can read articles',
+  );
+
+  const deletePerm = await guard.permissions.createPermission(
+    'delete',
+    'articles',
+    'Can delete articles',
+  );
+
+  // 5. Assign permissions to roles
+  await guard.roles.assignPermission(adminRole.id, createPerm.id);
+  await guard.roles.assignPermission(adminRole.id, readPerm.id);
+  await guard.roles.assignPermission(adminRole.id, deletePerm.id);
+
+  await guard.roles.assignPermission(userRole.id, readPerm.id);
+
+  // 6. Create users
+  const admin = await guard.users.createUser('admin@example.com', {
+    name: 'Admin User',
+  });
+
+  const regularUser = await guard.users.createUser('user@example.com', {
+    name: 'Regular User',
+  });
+
+  // 7. Assign roles
+  await guard.users.assignRole(admin.id, adminRole.id);
+  await guard.users.assignRole(regularUser.id, userRole.id);
+
+  // 8. Check permissions
+  const adminCanDelete = await guard.authorize.checkPermission(
+    admin.id,
+    'delete',
+    'articles',
+  );
+  console.log('Admin can delete:', adminCanDelete); // true
+
+  const userCanDelete = await guard.authorize.checkPermission(
+    regularUser.id,
+    'delete',
+    'articles',
+  );
+  console.log('User can delete:', userCanDelete); // false
+
+  const userCanRead = await guard.authorize.checkPermission(
+    regularUser.id,
+    'read',
+    'articles',
+  );
+  console.log('User can read:', userCanRead); // true
+}
+
+main();
+```
+
+## Next Steps
+
+- [Configuration Options](./configuration)
+- [Working with Roles](./roles)
+- [Managing Permissions](./permissions)
+- [Authorization Strategies](./authorization)

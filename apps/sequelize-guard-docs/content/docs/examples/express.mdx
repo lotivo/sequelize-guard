@@ -1,0 +1,484 @@
+---
+title:  Express.js Integration
+description: Learn how to integrate Sequelize Guard with Express.js applications.
+
+---
+
+## Setup
+
+### Install Dependencies
+
+```bash npm2yarn
+npm install express sequelize sequelize-guard
+npm install -D @types/express
+```
+
+### Initialize Guard
+
+```typescript filename="src/config/database.ts"
+import { Sequelize } from 'sequelize';
+
+export const sequelize = new Sequelize({
+  dialect: 'postgres',
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  username: process.env.DB_USER,
+  password: process.env.DB_PASS,
+});
+```
+
+```typescript filename="src/config/guard.ts"
+import { SequelizeGuard } from 'sequelize-guard';
+import { sequelize } from './database';
+
+export const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: true,
+    ttl: 300,
+  },
+});
+
+export async function initializeGuard() {
+  await guard.init();
+  await guard.migrations.run();
+  console.log('✅ Guard initialized');
+}
+```
+
+## Middleware
+
+### Authentication Middleware
+
+```typescript filename="src/middleware/auth.ts"
+import { Request, Response, NextFunction } from 'express';
+
+export interface AuthRequest extends Request {
+  userId?: string;
+}
+
+export async function authenticate(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    // Get user ID from JWT, session, etc.
+    const userId = req.headers['x-user-id'] as string;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    req.userId = userId;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid authentication' });
+  }
+}
+```
+
+### Authorization Middleware
+
+```typescript filename="src/middleware/authorize.ts"
+import { Response, NextFunction } from 'express';
+import { guard } from '../config/guard';
+import { AuthRequest } from './auth';
+
+export function requirePermission(action: string, resource: string) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      if (!req.userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const hasPermission = await guard.authorize.checkPermission(
+        req.userId,
+        action,
+        resource,
+      );
+
+      if (!hasPermission) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: `Permission denied: ${action} ${resource}`,
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Authorization error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+}
+
+export function requireRole(roleName: string) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      if (!req.userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const hasRole = await guard.authorize.checkRole(req.userId, roleName);
+
+      if (!hasRole) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: `Role required: ${roleName}`,
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Authorization error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+}
+
+export function requireAnyPermission(
+  permissions: Array<{ action: string; resource: string }>,
+) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      if (!req.userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const checks = await Promise.all(
+        permissions.map((p) =>
+          guard.authorize.checkPermission(req.userId!, p.action, p.resource),
+        ),
+      );
+
+      if (!checks.some((check) => check === true)) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Insufficient permissions',
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Authorization error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+}
+```
+
+## Routes
+
+### Posts Routes
+
+```typescript filename="src/routes/posts.ts"
+import { Router } from 'express';
+import { authenticate } from '../middleware/auth';
+import { requirePermission } from '../middleware/authorize';
+
+const router = Router();
+
+// All routes require authentication
+router.use(authenticate);
+
+// GET /posts - List posts (requires 'read' permission)
+router.get('/', requirePermission('read', 'posts'), async (req, res) => {
+  try {
+    // Your logic to fetch posts
+    const posts = await Post.findAll();
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+// POST /posts - Create post (requires 'create' permission)
+router.post('/', requirePermission('create', 'posts'), async (req, res) => {
+  try {
+    const post = await Post.create(req.body);
+    res.status(201).json(post);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create post' });
+  }
+});
+
+// PUT /posts/:id - Update post (requires 'update' permission)
+router.put('/:id', requirePermission('update', 'posts'), async (req, res) => {
+  try {
+    const post = await Post.findByPk(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    await post.update(req.body);
+    res.json(post);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update post' });
+  }
+});
+
+// DELETE /posts/:id - Delete post (requires 'delete' permission)
+router.delete(
+  '/:id',
+  requirePermission('delete', 'posts'),
+  async (req, res) => {
+    try {
+      const post = await Post.findByPk(req.params.id);
+      if (!post) {
+        return res.status(404).json({ error: 'Post not found' });
+      }
+
+      await post.destroy();
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete post' });
+    }
+  },
+);
+
+export default router;
+```
+
+### Admin Routes
+
+```typescript filename="src/routes/admin.ts"
+import { Router } from 'express';
+import { authenticate } from '../middleware/auth';
+import { requireRole } from '../middleware/authorize';
+import { guard } from '../config/guard';
+
+const router = Router();
+
+// All admin routes require authentication and admin role
+router.use(authenticate);
+router.use(requireRole('admin'));
+
+// Create role
+router.post('/roles', async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    const role = await guard.roles.createRole(name, description);
+    res.status(201).json(role);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create role' });
+  }
+});
+
+// Create permission
+router.post('/permissions', async (req, res) => {
+  try {
+    const { action, resource, description } = req.body;
+    const permission = await guard.permissions.createPermission(
+      action,
+      resource,
+      description,
+    );
+    res.status(201).json(permission);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create permission' });
+  }
+});
+
+// Assign role to user
+router.post('/users/:userId/roles/:roleId', async (req, res) => {
+  try {
+    await guard.users.assignRole(
+      req.params.userId,
+      parseInt(req.params.roleId),
+    );
+    res.status(200).json({ message: 'Role assigned successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to assign role' });
+  }
+});
+
+// Assign permission to role
+router.post('/roles/:roleId/permissions/:permissionId', async (req, res) => {
+  try {
+    await guard.roles.assignPermission(
+      parseInt(req.params.roleId),
+      parseInt(req.params.permissionId),
+    );
+    res.status(200).json({ message: 'Permission assigned successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to assign permission' });
+  }
+});
+
+export default router;
+```
+
+## Complete Application
+
+```typescript filename="src/app.ts"
+import express from 'express';
+import { sequelize } from './config/database';
+import { guard, initializeGuard } from './config/guard';
+import postsRouter from './routes/posts';
+import adminRouter from './routes/admin';
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json());
+
+// Routes
+app.use('/api/posts', postsRouter);
+app.use('/api/admin', adminRouter);
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Initialize and start server
+async function start() {
+  try {
+    // Connect to database
+    await sequelize.authenticate();
+    console.log('✅ Database connected');
+
+    // Initialize guard
+    await initializeGuard();
+
+    // Start server
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+start();
+
+export default app;
+```
+
+## Resource Ownership
+
+Check if a user owns a resource before allowing operations:
+
+```typescript filename="src/middleware/ownership.ts"
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from './auth';
+import { guard } from '../config/guard';
+
+export function requireOwnership(Model: any, resourceParam = 'id') {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const resourceId = req.params[resourceParam];
+      const resource = await Model.findByPk(resourceId);
+
+      if (!resource) {
+        return res.status(404).json({ error: 'Resource not found' });
+      }
+
+      // Check if user is owner
+      if (resource.userId === req.userId) {
+        return next();
+      }
+
+      // Check if user is admin
+      const isAdmin = await guard.authorize.checkRole(req.userId!, 'admin');
+      if (isAdmin) {
+        return next();
+      }
+
+      res.status(403).json({ error: 'You do not own this resource' });
+    } catch (error) {
+      console.error('Ownership check error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+}
+
+// Usage
+router.put(
+  '/posts/:id',
+  authenticate,
+  requireOwnership(Post),
+  async (req, res) => {
+    // Update post
+  },
+);
+```
+
+## Error Handling
+
+```typescript filename="src/middleware/errorHandler.ts"
+import { Request, Response, NextFunction } from 'express';
+
+export function errorHandler(
+  error: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  console.error('Error:', error);
+
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+  });
+}
+
+// Add to app
+app.use(errorHandler);
+```
+
+## Testing
+
+```typescript filename="src/__tests__/posts.test.ts"
+import request from 'supertest';
+import app from '../app';
+import { guard } from '../config/guard';
+
+describe('POST /api/posts', () => {
+  let adminUserId: string;
+  let regularUserId: string;
+
+  beforeAll(async () => {
+    // Setup test users and permissions
+    const adminRole = await guard.roles.createRole('admin', 'Admin');
+    const createPerm = await guard.permissions.createPermission(
+      'create',
+      'posts',
+    );
+    await guard.roles.assignPermission(adminRole.id, createPerm.id);
+
+    const adminUser = await guard.users.createUser('admin@test.com');
+    await guard.users.assignRole(adminUser.id, adminRole.id);
+    adminUserId = adminUser.id;
+
+    const regularUser = await guard.users.createUser('user@test.com');
+    regularUserId = regularUser.id;
+  });
+
+  it('should allow admin to create post', async () => {
+    const response = await request(app)
+      .post('/api/posts')
+      .set('x-user-id', adminUserId)
+      .send({ title: 'Test Post', content: 'Content' });
+
+    expect(response.status).toBe(201);
+  });
+
+  it('should deny regular user', async () => {
+    const response = await request(app)
+      .post('/api/posts')
+      .set('x-user-id', regularUserId)
+      .send({ title: 'Test Post', content: 'Content' });
+
+    expect(response.status).toBe(403);
+  });
+});
+```
+
+## Next Steps
+
+- [NestJS Integration](/examples/nestjs)
+- [Advanced Use Cases](/examples/advanced)
+- [Authorization Guide](/guide/authorization)

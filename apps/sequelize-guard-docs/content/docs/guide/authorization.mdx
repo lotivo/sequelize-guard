@@ -1,0 +1,423 @@
+---
+title: Authorization
+description: Learn how to check permissions and control access in your application.
+icon: ShieldCheck
+---
+
+## Permission Checking
+
+### Check Permission
+
+The most common way to authorize users:
+
+```typescript
+const canCreatePost = await guard.authorize.checkPermission(
+  userId,
+  'create',
+  'posts',
+);
+
+if (canCreatePost) {
+  // User can create posts
+} else {
+  // User cannot create posts
+}
+```
+
+### Check Role
+
+Check if a user has a specific role:
+
+```typescript
+const isAdmin = await guard.authorize.checkRole(userId, 'admin');
+
+if (isAdmin) {
+  // User has admin role
+}
+```
+
+## Authorization Patterns
+
+### Middleware Pattern
+
+```typescript
+async function authorize(
+  userId: string,
+  action: string,
+  resource: string,
+): Promise<void> {
+  const hasPermission = await guard.authorize.checkPermission(
+    userId,
+    action,
+    resource,
+  );
+
+  if (!hasPermission) {
+    throw new Error(`Unauthorized: ${action} ${resource}`);
+  }
+}
+
+// Usage
+await authorize(userId, 'delete', 'posts');
+// Proceed with deletion
+```
+
+### Guard Decorator Pattern
+
+```typescript
+function Authorize(action: string, resource: string) {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    const originalMethod = descriptor.value;
+
+    descriptor.value = async function (...args: any[]) {
+      const userId = args[0]; // Assuming first arg is userId
+
+      const hasPermission = await guard.authorize.checkPermission(
+        userId,
+        action,
+        resource,
+      );
+
+      if (!hasPermission) {
+        throw new Error('Unauthorized');
+      }
+
+      return originalMethod.apply(this, args);
+    };
+
+    return descriptor;
+  };
+}
+
+// Usage
+class PostService {
+  @Authorize('delete', 'posts')
+  async deletePost(userId: string, postId: string) {
+    // Delete logic
+  }
+}
+```
+
+### Policy Pattern
+
+```typescript
+interface Policy {
+  canPerform(userId: string): Promise<boolean>;
+}
+
+class PostPolicy {
+  constructor(
+    private guard: SequelizeGuard,
+    private post: any,
+  ) {}
+
+  async canView(userId: string): Promise<boolean> {
+    // Public posts can be viewed by anyone
+    if (this.post.isPublic) return true;
+
+    // Author can always view
+    if (this.post.authorId === userId) return true;
+
+    // Check permission
+    return await this.guard.authorize.checkPermission(userId, 'read', 'posts');
+  }
+
+  async canEdit(userId: string): Promise<boolean> {
+    // Must be author or have update permission
+    const isAuthor = this.post.authorId === userId;
+    const hasPermission = await this.guard.authorize.checkPermission(
+      userId,
+      'update',
+      'posts',
+    );
+
+    return isAuthor || hasPermission;
+  }
+
+  async canDelete(userId: string): Promise<boolean> {
+    // Must be admin or author
+    const isAdmin = await this.guard.authorize.checkRole(userId, 'admin');
+    const isAuthor = this.post.authorId === userId;
+
+    return isAdmin || isAuthor;
+  }
+}
+
+// Usage
+const policy = new PostPolicy(guard, post);
+if (await policy.canDelete(userId)) {
+  await post.destroy();
+}
+```
+
+## Resource Ownership
+
+### Check Ownership
+
+```typescript
+async function canAccessResource(
+  userId: string,
+  resource: any,
+  action: string,
+): Promise<boolean> {
+  // Owner can always access their resources
+  if (resource.userId === userId) {
+    return true;
+  }
+
+  // Check if user is admin
+  const isAdmin = await guard.authorize.checkRole(userId, 'admin');
+  if (isAdmin) {
+    return true;
+  }
+
+  // Check specific permission
+  return await guard.authorize.checkPermission(userId, action, resource.type);
+}
+```
+
+### Ownership + Permission
+
+```typescript
+async function authorizeWithOwnership(
+  userId: string,
+  resource: any,
+  action: string,
+): Promise<boolean> {
+  // Check permission first
+  const hasPermission = await guard.authorize.checkPermission(
+    userId,
+    action,
+    resource.type,
+  );
+
+  if (!hasPermission) {
+    return false;
+  }
+
+  // If updating or deleting, must be owner or admin
+  if (action === 'update' || action === 'delete') {
+    const isOwner = resource.userId === userId;
+    const isAdmin = await guard.authorize.checkRole(userId, 'admin');
+
+    return isOwner || isAdmin;
+  }
+
+  return true;
+}
+```
+
+## Hierarchical Authorization
+
+### Role Hierarchy
+
+```typescript
+const roleHierarchy = {
+  superadmin: 100,
+  admin: 80,
+  moderator: 60,
+  editor: 40,
+  user: 20,
+  guest: 10,
+};
+
+async function canAccessByHierarchy(
+  userId: string,
+  requiredRole: string,
+): Promise<boolean> {
+  const user = await guard.users.getUserWithRoles(userId);
+  const requiredLevel = roleHierarchy[requiredRole] || 0;
+
+  for (const role of user.roles) {
+    const userLevel = roleHierarchy[role.name] || 0;
+    if (userLevel >= requiredLevel) {
+      return true;
+    }
+  }
+
+  return false;
+}
+```
+
+### Permission Inheritance
+
+```typescript
+async function checkPermissionWithInheritance(
+  userId: string,
+  action: string,
+  resource: string,
+): Promise<boolean> {
+  // Check exact permission
+  const hasExact = await guard.authorize.checkPermission(
+    userId,
+    action,
+    resource,
+  );
+
+  if (hasExact) return true;
+
+  // Check wildcard permissions
+  const hasWildcardAction = await guard.authorize.checkPermission(
+    userId,
+    '*',
+    resource,
+  );
+
+  if (hasWildcardAction) return true;
+
+  const hasWildcardResource = await guard.authorize.checkPermission(
+    userId,
+    action,
+    '*',
+  );
+
+  return hasWildcardResource;
+}
+```
+
+## Complex Authorization
+
+### Multiple Permission Check
+
+```typescript
+async function requireAllPermissions(
+  userId: string,
+  permissions: Array<{ action: string; resource: string }>,
+): Promise<boolean> {
+  const checks = await Promise.all(
+    permissions.map((p) =>
+      guard.authorize.checkPermission(userId, p.action, p.resource),
+    ),
+  );
+
+  return checks.every((check) => check === true);
+}
+
+async function requireAnyPermission(
+  userId: string,
+  permissions: Array<{ action: string; resource: string }>,
+): Promise<boolean> {
+  const checks = await Promise.all(
+    permissions.map((p) =>
+      guard.authorize.checkPermission(userId, p.action, p.resource),
+    ),
+  );
+
+  return checks.some((check) => check === true);
+}
+
+// Usage
+const canManage = await requireAllPermissions(userId, [
+  { action: 'create', resource: 'posts' },
+  { action: 'update', resource: 'posts' },
+  { action: 'delete', resource: 'posts' },
+]);
+```
+
+### Conditional Authorization
+
+```typescript
+async function authorizeWithConditions(
+  userId: string,
+  action: string,
+  resource: any,
+  conditions: Record<string, any>,
+): Promise<boolean> {
+  // Check base permission
+  const hasPermission = await guard.authorize.checkPermission(
+    userId,
+    action,
+    resource.type,
+  );
+
+  if (!hasPermission) return false;
+
+  // Apply additional conditions
+  if (conditions.mustBeOwner && resource.userId !== userId) {
+    return false;
+  }
+
+  if (conditions.mustBePublished && !resource.isPublished) {
+    const isAdmin = await guard.authorize.checkRole(userId, 'admin');
+    if (!isAdmin) return false;
+  }
+
+  if (conditions.requiredRole) {
+    const hasRole = await guard.authorize.checkRole(
+      userId,
+      conditions.requiredRole,
+    );
+    if (!hasRole) return false;
+  }
+
+  return true;
+}
+```
+
+## Authorization Utilities
+
+### Permission Checker Class
+
+```typescript
+class PermissionChecker {
+  constructor(
+    private guard: SequelizeGuard,
+    private userId: string,
+  ) {}
+
+  async can(action: string, resource: string): Promise<boolean> {
+    return this.guard.authorize.checkPermission(this.userId, action, resource);
+  }
+
+  async hasRole(roleName: string): Promise<boolean> {
+    return this.guard.authorize.checkRole(this.userId, roleName);
+  }
+
+  async canAll(
+    permissions: Array<{ action: string; resource: string }>,
+  ): Promise<boolean> {
+    const checks = await Promise.all(
+      permissions.map((p) => this.can(p.action, p.resource)),
+    );
+    return checks.every((check) => check);
+  }
+
+  async canAny(
+    permissions: Array<{ action: string; resource: string }>,
+  ): Promise<boolean> {
+    const checks = await Promise.all(
+      permissions.map((p) => this.can(p.action, p.resource)),
+    );
+    return checks.some((check) => check);
+  }
+
+  async isAdmin(): Promise<boolean> {
+    return this.hasRole('admin');
+  }
+}
+
+// Usage
+const checker = new PermissionChecker(guard, userId);
+
+if (await checker.can('delete', 'posts')) {
+  // Delete post
+}
+
+if (await checker.isAdmin()) {
+  // Admin actions
+}
+```
+
+## Best Practices
+
+1. **Check Early**: Authorize as early as possible in your request flow
+2. **Fail Secure**: Deny access by default
+3. **Cache Results**: Use caching for frequently checked permissions
+4. **Log Denials**: Log authorization failures for security audits
+5. **Clear Errors**: Provide clear error messages for debugging
+6. **Test Thoroughly**: Test all authorization paths
+

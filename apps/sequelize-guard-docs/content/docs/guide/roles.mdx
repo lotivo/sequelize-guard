@@ -1,0 +1,295 @@
+---
+title: Roles
+description: Learn how to manage roles in Sequelize Guard.
+icon: ShieldUser
+---
+
+# Roles
+
+Roles are collections of permissions that can be assigned to users. This guide covers everything you need to know about working with roles.
+
+## Creating Roles
+
+### Basic Role Creation
+
+```typescript
+const adminRole = await guard.roles.createRole(
+  'admin', // Role name (unique)
+  'Administrator', // Role description
+);
+```
+
+### With Additional Properties
+
+```typescript
+const managerRole = await guard.roles.createRole('manager', 'Manager Role', {
+  metadata: { department: 'IT' },
+});
+```
+
+## Retrieving Roles
+
+### Get Role by Name
+
+```typescript
+const role = await guard.roles.getRole('admin');
+console.log(role.name, role.description);
+```
+
+### Get Role by ID
+
+```typescript
+const role = await guard.roles.getRoleById(1);
+```
+
+### List All Roles
+
+```typescript
+const allRoles = await guard.roles.listRoles();
+allRoles.forEach((role) => {
+  console.log(`${role.name}: ${role.description}`);
+});
+```
+
+### Get Role with Permissions
+
+```typescript
+const roleWithPerms = await guard.roles.getRoleWithPermissions('admin');
+console.log(roleWithPerms.permissions);
+```
+
+## Updating Roles
+
+### Update Role Description
+
+```typescript
+await guard.roles.updateRole('admin', {
+  description: 'System Administrator',
+});
+```
+
+### Update Multiple Fields
+
+```typescript
+await guard.roles.updateRole('manager', {
+  description: 'Department Manager',
+  metadata: { level: 'senior' },
+});
+```
+
+## Deleting Roles
+
+### Delete by Name
+
+```typescript
+await guard.roles.deleteRole('guest');
+```
+
+### Delete by ID
+
+```typescript
+await guard.roles.deleteRoleById(roleId);
+```
+
+## Assigning Permissions to Roles
+
+### Assign Single Permission
+
+```typescript
+const permission = await guard.permissions.createPermission(
+  'create',
+  'posts',
+  'Can create posts',
+);
+
+await guard.roles.assignPermission(adminRole.id, permission.id);
+```
+
+### Assign Multiple Permissions
+
+```typescript
+const createPerm = await guard.permissions.createPermission('create', 'posts');
+const updatePerm = await guard.permissions.createPermission('update', 'posts');
+const deletePerm = await guard.permissions.createPermission('delete', 'posts');
+
+await guard.roles.assignPermission(adminRole.id, createPerm.id);
+await guard.roles.assignPermission(adminRole.id, updatePerm.id);
+await guard.roles.assignPermission(adminRole.id, deletePerm.id);
+```
+
+### Using Transactions
+
+```typescript
+const transaction = await sequelize.transaction();
+
+try {
+  await guard.roles.assignPermission(roleId, perm1.id, { transaction });
+  await guard.roles.assignPermission(roleId, perm2.id, { transaction });
+  await guard.roles.assignPermission(roleId, perm3.id, { transaction });
+
+  await transaction.commit();
+} catch (error) {
+  await transaction.rollback();
+  throw error;
+}
+```
+
+## Removing Permissions from Roles
+
+### Remove Single Permission
+
+```typescript
+await guard.roles.removePermission(adminRole.id, permission.id);
+```
+
+### Remove All Permissions
+
+```typescript
+const role = await guard.roles.getRoleWithPermissions('admin');
+for (const permission of role.permissions) {
+  await guard.roles.removePermission(role.id, permission.id);
+}
+```
+
+## Checking Role Permissions
+
+### Check if Role Has Permission
+
+```typescript
+const hasPermission = await guard.roles.hasPermission(
+  roleId,
+  'create',
+  'posts',
+);
+
+if (hasPermission) {
+  console.log('Role has the permission');
+}
+```
+
+### Get All Permissions for Role
+
+```typescript
+const permissions = await guard.roles.getPermissions(roleId);
+permissions.forEach((perm) => {
+  console.log(`${perm.action} on ${perm.resource}`);
+});
+```
+
+## Role Hierarchy
+
+While Sequelize Guard doesn't have built-in role hierarchy, you can implement it:
+
+```typescript
+// Define role hierarchy
+const roleHierarchy = {
+  superadmin: ['admin', 'moderator', 'user'],
+  admin: ['moderator', 'user'],
+  moderator: ['user'],
+  user: [],
+};
+
+// Function to get all inherited roles
+function getInheritedRoles(roleName: string): string[] {
+  const inherited = roleHierarchy[roleName] || [];
+  return [roleName, ...inherited];
+}
+
+// Check permission with hierarchy
+async function checkPermissionWithHierarchy(
+  userId: string,
+  action: string,
+  resource: string,
+): Promise<boolean> {
+  const user = await guard.users.getUser(userId);
+
+  for (const userRole of user.roles) {
+    const inheritedRoles = getInheritedRoles(userRole.name);
+
+    for (const roleName of inheritedRoles) {
+      const role = await guard.roles.getRole(roleName);
+      const hasPermission = await guard.roles.hasPermission(
+        role.id,
+        action,
+        resource,
+      );
+
+      if (hasPermission) return true;
+    }
+  }
+
+  return false;
+}
+```
+
+## Common Patterns
+
+### Creating Standard Roles
+
+```typescript
+async function setupStandardRoles(guard: SequelizeGuard) {
+  // Admin role - full access
+  const admin = await guard.roles.createRole(
+    'admin',
+    'Administrator with full access',
+  );
+
+  // Editor role - content management
+  const editor = await guard.roles.createRole('editor', 'Content editor');
+
+  // Viewer role - read-only access
+  const viewer = await guard.roles.createRole('viewer', 'Read-only access');
+
+  return { admin, editor, viewer };
+}
+```
+
+### Bulk Permission Assignment
+
+```typescript
+async function assignBulkPermissions(roleId: number, permissionIds: number[]) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    for (const permId of permissionIds) {
+      await guard.roles.assignPermission(roleId, permId, { transaction });
+    }
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}
+```
+
+### Role Cloning
+
+```typescript
+async function cloneRole(
+  sourceRoleName: string,
+  newRoleName: string,
+  newDescription: string,
+) {
+  // Get source role with permissions
+  const sourceRole = await guard.roles.getRoleWithPermissions(sourceRoleName);
+
+  // Create new role
+  const newRole = await guard.roles.createRole(newRoleName, newDescription);
+
+  // Copy permissions
+  for (const permission of sourceRole.permissions) {
+    await guard.roles.assignPermission(newRole.id, permission.id);
+  }
+
+  return newRole;
+}
+```
+
+## Best Practices
+
+1. **Use Descriptive Names**: Choose clear, meaningful role names
+2. **Document Permissions**: Keep track of what each role can do
+3. **Principle of Least Privilege**: Grant only necessary permissions
+4. **Regular Audits**: Review role permissions periodically
+5. **Use Transactions**: For bulk operations, always use transactions
+
