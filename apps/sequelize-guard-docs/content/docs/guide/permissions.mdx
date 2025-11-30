@@ -1,0 +1,351 @@
+---
+title: Permissions
+description: Learn how to manage permissions in Sequelize Guard.
+icon: BadgeCheck
+---
+
+# Permissions
+
+Permissions define granular access control for specific actions on resources.
+
+## Understanding Permissions
+
+A permission consists of:
+
+- **Action**: What operation can be performed (e.g., `create`, `read`, `update`, `delete`)
+- **Resource**: What entity the action applies to (e.g., `posts`, `users`, `comments`)
+- **Description**: Human-readable explanation
+
+## Creating Permissions
+
+### Basic Permission
+
+```typescript
+const permission = await guard.permissions.createPermission(
+  'create', // action
+  'posts', // resource
+  'Can create posts', // description (optional)
+);
+```
+
+### CRUD Permissions
+
+```typescript
+// Create all CRUD permissions for a resource
+const createPerm = await guard.permissions.createPermission(
+  'create',
+  'articles',
+);
+const readPerm = await guard.permissions.createPermission('read', 'articles');
+const updatePerm = await guard.permissions.createPermission(
+  'update',
+  'articles',
+);
+const deletePerm = await guard.permissions.createPermission(
+  'delete',
+  'articles',
+);
+```
+
+### Custom Actions
+
+```typescript
+// Custom action names
+const publishPerm = await guard.permissions.createPermission(
+  'publish',
+  'articles',
+  'Can publish articles',
+);
+
+const approvePerm = await guard.permissions.createPermission(
+  'approve',
+  'comments',
+  'Can approve comments',
+);
+```
+
+## Retrieving Permissions
+
+### Get Permission by Action and Resource
+
+```typescript
+const permission = await guard.permissions.getPermission('create', 'posts');
+```
+
+### Get Permission by ID
+
+```typescript
+const permission = await guard.permissions.getPermissionById(permissionId);
+```
+
+### List All Permissions
+
+```typescript
+const allPermissions = await guard.permissions.listPermissions();
+
+allPermissions.forEach((perm) => {
+  console.log(`${perm.action} on ${perm.resource}: ${perm.description}`);
+});
+```
+
+### List Permissions by Resource
+
+```typescript
+const postPermissions =
+  await guard.permissions.getPermissionsByResource('posts');
+```
+
+## Updating Permissions
+
+```typescript
+await guard.permissions.updatePermission(permissionId, {
+  description: 'Updated description',
+});
+```
+
+## Deleting Permissions
+
+### Delete by ID
+
+```typescript
+await guard.permissions.deletePermission(permissionId);
+```
+
+### Delete by Action and Resource
+
+```typescript
+const permission = await guard.permissions.getPermission('create', 'posts');
+await guard.permissions.deletePermission(permission.id);
+```
+
+## Permission Naming Conventions
+
+### RESTful Actions
+
+```typescript
+// Standard REST operations
+await guard.permissions.createPermission('create', 'posts');
+await guard.permissions.createPermission('read', 'posts');
+await guard.permissions.createPermission('update', 'posts');
+await guard.permissions.createPermission('delete', 'posts');
+await guard.permissions.createPermission('list', 'posts');
+```
+
+### Granular Actions
+
+```typescript
+// More specific operations
+await guard.permissions.createPermission('publish', 'posts');
+await guard.permissions.createPermission('archive', 'posts');
+await guard.permissions.createPermission('restore', 'posts');
+await guard.permissions.createPermission('export', 'posts');
+```
+
+### Resource Naming
+
+```typescript
+// Use plural, lowercase names
+await guard.permissions.createPermission('read', 'users');
+await guard.permissions.createPermission('read', 'blog-posts');
+await guard.permissions.createPermission('read', 'api-keys');
+```
+
+## Common Patterns
+
+### Setup Standard Permissions
+
+```typescript
+async function setupResourcePermissions(
+  guard: SequelizeGuard,
+  resource: string,
+) {
+  const actions = ['create', 'read', 'update', 'delete'];
+
+  const permissions = await Promise.all(
+    actions.map((action) =>
+      guard.permissions.createPermission(
+        action,
+        resource,
+        `Can ${action} ${resource}`,
+      ),
+    ),
+  );
+
+  return permissions;
+}
+
+// Usage
+const postPermissions = await setupResourcePermissions(guard, 'posts');
+```
+
+### Bulk Permission Creation
+
+```typescript
+async function createBulkPermissions(
+  guard: SequelizeGuard,
+  definitions: Array<{
+    action: string;
+    resource: string;
+    description?: string;
+  }>,
+) {
+  const results = await Promise.allSettled(
+    definitions.map((def) =>
+      guard.permissions.createPermission(
+        def.action,
+        def.resource,
+        def.description,
+      ),
+    ),
+  );
+
+  const successful = results.filter((r) => r.status === 'fulfilled');
+  const failed = results.filter((r) => r.status === 'rejected');
+
+  return {
+    successful: successful.length,
+    failed: failed.length,
+    total: definitions.length,
+  };
+}
+
+// Usage
+const result = await createBulkPermissions(guard, [
+  { action: 'create', resource: 'posts', description: 'Create posts' },
+  { action: 'read', resource: 'posts', description: 'Read posts' },
+  { action: 'update', resource: 'posts', description: 'Update posts' },
+  { action: 'delete', resource: 'posts', description: 'Delete posts' },
+]);
+```
+
+### Permission Groups
+
+```typescript
+const permissionGroups = {
+  posts: {
+    full: ['create', 'read', 'update', 'delete'],
+    editor: ['create', 'read', 'update'],
+    viewer: ['read'],
+  },
+  users: {
+    full: ['create', 'read', 'update', 'delete'],
+    manager: ['read', 'update'],
+    viewer: ['read'],
+  },
+};
+
+async function assignPermissionGroup(
+  guard: SequelizeGuard,
+  roleId: number,
+  resource: string,
+  groupName: string,
+) {
+  const actions = permissionGroups[resource]?.[groupName] || [];
+
+  for (const action of actions) {
+    const permission = await guard.permissions.getPermission(action, resource);
+    if (permission) {
+      await guard.roles.assignPermission(roleId, permission.id);
+    }
+  }
+}
+```
+
+## Checking Permissions
+
+### Direct Check
+
+```typescript
+const hasPermission = await guard.authorize.checkPermission(
+  userId,
+  'delete',
+  'posts',
+);
+```
+
+### Multiple Permission Check
+
+```typescript
+async function hasAllPermissions(
+  guard: SequelizeGuard,
+  userId: string,
+  checks: Array<{ action: string; resource: string }>,
+): Promise<boolean> {
+  const results = await Promise.all(
+    checks.map((check) =>
+      guard.authorize.checkPermission(userId, check.action, check.resource),
+    ),
+  );
+
+  return results.every((result) => result === true);
+}
+
+// Usage
+const canFullyManage = await hasAllPermissions(guard, userId, [
+  { action: 'create', resource: 'posts' },
+  { action: 'update', resource: 'posts' },
+  { action: 'delete', resource: 'posts' },
+]);
+```
+
+## Wildcard Permissions
+
+While Sequelize Guard doesn't have built-in wildcard support, you can implement it:
+
+```typescript
+class PermissionManager {
+  constructor(private guard: SequelizeGuard) {}
+
+  async checkWithWildcard(
+    userId: string,
+    action: string,
+    resource: string,
+  ): Promise<boolean> {
+    // Check exact permission
+    const hasExact = await this.guard.authorize.checkPermission(
+      userId,
+      action,
+      resource,
+    );
+
+    if (hasExact) return true;
+
+    // Check wildcard action
+    const hasWildcardAction = await this.guard.authorize.checkPermission(
+      userId,
+      '*',
+      resource,
+    );
+
+    if (hasWildcardAction) return true;
+
+    // Check wildcard resource
+    const hasWildcardResource = await this.guard.authorize.checkPermission(
+      userId,
+      action,
+      '*',
+    );
+
+    if (hasWildcardResource) return true;
+
+    // Check full wildcard
+    const hasFullWildcard = await this.guard.authorize.checkPermission(
+      userId,
+      '*',
+      '*',
+    );
+
+    return hasFullWildcard;
+  }
+}
+```
+
+## Best Practices
+
+1. **Be Specific**: Use clear, descriptive action and resource names
+2. **Consistent Naming**: Follow a consistent naming convention
+3. **Document Well**: Always provide meaningful descriptions
+4. **Avoid Duplication**: Don't create duplicate permissions
+5. **Group Logically**: Organize permissions by resource
+6. **Use Transactions**: For bulk operations, use database transactions
+

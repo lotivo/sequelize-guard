@@ -1,0 +1,141 @@
+---
+title: Installation
+description: Learn how to install and set up Sequelize Guard in your project.
+icon: BookOpen
+---
+
+## Prerequisites
+
+Before installing Sequelize Guard, make sure you have:
+
+- Node.js 18 or higher
+- Sequelize 6.x or higher
+- A supported database (PostgreSQL, MySQL, SQLite, MSSQL, etc.)
+
+## Package Installation
+
+Install Sequelize Guard using your preferred package manager:
+
+```bash tab="npm"
+npm install sequelize-guard
+```
+
+```bash tab="pnpm"
+pnpm install sequelize-guard
+```
+
+```bash tab="yarn"
+yarn add sequelize-guard
+```
+
+```bash tab="bun"
+bun add sequelize-guard
+```
+
+
+## Peer Dependencies
+
+Sequelize Guard requires Sequelize as a peer dependency. If you haven't installed it yet:
+
+```bash npm2yarn
+npm install sequelize
+```
+
+You'll also need to install the database driver for your database:
+
+#### PostgreSQL
+
+```bash tab="npm"
+npm install pg pg-hstore
+```
+
+```bash tab="pnpm"
+pnpm add pg pg-hstore
+```
+
+```bash tab="yarn"
+yarn add pg pg-hstore
+```
+
+```bash tab="bun"
+bun add pg pg-hstore
+```
+
+#### MySQL
+
+```bash tab="npm"
+npm install mysql2
+```
+```bash tab="pnpm"
+pnpm add mysql2
+```
+```bash tab="yarn"
+yarn add mysql2
+```
+```bash tab="bun"
+bun add mysql2
+```
+
+#### SQLite
+
+```bash tab="npm"
+npm install sqlite3
+```
+
+```bash tab="pnpm"
+pnpm add sqlite3
+```
+
+```bash tab="yarn"
+yarn add sqlite3
+```
+
+```bash tab="bun"
+bun add sqlite3
+```
+
+#### MSSQL
+
+```bash tab="npm"
+npm install tedious
+```
+
+```bash tab="pnpm"
+pnpm add tedious
+```
+
+```bash tab="yarn"
+yarn add tedious
+```
+
+```bash tab="bun"
+bun add tedious
+```
+
+## Verify Installation
+
+Create a simple test file to verify the installation:
+
+```tsx tab="test-guard.ts"
+import { SequelizeGuard } from 'sequelize-guard';
+import { Sequelize } from 'sequelize';
+
+const sequelize = new Sequelize('sqlite::memory:');
+const guard = new SequelizeGuard(sequelize);
+
+console.log('Sequelize Guard installed successfully!');
+```
+
+Run the test:
+
+```bash
+npx tsx test-guard.ts
+```
+
+If you see the success message, you're ready to start using Sequelize Guard!
+
+## Next Steps
+
+- [Getting Started Guide](./getting-started) - Learn the basics
+- [Configuration](./configuration) - Configure Sequelize Guard
+- [API Reference](../api) - Explore the full API

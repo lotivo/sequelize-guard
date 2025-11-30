@@ -119,3 +119,26 @@ build/
 .github/instructions/nx.instructions.md
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
+
+
+
+# generated content
+.source
+
+# test & build
+/coverage
+/.next/
+/out/
+/build
+*.tsbuildinfo
+
+# misc
+.DS_Store
+*.pem
+/.pnp
+.pnp.js
+
+# others
+.env*.local
+.vercel
+next-env.d.ts

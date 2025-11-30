@@ -1,0 +1,15 @@
+{
+  "root": false,
+  "defaultOpen": true,
+  "pages": [
+    "installation",
+    "getting-started",
+    "configuration",
+    "roles",
+    "permissions",
+    "users",
+    "authorization",
+    "caching",
+    "db-migrations"
+  ]
+}

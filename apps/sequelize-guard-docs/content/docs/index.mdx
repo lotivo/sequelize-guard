@@ -1,0 +1,125 @@
+---
+title: "Quick Start"
+icon: Album
+---
+
+
+<div className="nx-mt-12 nx-mb-12 nx-text-center">
+  <h1 className="nx-text-5xl nx-font-bold nx-tracking-tight">
+    🛡️ Sequelize Guard
+  </h1>
+  <div className="nx-mt-6 nx-text-2xl nx-text-gray-600 dark:nx-text-gray-400">
+    Role-based access control for Sequelize
+  </div>
+  <div className="nx-mt-4 nx-text-lg nx-text-gray-500 dark:nx-text-gray-500">
+    An elegant Authorization Library for Node.js with Sequelize ORM
+  </div>
+</div>
+
+<div className="nx-mt-16 nx-mb-10">
+  <Cards>
+    <Card title="🚀 Quick Start" href="/docs/guide/installation"  />
+    <Card title="📖 Guide" href="/docs/guide/getting-started"  />
+    <Card title="🔧 API Reference" href="/docs/api"  />
+    <Card title="💡 Examples" href="/docs/examples"  />
+  </Cards>
+</div>
+
+## Features
+
+- **🔐 Role-Based Access Control** - Define roles and permissions for your application
+- **🎯 Resource-Level Permissions** - Control access to specific resources
+- **👥 User Management** - Built-in user-role associations
+- **⚡ High Performance** - Built-in caching for optimal performance
+- **🔄 Migration Support** - Easy database schema setup
+- **📦 TypeScript Support** - Full type definitions included
+- **🧪 Well Tested** - Comprehensive test coverage
+- **🎨 Flexible API** - Simple and intuitive API design
+
+## Installation
+
+
+```bash tab="npm"
+npm install sequelize-guard
+```
+
+```bash tab="pnpm"
+pnpm install sequelize-guard
+```
+
+```bash tab="yarn"
+yarn add sequelize-guard
+```
+
+```bash tab="bun"
+bun add sequelize-guard
+```
+
+
+
+## Quick Example
+
+```typescript
+import { SequelizeGuard } from 'sequelize-guard';
+import { Sequelize } from 'sequelize';
+
+// Initialize Sequelize
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: ':memory:',
+});
+
+// Initialize Sequelize Guard
+const guard = new SequelizeGuard(sequelize);
+
+// Initialize the guard system
+await guard.init();
+
+// Create a role
+const adminRole = await guard.roles.createRole('admin', 'Administrator');
+
+// Create a permission
+const createUserPerm = await guard.permissions.createPermission(
+  'create',
+  'users',
+  'Can create users',
+);
+
+// Assign permission to role
+await guard.roles.assignPermission(adminRole.id, createUserPerm.id);
+
+// Create a user
+const user = await guard.users.createUser('user@example.com', {
+  name: 'John Doe',
+});
+
+// Assign role to user
+await guard.users.assignRole(user.id, adminRole.id);
+
+// Check permission
+const canCreate = await guard.authorize.checkPermission(
+  user.id,
+  'create',
+  'users',
+);
+console.log(canCreate); // true
+```
+
+## Why Sequelize Guard?
+
+Sequelize Guard provides a complete authorization solution for your Node.js applications:
+
+- **Easy Integration** - Works seamlessly with existing Sequelize projects
+- **Production Ready** - Used in production applications
+- **Active Development** - Regular updates and improvements
+- **MIT Licensed** - Free for commercial and personal use
+
+## Community
+
+- [GitHub Issues](https://github.com/lotivo/sequelize-guard/issues) - Report bugs and request features
+- [GitHub Discussions](https://github.com/lotivo/sequelize-guard/discussions) - Ask questions and share ideas
+- [NPM Package](https://www.npmjs.com/package/sequelize-guard) - View package details
+
+## License
+
+MIT© [Lotivo](https://github.com/lotivo)

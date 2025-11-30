@@ -1,0 +1,242 @@
+---
+title: Configuration
+description: Learn how to configure Sequelize Guard to fit your application's needs.
+icon: Cog
+---
+
+Sequelize Guard offers flexible configuration options to customize its behavior.
+
+## Constructor Options
+
+When creating a new `SequelizeGuard` instance, you can pass configuration options:
+
+```typescript
+import { SequelizeGuard } from 'sequelize-guard';
+import { Sequelize } from 'sequelize';
+
+const sequelize = new Sequelize(/* ... */);
+
+const guard = new SequelizeGuard(sequelize, {
+  prefix: 'app_',
+  cache: {
+    enabled: true,
+    ttl: 300,
+    checkPeriod: 600,
+  },
+  models: {
+    user: 'User',
+    role: 'Role',
+    permission: 'Permission',
+    resource: 'Resource',
+    roleUser: 'RoleUser',
+    rolePermission: 'RolePermission',
+  },
+});
+```
+
+## Configuration Options
+
+### Table Prefix
+
+Add a prefix to all Guard-related table names:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  prefix: 'app_', // Tables will be: app_guard_users, app_guard_roles, etc.
+});
+```
+
+### Cache Configuration
+
+Control the caching behavior:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: true, // Enable/disable caching
+    ttl: 300, // Time to live in seconds (default: 300)
+    checkPeriod: 600, // Check period for expired keys (default: 600)
+  },
+});
+```
+
+#### Disable Cache
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: false,
+  },
+});
+```
+
+### Custom Model Names
+
+Customize the names of the Guard models:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  models: {
+    user: 'AppUser',
+    role: 'AppRole',
+    permission: 'AppPermission',
+    resource: 'AppResource',
+    roleUser: 'AppRoleUser',
+    rolePermission: 'AppRolePermission',
+  },
+});
+```
+
+## Environment-Based Configuration
+
+Create different configurations for different environments:
+
+```typescript filename="config/guard.ts"
+import { Sequelize } from 'sequelize';
+import { SequelizeGuard } from 'sequelize-guard';
+
+interface GuardConfig {
+  prefix?: string;
+  cache?: {
+    enabled: boolean;
+    ttl?: number;
+    checkPeriod?: number;
+  };
+}
+
+const configs: Record<string, GuardConfig> = {
+  development: {
+    prefix: 'dev_',
+    cache: {
+      enabled: true,
+      ttl: 60, // Short TTL for development
+    },
+  },
+  production: {
+    prefix: 'prod_',
+    cache: {
+      enabled: true,
+      ttl: 600, // Longer TTL for production
+    },
+  },
+  test: {
+    prefix: 'test_',
+    cache: {
+      enabled: false, // Disable cache for testing
+    },
+  },
+};
+
+export function createGuard(sequelize: Sequelize) {
+  const env = process.env.NODE_ENV || 'development';
+  const config = configs[env] || configs.development;
+
+  return new SequelizeGuard(sequelize, config);
+}
+```
+
+## Advanced Configuration
+
+### Custom Sequelize Options
+
+You can pass custom Sequelize options when initializing:
+
+```typescript
+const sequelize = new Sequelize({
+  dialect: 'postgres',
+  host: 'localhost',
+  database: 'myapp',
+  username: 'user',
+  password: 'pass',
+  pool: {
+    max: 10,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+  logging: false,
+});
+
+const guard = new SequelizeGuard(sequelize);
+```
+
+### Transaction Support
+
+Use transactions with Guard operations:
+
+```typescript
+const transaction = await sequelize.transaction();
+
+try {
+  const role = await guard.roles.createRole('admin', 'Administrator', {
+    transaction,
+  });
+
+  const permission = await guard.permissions.createPermission(
+    'create',
+    'posts',
+    'Can create posts',
+    { transaction },
+  );
+
+  await guard.roles.assignPermission(role.id, permission.id, {
+    transaction,
+  });
+
+  await transaction.commit();
+} catch (error) {
+  await transaction.rollback();
+  throw error;
+}
+```
+
+## Best Practices
+
+### 1. Use Environment Variables
+
+Store sensitive configuration in environment variables:
+
+```typescript
+import { Sequelize } from 'sequelize';
+import { SequelizeGuard } from 'sequelize-guard';
+
+const sequelize = new Sequelize(
+  process.env.DB_NAME!,
+  process.env.DB_USER!,
+  process.env.DB_PASS!,
+  {
+    host: process.env.DB_HOST,
+    dialect: 'postgres',
+  },
+);
+
+const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: process.env.CACHE_ENABLED === 'true',
+    ttl: parseInt(process.env.CACHE_TTL || '300'),
+  },
+});
+```
+
+### 2. Enable Caching in Production
+
+Always enable caching in production for better performance:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  cache: {
+    enabled: process.env.NODE_ENV === 'production',
+    ttl: 600,
+  },
+});
+```
+
+### 3. Use Consistent Prefixes
+
+Use table prefixes to avoid naming conflicts:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  prefix: 'myapp_',
+});
+```

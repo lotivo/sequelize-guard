@@ -1,0 +1,314 @@
+---
+title: Basic Examples
+description: Simple examples to get you started with Sequelize Guard.
+---
+
+
+
+```typescript
+import { SequelizeGuard } from 'sequelize-guard';
+
+async function registerUser(
+  guard: SequelizeGuard,
+  email: string,
+  name: string,
+) {
+  // Create user
+  const user = await guard.users.createUser(email, { name });
+
+  // Get or create 'user' role
+  let userRole = await guard.roles.getRole('user');
+  if (!userRole) {
+    userRole = await guard.roles.createRole('user', 'Regular User');
+  }
+
+  // Assign role to user
+  await guard.users.assignRole(user.id, userRole.id);
+
+  return user;
+}
+
+// Usage
+const newUser = await registerUser(guard, 'john@example.com', 'John Doe');
+```
+
+## Authorization Middleware
+
+```typescript
+async function requirePermission(
+  guard: SequelizeGuard,
+  userId: string,
+  action: string,
+  resource: string,
+) {
+  const hasPermission = await guard.authorize.checkPermission(
+    userId,
+    action,
+    resource,
+  );
+
+  if (!hasPermission) {
+    throw new Error(`User not authorized to ${action} ${resource}`);
+  }
+
+  return true;
+}
+
+// Usage
+try {
+  await requirePermission(guard, userId, 'delete', 'posts');
+  // User is authorized, proceed with deletion
+  await deletePost(postId);
+} catch (error) {
+  console.error(error.message);
+}
+```
+
+## Check Multiple Permissions
+
+```typescript
+async function canManagePost(
+  guard: SequelizeGuard,
+  userId: string,
+): Promise<{
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+}> {
+  const [canCreate, canUpdate, canDelete] = await Promise.all([
+    guard.authorize.checkPermission(userId, 'create', 'posts'),
+    guard.authorize.checkPermission(userId, 'update', 'posts'),
+    guard.authorize.checkPermission(userId, 'delete', 'posts'),
+  ]);
+
+  return { canCreate, canUpdate, canDelete };
+}
+
+// Usage
+const permissions = await canManagePost(guard, userId);
+console.log('User permissions:', permissions);
+```
+
+## Role-Based Content Filtering
+
+```typescript
+import { Op } from 'sequelize';
+
+async function getFilteredPosts(
+  guard: SequelizeGuard,
+  userId: string,
+  Post: any,
+) {
+  const isAdmin = await guard.authorize.checkRole(userId, 'admin');
+
+  if (isAdmin) {
+    // Admin sees all posts
+    return Post.findAll();
+  }
+
+  const user = await guard.users.getUser(userId);
+
+  // Regular users see only their own posts and published posts
+  return Post.findAll({
+    where: {
+      [Op.or]: [{ authorId: userId }, { status: 'published' }],
+    },
+  });
+}
+```
+
+## Bulk Role Assignment
+
+```typescript
+async function assignRolesToUsers(
+  guard: SequelizeGuard,
+  userIds: string[],
+  roleName: string,
+) {
+  const role = await guard.roles.getRole(roleName);
+
+  if (!role) {
+    throw new Error(`Role ${roleName} not found`);
+  }
+
+  const results = await Promise.allSettled(
+    userIds.map((userId) => guard.users.assignRole(userId, role.id)),
+  );
+
+  const successful = results.filter((r) => r.status === 'fulfilled').length;
+  const failed = results.filter((r) => r.status === 'rejected').length;
+
+  return { successful, failed, total: userIds.length };
+}
+
+// Usage
+const result = await assignRolesToUsers(
+  guard,
+  ['user1', 'user2', 'user3'],
+  'premium',
+);
+console.log(`Assigned role to ${result.successful}/${result.total} users`);
+```
+
+## Permission Checking Utility
+
+```typescript
+class PermissionChecker {
+  constructor(private guard: SequelizeGuard) {}
+
+  async requireAll(
+    userId: string,
+    permissions: Array<{ action: string; resource: string }>,
+  ): Promise<boolean> {
+    const checks = await Promise.all(
+      permissions.map((p) =>
+        this.guard.authorize.checkPermission(userId, p.action, p.resource),
+      ),
+    );
+
+    return checks.every((check) => check === true);
+  }
+
+  async requireAny(
+    userId: string,
+    permissions: Array<{ action: string; resource: string }>,
+  ): Promise<boolean> {
+    const checks = await Promise.all(
+      permissions.map((p) =>
+        this.guard.authorize.checkPermission(userId, p.action, p.resource),
+      ),
+    );
+
+    return checks.some((check) => check === true);
+  }
+}
+
+// Usage
+const checker = new PermissionChecker(guard);
+
+// User must have ALL permissions
+const canFullyManage = await checker.requireAll(userId, [
+  { action: 'create', resource: 'posts' },
+  { action: 'update', resource: 'posts' },
+  { action: 'delete', resource: 'posts' },
+]);
+
+// User must have AT LEAST ONE permission
+const canDoSomething = await checker.requireAny(userId, [
+  { action: 'update', resource: 'posts' },
+  { action: 'delete', resource: 'posts' },
+]);
+```
+
+## Temporary Role Assignment
+
+```typescript
+async function grantTemporaryRole(
+  guard: SequelizeGuard,
+  userId: string,
+  roleName: string,
+  durationMs: number,
+): Promise<() => Promise<void>> {
+  const role = await guard.roles.getRole(roleName);
+  await guard.users.assignRole(userId, role.id);
+
+  // Return cleanup function
+  return async () => {
+    await guard.users.removeRole(userId, role.id);
+  };
+}
+
+// Usage
+const cleanup = await grantTemporaryRole(
+  guard,
+  userId,
+  'moderator',
+  24 * 60 * 60 * 1000, // 24 hours
+);
+
+// After some time or on app shutdown
+setTimeout(cleanup, 24 * 60 * 60 * 1000);
+```
+
+## User Permission Summary
+
+```typescript
+async function getUserPermissionSummary(guard: SequelizeGuard, userId: string) {
+  const user = await guard.users.getUserWithRoles(userId);
+
+  const allPermissions = new Set<string>();
+
+  for (const role of user.roles) {
+    const roleWithPerms = await guard.roles.getRoleWithPermissions(role.name);
+
+    for (const permission of roleWithPerms.permissions) {
+      allPermissions.add(`${permission.action}:${permission.resource}`);
+    }
+  }
+
+  return {
+    userId: user.id,
+    email: user.email,
+    roles: user.roles.map((r) => r.name),
+    permissions: Array.from(allPermissions),
+    totalPermissions: allPermissions.size,
+  };
+}
+
+// Usage
+const summary = await getUserPermissionSummary(guard, userId);
+console.log(JSON.stringify(summary, null, 2));
+```
+
+## Resource-Specific Authorization
+
+```typescript
+async function authorizeResourceAccess(
+  guard: SequelizeGuard,
+  userId: string,
+  action: string,
+  resourceType: string,
+  resourceId: string,
+  Resource: any,
+) {
+  // Check general permission
+  const hasGeneralPermission = await guard.authorize.checkPermission(
+    userId,
+    action,
+    resourceType,
+  );
+
+  if (!hasGeneralPermission) {
+    return false;
+  }
+
+  // Check resource ownership
+  const resource = await Resource.findByPk(resourceId);
+
+  if (!resource) {
+    throw new Error('Resource not found');
+  }
+
+  // Allow if user is owner or admin
+  const isAdmin = await guard.authorize.checkRole(userId, 'admin');
+  const isOwner = resource.ownerId === userId;
+
+  return isAdmin || isOwner;
+}
+
+// Usage
+const canEdit = await authorizeResourceAccess(
+  guard,
+  userId,
+  'update',
+  'documents',
+  documentId,
+  Document,
+);
+```
+
+## Next Steps
+
+- [Express.js Integration](/examples/express)
+- [NestJS Integration](/examples/nestjs)
+- [Advanced Use Cases](/examples/advanced)

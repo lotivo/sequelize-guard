@@ -1,0 +1,204 @@
+---
+title: Users
+description: Learn how to manage users in Sequelize Guard.
+icon: User
+---
+
+# Users
+
+Manage users and their role assignments with Sequelize Guard.
+
+## Creating Users
+
+### Basic User Creation
+
+```typescript
+const user = await guard.users.createUser('john@example.com');
+```
+
+### With Additional Data
+
+```typescript
+const user = await guard.users.createUser('john@example.com', {
+  name: 'John Doe',
+  username: 'johndoe',
+  metadata: {
+    department: 'Engineering',
+    joinedAt: new Date(),
+  },
+});
+```
+
+## Retrieving Users
+
+### Get User by ID
+
+```typescript
+const user = await guard.users.getUser(userId);
+console.log(user.email, user.name);
+```
+
+### Get User with Roles
+
+```typescript
+const userWithRoles = await guard.users.getUserWithRoles(userId);
+console.log('User roles:', userWithRoles.roles);
+```
+
+### Get User by Email
+
+```typescript
+const user = await guard.users.getUserByEmail('john@example.com');
+```
+
+## Updating Users
+
+```typescript
+await guard.users.updateUser(userId, {
+  name: 'John Smith',
+  username: 'johnsmith',
+});
+```
+
+## Deleting Users
+
+```typescript
+await guard.users.deleteUser(userId);
+```
+
+## Role Management
+
+### Assign Role to User
+
+```typescript
+const role = await guard.roles.getRole('editor');
+await guard.users.assignRole(userId, role.id);
+```
+
+### Assign Multiple Roles
+
+```typescript
+const adminRole = await guard.roles.getRole('admin');
+const editorRole = await guard.roles.getRole('editor');
+
+await guard.users.assignRole(userId, adminRole.id);
+await guard.users.assignRole(userId, editorRole.id);
+```
+
+### Remove Role from User
+
+```typescript
+await guard.users.removeRole(userId, roleId);
+```
+
+### Check if User Has Role
+
+```typescript
+const hasAdminRole = await guard.authorize.checkRole(userId, 'admin');
+
+if (hasAdminRole) {
+  console.log('User is an admin');
+}
+```
+
+### Get User's Roles
+
+```typescript
+const user = await guard.users.getUserWithRoles(userId);
+const roleNames = user.roles.map((role) => role.name);
+console.log('User roles:', roleNames);
+```
+
+## Common Patterns
+
+### User Registration Flow
+
+```typescript
+async function registerNewUser(email: string, password: string, userData: any) {
+  // Create user
+  const user = await guard.users.createUser(email, userData);
+
+  // Assign default role
+  const defaultRole = await guard.roles.getRole('user');
+  if (defaultRole) {
+    await guard.users.assignRole(user.id, defaultRole.id);
+  }
+
+  // Send welcome email, etc.
+
+  return user;
+}
+```
+
+### Promote User to Admin
+
+```typescript
+async function promoteToAdmin(userId: string) {
+  const adminRole = await guard.roles.getRole('admin');
+
+  if (!adminRole) {
+    throw new Error('Admin role not found');
+  }
+
+  await guard.users.assignRole(userId, adminRole.id);
+
+  console.log(`User ${userId} promoted to admin`);
+}
+```
+
+### User Permission Summary
+
+```typescript
+async function getUserPermissionsSummary(userId: string) {
+  const user = await guard.users.getUserWithRoles(userId);
+
+  const allPermissions = new Set();
+
+  for (const role of user.roles) {
+    const roleWithPerms = await guard.roles.getRoleWithPermissions(role.name);
+
+    for (const perm of roleWithPerms.permissions) {
+      allPermissions.add(`${perm.action}:${perm.resource}`);
+    }
+  }
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+    roles: user.roles.map((r) => r.name),
+    permissions: Array.from(allPermissions),
+  };
+}
+```
+
+### Bulk User Operations
+
+```typescript
+async function bulkAssignRole(userIds: string[], roleName: string) {
+  const role = await guard.roles.getRole(roleName);
+
+  if (!role) {
+    throw new Error(`Role ${roleName} not found`);
+  }
+
+  const results = await Promise.allSettled(
+    userIds.map((userId) => guard.users.assignRole(userId, role.id)),
+  );
+
+  return {
+    successful: results.filter((r) => r.status === 'fulfilled').length,
+    failed: results.filter((r) => r.status === 'rejected').length,
+  };
+}
+```
+
+## Best Practices
+
+1. **Unique Emails**: Ensure email uniqueness at the application level
+2. **Default Roles**: Always assign a default role to new users
+3. **Soft Deletes**: Consider implementing soft deletes for users
+4. **Audit Trail**: Log role assignments and removals
+5. **Validation**: Validate user data before creating users
+
