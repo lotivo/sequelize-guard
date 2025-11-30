@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "master",
+  "workspaceLayout": {
+    "appsDir": "apps",
+    "libsDir": "libs"
+  },
   "plugins": [
     {
       "plugin": "@nx/eslint/plugin",
@@ -23,5 +27,6 @@
       }
     }
   ],
-  "nxCloudId": "6926732bc3d8b52522afb790"
+  "nxCloudId": "6926732bc3d8b52522afb790",
+  "generators": {}
 }
