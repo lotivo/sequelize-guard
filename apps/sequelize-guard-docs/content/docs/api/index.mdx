@@ -1,0 +1,102 @@
+---
+title: API Reference
+description: Complete API reference for sequelize-guard
+icon: ShieldCheck
+---
+
+**sequelize-guard v6.0.1**
+
+***
+
+# sequelize-guard v6.0.1
+
+SequelizeGuard - Authorization Library for Sequelize
+
+## Classes
+
+- [SequelizeGuard](./classes/SequelizeGuard.mdx)
+
+## Interfaces
+
+- [RoleCreationResult](./interfaces/RoleCreationResult.mdx)
+- [AddPermsToRoleResult](./interfaces/AddPermsToRoleResult.mdx)
+- [RemovePermsFromRoleResult](./interfaces/RemovePermsFromRoleResult.mdx)
+- [CreatePermsOptions](./interfaces/CreatePermsOptions.mdx)
+- [CreateRolesOptions](./interfaces/CreateRolesOptions.mdx)
+- [FindRolesArgs](./interfaces/FindRolesArgs.mdx)
+- [FindPermsArgs](./interfaces/FindPermsArgs.mdx)
+- [BulkPermissionInput](./interfaces/BulkPermissionInput.mdx)
+- [PermissionData](./interfaces/PermissionData.mdx)
+- [RoleData](./interfaces/RoleData.mdx)
+- [GuardOptions](./interfaces/GuardOptions.mdx)
+- [GuardInternalOptions](./interfaces/GuardInternalOptions.mdx)
+
+## Type Aliases
+
+- [RoleCreationParam](./type-aliases/RoleCreationParam.mdx)
+- [GuardEventCallback](./type-aliases/GuardEventCallback.mdx)
+- [UnsubscribeFn](./type-aliases/UnsubscribeFn.mdx)
+
+## Variables
+
+### migration
+
+> **migration**: `object`
+
+Defined in: [migrations/guard-migrations.ts:108](https://github.com/lotivo/sequelize-guard/blob/a09a0c94502546a7feeb95441ce15b47b8a10ac5/packages/sequelize-guard/src/migrations/guard-migrations.ts#L108)
+
+#### Type Declaration
+
+##### up()
+
+> **up**: (`queryInterface`, `_Sequelize`, `options`) => `Promise`\<`void`\>
+
+Run migrations to create Guard tables
+
+###### Parameters
+
+###### queryInterface
+
+`QueryInterface`
+
+###### \_Sequelize
+
+`Sequelize`
+
+###### options
+
+[`GuardOptions`](./interfaces/GuardOptions.mdx) = `{}`
+
+###### Returns
+
+`Promise`\<`void`\>
+
+##### down()
+
+> **down**: (`queryInterface`, `_Sequelize`, `options`) => `Promise`\<`void`\>
+
+Rollback migrations - drop Guard tables
+
+###### Parameters
+
+###### queryInterface
+
+`QueryInterface`
+
+###### \_Sequelize
+
+`Sequelize`
+
+###### options
+
+[`GuardOptions`](./interfaces/GuardOptions.mdx) = `{}`
+
+###### Returns
+
+`Promise`\<`void`\>
+
+## References
+
+### default
+
+Renames and re-exports [SequelizeGuard](./classes/SequelizeGuard.mdx)
