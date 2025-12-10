@@ -7,7 +7,6 @@ on:
     branches:
       - master
       - dev
-      - dev-v6
 
 jobs:
   build-and-test:
