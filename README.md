@@ -111,7 +111,7 @@ For comprehensive guides, API reference, and examples, visit our documentation:
 
 ### Migration
 
-- **[Migration Guide v5 → v6](https://sequelize-guard.js.org/migration/v6)** - Complete guide for upgrading from v5 to v6
+- **[Migration Guide to v6](https://sequelize-guard.js.org/migration/upgrade-to-v6)** - Complete guide for upgrading to v6
 
 ### Core Concepts
 
@@ -166,16 +166,33 @@ We love contributions! SequelizeGuard is open source and we welcome contribution
 - ✅ Test coverage improvements
 - 💡 Ideas and suggestions
 
-### How to Contribute
+```bash
+# Clone the repository
+git clone https://github.com/lotivo/sequelize-guard.git
+cd sequelize-guard
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Install dependencies: `yarn install`
-4. Make your changes and add tests
-5. Run tests: `yarn test`
-6. Run linting: `yarn lint`
-7. Commit using [Conventional Commits](https://www.conventionalcommits.org/): `git commit -m "feat: add feature"`
-8. Push and open a Pull Request
+# Install dependencies
+yarn install
+
+# Run tests
+yarn test
+
+# Build
+yarn build
+```
+
+### Documentation
+
+#### Generating API Documentation
+
+API documentation is automatically generated from TypeScript source code:
+
+```bash
+# Generate API docs manually
+yarn docs:generate
+```
+
+The API documentation is automatically updated after each release via GitHub Actions. See [scripts/README.md](scripts/README.md) for details.
 
 ### Reporting Issues
 

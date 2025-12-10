@@ -1,0 +1,31 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["./packages/sequelize-guard/src/index.ts"],
+  "tsconfig": "./packages/sequelize-guard/tsconfig.lib.json",
+  "out": "./apps/sequelize-guard-docs/content/docs/api",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeInternal": true,
+  "hideGenerator": true,
+  "includeVersion": true,
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Class",
+    "Constructor",
+    "Property",
+    "Method",
+    "Function",
+    "Interface",
+    "TypeAlias"
+  ],
+  "outputFileStrategy": "members",
+  "flattenOutputFiles": false,
+  "membersWithOwnFile": [
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Enum"
+  ]
+}

@@ -33,7 +33,8 @@
     "format:staged": "prettier --write",
     "lint:staged": "eslint --fix --max-warnings 0",
     "lint:staged:js": "eslint --fix",
-    "pre-commit": "yarn lint-staged && tsc --noEmit"
+    "pre-commit": "yarn lint-staged && tsc --noEmit",
+    "docs:generate": "node scripts/generate-api-docs.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -69,6 +70,8 @@
     "rollup": "^4.53.3",
     "sqlite3": "^5.1.7",
     "tslib": "^2.3.0",
+    "typedoc": "^0.28.2",
+    "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.2",
     "vite-plugin-dts": "^4.5.4",
