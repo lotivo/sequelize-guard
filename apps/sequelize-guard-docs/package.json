@@ -13,16 +13,16 @@
     "fumadocs-mdx": "^14.0.4",
     "fumadocs-ui": "^16.2.0",
     "lucide-react": "^0.555.0",
-    "next": "16.0.1",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "next": "16.0.8",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/mdx": "^2.0.13",
     "@types/node": "^24.10.1",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.8.32",
     "eslint": "^9.39.1",
     "eslint-config-next": "16.0.5",

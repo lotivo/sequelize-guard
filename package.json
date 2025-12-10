@@ -51,6 +51,7 @@
     "@typescript-eslint/parser": "^8.46.4",
     "@vitest/coverage-v8": "4.0.9",
     "@vitest/ui": "^4.0.9",
+    "baseline-browser-mapping": "^2.8.32",
     "esdoc": "^1.1.0",
     "esdoc-standard-plugin": "^1.0.0",
     "eslint": "^9.39.1",
