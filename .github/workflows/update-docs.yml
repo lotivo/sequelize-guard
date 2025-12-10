@@ -22,7 +22,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: dev # or your main branch
+          ref: master # or your main branch
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -86,7 +86,7 @@ jobs:
 
             **Note:** This is an automated PR. Please review the changes before merging.
           branch: docs/update-api-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}
-          base: dev
+          base: master
           labels: documentation,automated
           assignees: ${{ github.actor }}
 

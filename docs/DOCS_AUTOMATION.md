@@ -111,7 +111,7 @@ The workflow is triggered automatically after a successful release, but can also
 
 Edit `.github/workflows/update-docs.yml`:
 
-- Change the target branch (default: `dev`)
+- Change the target branch (default: `master`)
 - Modify PR labels or assignees
 - Adjust commit messages
 
