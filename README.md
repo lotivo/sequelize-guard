@@ -100,14 +100,13 @@ For comprehensive guides, API reference, and examples, visit our documentation:
 
 **📖 [https://sequelize-guard.js.org](https://sequelize-guard.js.org)**
 
-**📖 (Fallback: [https://sequelize-guard.vercel.app](https://sequelize-guard.vercel.app))**
-
 ### Key Topics
 
 - **[Getting Started](https://sequelize-guard.js.org/getting-started)** - Installation and basic setup
 - **[API Reference](https://sequelize-guard.js.org/api)** - Complete API documentation
 - **[TypeScript Support](https://sequelize-guard.js.org/typescript)** - Using with TypeScript
 - **[Examples](https://sequelize-guard.js.org/examples)** - Real-world usage examples
+- **[Blog](https://sequelize-guard.js.org/blogs)** - Articles and insights about the project
 
 ### Migration
 
@@ -223,7 +222,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Need help? Here's how to get support:
 
-- 📖 **Documentation:** [https://sequelize-guard.js.org](https://sequelize-guard.js.org) (or [https://sequelize-guard.vercel.app](https://sequelize-guard.vercel.app))
+- 📖 **Documentation:** [https://sequelize-guard.js.org](https://sequelize-guard.js.org) (fallback: [https://sequelize-guard.vercel.app](https://sequelize-guard.vercel.app))
 - 🐛 **Bug Reports:** [GitHub Issues](https://github.com/lotivo/sequelize-guard/issues)
 - 💬 **Questions:** [GitHub Discussions](https://github.com/lotivo/sequelize-guard/discussions)
 

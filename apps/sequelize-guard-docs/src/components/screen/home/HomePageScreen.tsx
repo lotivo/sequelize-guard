@@ -33,6 +33,12 @@ export const HomePageScreen = () => {
               >
                 Documentation
               </Link>
+              <Link
+                href="/blogs"
+                className="text-slate-600 hover:text-slate-900 font-medium transition"
+              >
+                Blog
+              </Link>
               <a
                 href="#features"
                 className="text-slate-600 hover:text-slate-900 font-medium transition"
@@ -272,9 +278,13 @@ export const HomePageScreen = () => {
               <Link href="/docs" className="hover:text-white transition">
                 Documentation
               </Link>
+              <div className="border-l border-slate-600 h-5" />
+              <Link href="/blogs" className="hover:text-white transition">
+                Blog
+              </Link>
             </div>
             <p className="mt-10 text-slate-500 text-sm">
-              Made with love by{' '}
+              Made with ❤️ for Open-Source by{' '}
               <a
                 href="https://github.com/pankajvaghela"
                 className="text-emerald-400 hover:underline"
