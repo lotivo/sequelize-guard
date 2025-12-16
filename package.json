@@ -34,6 +34,9 @@
     "lint:staged": "eslint --fix --max-warnings 0",
     "lint:staged:js": "eslint --fix",
     "pre-commit": "yarn lint-staged && tsc --noEmit",
+    "affected:lint": "nx affected -t lint",
+    "affected:test": "nx affected -t test",
+    "affected:build": "nx affected -t build",
     "docs:generate": "node scripts/generate-api-docs.mjs"
   },
   "devDependencies": {

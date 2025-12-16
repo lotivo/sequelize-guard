@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
@@ -31,18 +33,33 @@ jobs:
         # --frozen-lockfile ensures yarn.lock is respected exactly
         run: yarn install --frozen-lockfile
 
+      - name: Derive Nx SHAs
+        uses: nrwl/nx-set-shas@v4
+
+      - name: Detect if library is affected
+        id: affected
+        run: |
+          AFFECTED=$(npx nx print-affected --select=projects)
+          if echo "$AFFECTED" | tr ',' ' ' | tr ' ' '\n' | grep -xq "sequelize-guard"; then
+            echo "library=true" >> $GITHUB_OUTPUT
+          else
+            echo "library=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run lint
         # This runs lint with eslint
-        run: yarn lint
+        run: npx nx affected -t lint --parallel=3
 
       - name: Run tests and generate coverage
+        if: steps.affected.outputs.library == 'true'
         # This runs vitest with coverage enabled
-        run: yarn test:coverage
+        run: npx nx affected -t test:coverage --parallel=3
 
       - name: Upload coverage to Coveralls
+        if: steps.affected.outputs.library == 'true'
         uses: coverallsapp/github-action@v2
         with:
           base-path: packages/sequelize-guard
 
       - name: Build the library
-        run: yarn build
+        run: npx nx affected -t build --parallel=3

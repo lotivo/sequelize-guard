@@ -5,5 +5,32 @@
   "projectType": "application",
   "tags": [],
   "// targets": "to see all targets run: nx show project sequelize-guard-docs --web",
-  "targets": {}
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/sequelize-guard-docs",
+        "command": "yarn build"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/sequelize-guard-docs",
+        "command": "yarn lint"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "echo 'No tests configured for sequelize-guard-docs'"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "echo 'No coverage tests configured for sequelize-guard-docs'"
+      }
+    }
+  }
 }
