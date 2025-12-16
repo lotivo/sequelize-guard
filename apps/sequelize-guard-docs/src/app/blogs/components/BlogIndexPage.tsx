@@ -1,6 +1,6 @@
 import { blogSource } from '@/lib/source';
 import Link from 'next/link';
-import { Calendar, User, Tag } from 'lucide-react';
+import { Calendar, User, Tag, ShieldCheck } from 'lucide-react';
 
 export function BlogIndexPage() {
   const allBlogs = [...blogSource.getPages()].sort((a, b) => {
@@ -11,7 +11,16 @@ export function BlogIndexPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <div className="max-w-5xl mx-auto px-6 py-16">
+      <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 sm:py-16">
+        <header className="mb-10 flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-3 group">
+            <ShieldCheck className="w-8 h-8 text-emerald-600 group-hover:text-emerald-700 transition" />
+            <span className="text-xl font-bold text-slate-900 group-hover:text-slate-950 transition">
+              Sequelize Guard
+            </span>
+          </Link>
+        </header>
+
         <div className="mb-12">
           <Link
             href="/"
