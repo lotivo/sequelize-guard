@@ -16,12 +16,12 @@ The orchestrator owns integration, scheduling, design decisions, cross-category 
 
 | Category | Responsibility | Prerequisites | State |
 | --- | --- | --- | --- |
-| A | Authorization, permission grammar, safe mutations and transactions | Baseline | Running |
-| B | Schema, migrations, custom identities and database integration | Baseline; coordinate constraints with A | Running |
-| D | Dependency/security cleanup and authentication example requirements | Baseline; owns dependency manifest/lock changes | Running |
-| F | Bulk assignment, role inheritance, polymorphic role holders | Integrated A + B and user design choices | Waiting |
+| A | Authorization, permission grammar, safe mutations and transactions | Baseline | Integrated; final API/docs review pending |
+| B | Schema, migrations, custom identities and database integration | Baseline; coordinate constraints with A | Integrated; final edge-case review running |
+| D | Dependency/security cleanup and authentication example requirements | Baseline; owns dependency manifest/lock changes | D1–D3 integrated; D4/D5 await E |
+| F | Bulk assignment, role inheritance, polymorphic role holders | Integrated A + B and user design choices | Running |
 | C | Public API/types/options/lifecycle and compatibility audit | Integrated A + B + F | Waiting |
-| I | CI/release hardening and dry-run checks | D; coordinate B database jobs and H consumers | Waiting |
+| I | CI/release hardening and dry-run checks | D; coordinate B database jobs and H consumers | Running |
 | H | Contract matrix, isolated consumers, performance and acceptance | Integrated A + B + C + D + F | Waiting |
 | E | Correct human documentation, shared executable recipes and API generation | Final implementation and validation contracts | Waiting |
 | G | Agent instructions, packaged skill and discovery/evaluation | E fixtures and final public APIs | Waiting |
@@ -50,5 +50,13 @@ No production data changes or release publication are part of this task. Categor
 
 - `449b245`: shared PostgreSQL/MySQL test drivers and pinned published 6.0.2 fixture dependency. Added by D for B's real migration compatibility checks.
 - `dd29546`: D1 complete, obsolete ESDoc packages/config removed. Existing TypeDoc generation completed with zero errors (13 pre-existing declaration/JSDoc warnings); generated documentation is deferred to the final documentation phase.
+- `142c7c4`: aligned Nx 24 and Vitest tooling, patched dependency paths, and corrected affected-project detection for JSON output. D validated clean frozen installs and full baseline checks on Node 22.17.1 and 24.15.0. The [dependency assessment](./2026-11-16-dependency-assessment.md) records all 47 GitHub alert dispositions, two residual exposure assessments, and final security-documentation requirements.
+- `f4d761a`, `c6a5ee4`: atomic policy mutations, canonical identities, exact-token revocation, writer-backed administrative reads, and transaction/event regression tests. A validated 145 SQLite tests and six packed-consumer checks on both Node lines, plus PostgreSQL/MySQL concurrency checks.
+- `afbf021`: model/migration schema parity, custom primary keys, constraints/indexes and explicit offline upgrades into distinct tables. The combined A+B+D branch passed lint, types, build, six packed checks and 162 SQLite tests on Node 22.17.1. B also validated PostgreSQL 17 and MySQL 8.4 integration.
+- `eef42a1`: reproducible physical PostgreSQL standby test, including paused replication and an older transaction snapshot. B ran the isolated container exercise successfully; the integrated implementation will rerun it before final acceptance.
+
+F's implementation design preserves the existing user junction and gives each registered holder type its own typed junction with real foreign keys. A singleton database lock serializes role-graph edits across processes. The new bulk APIs count newly assigned links, and inherited permission checks remain separate from direct role membership. These designs are under implementation, not completed checklist evidence.
+
+I is preparing a 7.0.0 candidate because of changed policy, schema and compatibility contracts. Version preparation does not create a tag or authorize publication. Final release metadata and upgrade guidance are written after implementation settles.
 
 Additional contract decisions during implementation: retain zero-database-work `ready` for `sync:false`; protect existing schema upgrades through explicit offline migration with original data preserved; avoid false commit notifications for caller-owned transactions when Sequelize cannot reliably signal commit success. Final implementations and tests must substantiate these contracts before corresponding items are checked off.
