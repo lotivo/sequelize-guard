@@ -84,8 +84,7 @@ Sequelize instance
 
 Defined in: [SequelizeGuard.ts:46](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/SequelizeGuard.ts#L46)
 
-Promise that resolves when SequelizeGuard is fully initialized
-Await this to ensure all models are synced and cache is ready
+Automatic startup completion, including model synchronization and cache loading. Errors reject this promise. With `sync: false`, it resolves without database work; await an explicit `sync()` call or prepare tables with migrations before using the guard.
 
 #### Example
 
@@ -168,6 +167,21 @@ Guard configuration options
 `SequelizeGuardBase.options`
 
 ## Methods
+
+### sync()
+
+> **sync**(`options?`: `SyncOptions`): `Promise<this>`
+
+Synchronizes guard models and reloads their cached roles and permissions. Accepts Sequelize's `SyncOptions`, including `logging`, `hooks`, `force`, `alter`, and the database-name `match` safety check. Calls are serialized with automatic startup and reject on synchronization or cache-loading errors. A later call can retry after a failure.
+
+This includes a supplied `UserModel` and excludes unrelated Sequelize models. `force` drops tables and `alter` may remove data. Use migrations for production schema changes. Run synchronization before serving requests; it does not coordinate with concurrent application reads or writes.
+
+```typescript
+const guard = new SequelizeGuard(sequelize, { sync: false });
+await guard.sync({ logging: false });
+```
+
+***
 
 ### models()
 

@@ -1,15 +1,16 @@
-import type { Sequelize } from 'sequelize';
+import type { Sequelize, SyncOptions } from 'sequelize';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
 import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
 import migration from './migrations/guard-migrations';
 import type {
+  GuardModel,
   GuardPermissionModel,
   GuardRoleData,
   GuardRoleModel,
   GuardUserModel,
 } from './sequelize-models';
-import { GuardModel, GuardModels, initGuardModels } from './sequelize-models';
+import { GuardModels, initGuardModels } from './sequelize-models';
 import { GuardOptions } from './types';
 import type {
   AddPermsToRoleResult,
@@ -57,8 +58,9 @@ export class SequelizeGuard extends SequelizeGuardBase {
   public _models!: GuardModels;
 
   /**
-   * Promise that resolves when SequelizeGuard is fully initialized
-   * Await this to ensure all models are synced and cache is ready
+   * Automatic startup completion, including model sync and cache initialization.
+   * With sync: false, resolves without database work; await sync() separately
+   * or prepare the tables with migrations before using the guard.
    * @example
    * ```typescript
    * const guard = new SequelizeGuard(sequelize, { sync: true });
@@ -67,6 +69,8 @@ export class SequelizeGuard extends SequelizeGuardBase {
    * ```
    */
   public readonly ready: Promise<void>;
+
+  private syncTask: Promise<void> = Promise.resolve();
 
   /**
    * Creates a SequelizeGuard instance
@@ -88,22 +92,50 @@ export class SequelizeGuard extends SequelizeGuardBase {
     // Setup user associations
     this.sequelize.models.User = setupGuardUserAssociations(this);
 
-    // Sync models if enabled and initialize cache
-    if (this.options.sync) {
-      this.ready = Promise.all(
-        Object.values(this._models).map((model: GuardModel) =>
-          model.sync({
-            logging: this.options.debug ? console.log : false,
-          }),
-        ),
-      ).then(async () => {
-        await this.getCache();
-      });
-    } else {
-      this.ready = Promise.resolve().then(async () => {
-        await this.getCache();
-      });
-    }
+    this.ready = this.options.sync
+      ? this.sync().then(() => undefined)
+      : Promise.resolve();
+  }
+
+  /**
+   * Synchronize guard models, then reload their cached roles and permissions.
+   * Calls are serialized, including automatic startup. Errors reject the caller.
+   * Includes a supplied UserModel; unrelated Sequelize models are not synced.
+   * @param options - Sequelize sync options. force and alter may destroy data.
+   * @returns This guard after synchronization and cache initialization complete.
+   */
+  sync(options: SyncOptions = {}): Promise<this> {
+    const syncOptions = {
+      logging: this.options.debug ? console.log : false,
+      ...options,
+    };
+    const task = this.syncTask.then(async () => {
+      if (
+        syncOptions.match &&
+        !syncOptions.match.test(this.sequelize.getDatabaseName())
+      ) {
+        throw new Error(
+          `Database "${this.sequelize.getDatabaseName()}" does not match sync match parameter "${syncOptions.match}"`,
+        );
+      }
+
+      const models: GuardModel[] = Object.values(this._models);
+      // Drop junction tables before the tables they reference.
+      if (syncOptions.force) {
+        for (const model of [...models].reverse())
+          await model.drop(syncOptions);
+      }
+      for (const model of models) await model.sync(syncOptions);
+      this.resetCache();
+      await this.getCache();
+      return this;
+    });
+    // A failed caller must not prevent a later explicit retry.
+    this.syncTask = task.then(
+      () => undefined,
+      () => undefined,
+    );
+    return task;
   }
 
   /**

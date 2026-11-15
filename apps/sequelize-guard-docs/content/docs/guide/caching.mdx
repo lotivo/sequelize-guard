@@ -34,7 +34,7 @@ Permission removal currently matches the complete action bundle originally grant
 
 `userCache` remains accepted for compatibility but is deprecated: it no longer caches user membership or authorization, whether it is `true` or `false`. `userCacheTtl` controls entries that callers manually place in `guard.getUserCache()`; it does not delay revocation. There is no supported nested `cache: { enabled, ttl }` option.
 
-The existing `getCache()`, `resetCache()`, `getUserCache()` and `resetUserCache()` APIs remain available. The role/permission cache still supports legacy administrative lookups and event snapshots. It can be stale across workers or concurrent changes, and resetting it does not currently reload it. Do not use those snapshots, `getRole()` or `allRoles()` as authorization decisions. Use the authorization methods above. Cache lifecycle and administrative lookup cleanup are separate maintenance work.
+The existing `getCache()`, `resetCache()`, `getUserCache()` and `resetUserCache()` APIs remain available. The role/permission cache still supports legacy administrative lookups and event snapshots. `resetCache()` clears the snapshot; the next awaited `getCache()` reloads it from the writer connection. Concurrent readers share initialization, failed loads reject and can be retried, and `sync()` reloads the snapshot after synchronizing tables. These snapshots can still be stale across workers or concurrent policy writes. Do not use them, `getRole()` or `allRoles()` as authorization decisions. Use the authorization methods above.
 
 ## Performance
 
