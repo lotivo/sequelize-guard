@@ -45,3 +45,10 @@ No production data changes or release publication are part of this task. Categor
 - Security/schema changes receive an independent review and resulting fixes are rechecked.
 - All commits are on `pvaghela/release-improvements`; the worktree is clean.
 - One PR describes the final behavior, compatibility changes, validation and any external checks that could not be completed. No claim of release readiness hides blocked acceptance work.
+
+## Integration evidence
+
+- `449b245`: shared PostgreSQL/MySQL test drivers and pinned published 6.0.2 fixture dependency. Added by D for B's real migration compatibility checks.
+- `dd29546`: D1 complete, obsolete ESDoc packages/config removed. Existing TypeDoc generation completed with zero errors (13 pre-existing declaration/JSDoc warnings); generated documentation is deferred to the final documentation phase.
+
+Additional contract decisions during implementation: retain zero-database-work `ready` for `sync:false`; protect existing schema upgrades through explicit offline migration with original data preserved; avoid false commit notifications for caller-owned transactions when Sequelize cannot reliably signal commit success. Final implementations and tests must substantiate these contracts before corresponding items are checked off.

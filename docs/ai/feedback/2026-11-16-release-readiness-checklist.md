@@ -77,7 +77,7 @@ Implement the correctness work before features that depend on it. The large road
 
 ## D. Security and dependency maintenance
 
-- [ ] **D1 — Remove the unused ESDoc toolchain. Confirmed candidate.** Confirm no supported command still depends on ESDoc, then remove its packages/configuration while retaining TypeDoc. **Done:** documentation generation still works and obsolete dependency paths disappear from a fresh audit.
+- [x] **D1 — Remove the unused ESDoc toolchain. Confirmed candidate.** Confirm no supported command still depends on ESDoc, then remove its packages/configuration while retaining TypeDoc. **Done:** documentation generation still works and obsolete dependency paths disappear from a fresh audit.
 
 - [ ] **D2 — Triage every remaining dependency alert by exposure. Verify.** Refresh the audit and distinguish published runtime dependencies, deployed docs, build/CI tools and optional development servers. The last GitHub snapshot contained 47 alerts; this is a dated signal, not 47 proven exploitable library bugs. **Done:** each remaining alert has an upgrade/removal decision or a documented exposure assessment; patched direct dependencies do not hide old transitive copies.
 
