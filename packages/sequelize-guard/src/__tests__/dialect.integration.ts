@@ -272,6 +272,18 @@ it.runIf(new URL(url).protocol.startsWith('postgres'))(
     expect(await queryInterface.describeTable(roleTable)).toHaveProperty(
       'created_at',
     );
+    const unbound = new Sequelize(url, {
+      logging: false,
+      dialectOptions: { options: `-c search_path=public,${appSchema}` },
+    });
+    onTestFinished(() => unbound.close());
+    const unboundGuard = new SequelizeGuard(unbound, { prefix, sync: false });
+    await expect(unboundGuard.sync({ force: true })).rejects.toThrow(
+      'search path extends beyond public',
+    );
+    await expect(
+      migration.up(unbound.getQueryInterface(), unbound, { prefix }),
+    ).rejects.toThrow('search path extends beyond public');
     await expect(
       guard.sync({ force: true, searchPath: appSchema }),
     ).rejects.toThrow('searchPath');

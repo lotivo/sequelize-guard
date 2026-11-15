@@ -257,6 +257,17 @@ describe('Guard schema migrations on SQLite', () => {
     await expect(
       migration.up(queryInterface, sequelize, { UserModel: CompositeUser }),
     ).rejects.toThrow('one primary key');
+    const BigUser = sequelize.define('BigAccount', {
+      subject: { type: DataTypes.BIGINT, primaryKey: true },
+    });
+    expect(() => new SequelizeGuard(sequelize, { UserModel: BigUser })).toThrow(
+      'safe integers',
+    );
+    await expect(
+      migration.up(queryInterface, sequelize, {
+        tables: { roles: 'permissions', permissions: 'rules' },
+      }),
+    ).rejects.toThrow('legacy name of another guard table');
     expect(await queryInterface.showAllTables()).toEqual([]);
   });
 
