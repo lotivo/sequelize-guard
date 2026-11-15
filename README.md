@@ -72,7 +72,7 @@ pnpm add sequelize-guard sequelize
 **Requirements:**
 
 - Node.js ≥ 22.17.1
-- Sequelize ≥ 6.37.7
+- Sequelize ≥ 6.37.8 and < 7
 
 ## Quick Start
 

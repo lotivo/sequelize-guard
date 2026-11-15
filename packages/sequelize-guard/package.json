@@ -81,6 +81,6 @@
     "sequelize": "^6.37.8"
   },
   "peerDependencies": {
-    "sequelize": ">=6.0.0"
+    "sequelize": "^6.37.8"
   }
 }
