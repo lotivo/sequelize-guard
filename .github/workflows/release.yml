@@ -2,106 +2,118 @@ name: 'CD: NPM publish with tag push'
 
 on:
   push:
-    tags:
-      - 'v*' # Triggers only on tags starting with 'v' (e.g. v1.0.0, v2.1.3)
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to rehearse on the selected ref'
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  release:
-    name: 'Publish on NPM'
-    runs-on: ubuntu-latest
-    environment: npm-publish
+  inspect:
+    runs-on: ubuntu-24.04
     permissions:
-      contents: write # Required to create the GitHub Release
-      id-token: write # Required for actions/setup-node to authenticate with npm
-
-    strategy:
-      matrix:
-        # "node_js: - stable" logic (Node 24 is current LTS/stable)
-        node-version: [24.x]
+      contents: read
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      dist-tag: ${{ steps.metadata.outputs.distTag }}
+      prerelease: ${{ steps.metadata.outputs.prerelease }}
+      source-sha: ${{ steps.source.outputs.sha }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Set up Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'yarn' # Automatic caching for Yarn
-          registry-url: 'https://registry.npmjs.org'
+          node-version: 24.15.0
 
-      - name: Enable pinned Yarn version
-        run: corepack enable
-
-      - name: Update npm
-        run: npm install -g npm@latest
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Run lint
-        # This runs lint with eslint
-        run: yarn lint
-
-      - name: Run tests with coverage
-        run: yarn test:coverage
-
-      - name: Check library types
-        run: yarn typecheck
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@v2
-        with:
-          base-path: packages/sequelize-guard
-
-      - name: Build the library
-        run: yarn build
-
-      - name: Set Version from Tag
-        working-directory: ./build/packages/sequelize-guard
+      - name: Verify release tag is on master
+        if: github.event_name == 'push'
+        id: source
         run: |
-          # 1. Strip the 'v' prefix from the tag (v1.0.5 -> 1.0.5)
-          VERSION=${{ github.ref_name }}
-          VERSION=${VERSION#v}
+          git merge-base --is-ancestor HEAD refs/remotes/origin/master
+          git cat-file -e HEAD:CHANGELOG.md
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-          echo "Setting package version to $VERSION"
-
-          # 2. Update package.json without creating a git commit/tag
-          # Even if you use Yarn, 'npm version' is the safest tool for this specific task
-          npm version $VERSION --no-git-tag-version
-
-      - name: Test release package consumers
-        run: node --test scripts/test-package.mjs
-
-      - name: Publish to NPM
-        working-directory: ./build/packages/sequelize-guard
-        run: |
-          if [[ "${{ github.ref_name }}" == *"-"* ]]; then
-            npm publish --provenance --access public --tag next
-          else
-            npm publish --provenance --access public
-          fi
-
-      - name: Upload NPM Debug Log on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          # This name is what the file will be called when you download it
-          name: npm-debug-log
-          # Specify the exact path where npm saves its log on the runner
-          path: /home/runner/.npm/_logs/*debug-*.log
-          # Ignore the step if the file is not found (e.g., if the failure was not an npm error)
-          if-no-files-found: ignore
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          # Uses the tag name for the release title
-          name: Release ${{ github.ref_name }}
-          generate_release_notes: true
-          draft: true
-          prerelease: false
+      - name: Validate release metadata and registry state
+        id: metadata
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: node scripts/release-metadata.mjs --check-npm
+
+  verify:
+    needs: inspect
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci-test.yml
+    with:
+      release-version: ${{ needs.inspect.outputs.version }}
+
+  publish:
+    if: github.event_name == 'push' && github.repository == 'lotivo/sequelize-guard'
+    needs: [inspect, verify]
+    runs-on: ubuntu-24.04
+    environment: npm-publish
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.15.0 # Includes npm 11.12.1 with trusted publishing support.
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sequelize-guard-package
+          path: ${{ runner.temp }}/package/
+
+      - name: Publish the verified candidate to npm
+        working-directory: ${{ runner.temp }}/package
+        env:
+          NPM_DIST_TAG: ${{ needs.inspect.outputs.dist-tag }}
+        run: |
+          sha256sum -c SHA256SUMS
+          flags=(--provenance --access public --ignore-scripts)
+          # An implicit latest tag preserves npm's guard against replacing a newer stable release.
+          if [[ "$NPM_DIST_TAG" == 'next' ]]; then
+            flags+=(--tag next)
+          fi
+          npm publish ./sequelize-guard.tgz "${flags[@]}"
+
+  draft-github-release:
+    needs: [inspect, publish]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create the release draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.inspect.outputs.prerelease }}
+          SOURCE_SHA: ${{ needs.inspect.outputs.source-sha }}
+        run: |
+          flags=(--verify-tag --draft --generate-notes)
+          if [[ "$PRERELEASE" == 'true' ]]; then
+            flags+=(--prerelease --latest=false)
+          fi
+          changelog="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$SOURCE_SHA/CHANGELOG.md"
+          gh release create "$RELEASE_TAG" "${flags[@]}" --title "Release $RELEASE_TAG" --notes "[Changelog]($changelog)"

@@ -18,24 +18,30 @@ const build = path.join(root, 'build/packages/sequelize-guard');
 const consumer = mkdtempSync(path.join(tmpdir(), 'sequelize-guard-consumer-'));
 after(() => rmSync(consumer, { recursive: true, force: true }));
 
-const packOutput = execFileSync(
-  'npm',
-  ['pack', build, '--json', '--ignore-scripts', '--pack-destination', consumer],
-  { encoding: 'utf8', cwd: consumer },
-);
-// npm 12 keys pack results by package name. Earlier versions use an array.
-const packages = Object.values(JSON.parse(packOutput));
-assert.equal(packages.length, 1, 'Expected npm pack to create one tarball');
-const [packed] = packages;
+function packForConsumer() {
+  const [packed] = JSON.parse(
+    execFileSync(
+      'npm',
+      [
+        'pack',
+        build,
+        '--json',
+        '--ignore-scripts',
+        '--pack-destination',
+        consumer,
+      ],
+      { encoding: 'utf8', cwd: consumer },
+    ),
+  );
+  return path.join(consumer, packed.filename);
+}
+
+const tarball = process.env.RELEASE_TARBALL
+  ? path.resolve(process.env.RELEASE_TARBALL)
+  : packForConsumer();
 const installed = path.join(consumer, 'node_modules/sequelize-guard');
 mkdirSync(installed, { recursive: true });
-execFileSync('tar', [
-  '-xzf',
-  path.join(consumer, packed.filename),
-  '--strip-components=1',
-  '-C',
-  installed,
-]);
+execFileSync('tar', ['-xzf', tarball, '--strip-components=1', '-C', installed]);
 const manifest = JSON.parse(
   readFileSync(path.join(installed, 'package.json'), 'utf8'),
 );
@@ -163,11 +169,20 @@ for (const [extension, module, moduleResolution] of [
 }
 
 test('tarball contains only distributable files', () => {
-  assert.ok(packed.files.some((file) => file.path === 'README.md'));
-  assert.ok(packed.files.some((file) => file.path === 'LICENSE'));
+  const files = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' })
+    .trimEnd()
+    .split('\n');
+  assert.ok(files.includes('package/README.md'));
+  assert.ok(files.includes('package/LICENSE'));
   assert.ok(
-    !packed.files.some((file) =>
-      /(?:^|\/)(?:__tests__|coverage|node_modules)(?:\/|$)/.test(file.path),
+    !files.some((file) =>
+      /(?:^|\/)(?:__tests__|coverage|node_modules)(?:\/|$)/.test(file),
     ),
   );
 });
+
+if (process.env.RELEASE_VERSION) {
+  test('tarball manifest matches the release version', () => {
+    assert.equal(manifest.version, process.env.RELEASE_VERSION);
+  });
+}
