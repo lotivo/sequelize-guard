@@ -1,95 +1,119 @@
-name: "Update API Documentation"
+name: 'Update API Documentation'
 
 on:
-  workflow_run:
-    workflows: ["CD: NPM publish with tag push"]
-    types:
-      - completed
-  workflow_dispatch: # Allow manual trigger
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Published stable release tag'
+        required: true
+        type: string
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  update-docs:
-    name: "Generate and Update API Docs"
-    runs-on: ubuntu-latest
-    # Only run if the release workflow succeeded
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+  generate:
+    if: >-
+      github.repository == 'lotivo/sequelize-guard' &&
+      ((github.event_name == 'release' && !github.event.release.prerelease) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      changed: ${{ steps.patch.outputs.changed }}
 
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: master
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.15.0
+
+      - name: Verify published release and check out its source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+        run: |
+          release_ref="refs/tags/$RELEASE_TAG"
+          git show-ref --verify --quiet -- "$release_ref"
+          git merge-base --is-ancestor "$release_ref" HEAD
+          gh release view --json isDraft,isPrerelease -- "$RELEASE_TAG" | jq -e '(.isDraft == false) and (.isPrerelease == false)'
+          git checkout --detach "$release_ref"
+
+      - name: Verify npm latest matches the release
+        id: metadata
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+        run: |
+          node scripts/release-metadata.mjs
+          [[ "$(npm view sequelize-guard dist-tags.latest --prefer-online)" == "${RELEASE_TAG#v}" ]]
+
+      - name: Install dependencies
+        env:
+          HUSKY: '0'
+        run: corepack yarn install --frozen-lockfile
+
+      - run: node scripts/generate-api-docs.mjs
+
+      - name: Prepare the API documentation patch
+        id: patch
+        run: |
+          api_dir=apps/sequelize-guard-docs/content/docs/api
+          git add -A -- "$api_dir"
+          git diff --cached --binary -- "$api_dir" > "$RUNNER_TEMP/docs.patch"
+          if [[ -s "$RUNNER_TEMP/docs.patch" ]]; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload generated changes
+        if: steps.patch.outputs.changed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-docs-patch
+          path: ${{ runner.temp }}/docs.patch
+          if-no-files-found: error
+          overwrite: true
+
+  open-pull-request:
+    needs: generate
+    if: needs.generate.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          ref: master # or your main branch
-          fetch-depth: 0
+          ref: master
+          persist-credentials: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          node-version: "24.x"
-          cache: "yarn"
+          name: api-docs-patch
+          path: ${{ runner.temp }}
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+      - name: Apply the generated changes
+        run: git apply --include='apps/sequelize-guard-docs/content/docs/api/**' "$RUNNER_TEMP/docs.patch"
 
-      - name: Generate API documentation
-        run: node scripts/generate-api-docs.mjs
-
-      - name: Get version from latest tag
-        id: get_version
-        run: |
-          # Get the latest tag
-          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "unknown")
-          # Remove 'v' prefix if present
-          VERSION=${VERSION#v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Detected version from tag: $VERSION"
-
-      - name: Check for changes
-        id: check_changes
-        run: |
-          if git diff --quiet apps/sequelize-guard-docs/content/docs/api/; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create Pull Request
-        if: steps.check_changes.outputs.has_changes == 'true'
-        uses: peter-evans/create-pull-request@v7
+      - name: Create or update the documentation pull request
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "docs: update API documentation for v${{ steps.get_version.outputs.version }}"
-          title: "docs: Update API documentation for v${{ steps.get_version.outputs.version }}"
-          body: |
-            ## 📚 API Documentation Update
-
-            This PR updates the API documentation after the **v${{ steps.get_version.outputs.version }}** release.
-
-            ### 🎉 Release Version
-            **v${{ steps.get_version.outputs.version }}**
-
-            ### 📝 Changes
-            - Auto-generated API documentation from TypeScript source code
-            - Updated `apps/sequelize-guard-docs/content/docs/api/`
-            - Generated **${{ steps.check_changes.outputs.file_count }}** documentation files
-
-            ### 🤖 Generated by
-            - **Workflow:** `update-docs.yml`
-            - **Triggered by:** Release workflow completion
-            - **Script:** `scripts/generate-api-docs.mjs`
-            - **Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-            ---
-
-            **Note:** This is an automated PR. Please review the changes before merging.
-          branch: docs/update-api-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}
+          add-paths: apps/sequelize-guard-docs/content/docs/api/
           base: master
-          labels: documentation,automated
-          assignees: ${{ github.actor }}
-
-      - name: No changes detected
-        if: steps.check_changes.outputs.has_changes == 'false'
-        run: echo "✅ No changes detected in API documentation"
+          branch: docs/update-api-v${{ needs.generate.outputs.version }}
+          title: 'docs: Update API documentation for v${{ needs.generate.outputs.version }}'
+          commit-message: 'docs: Update API documentation for v${{ needs.generate.outputs.version }}'
+          body: 'API documentation generated from the v${{ needs.generate.outputs.version }} release.'

@@ -4,73 +4,172 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches:
-      - master
-      - dev
+    branches: [master, dev]
+  workflow_call:
+    inputs:
+      release-version:
+        type: string
+        default: ''
 
 permissions:
   contents: read
-  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  HUSKY: '0'
+  NX_DAEMON: 'false'
+  NX_NO_CLOUD: 'true'
+  NX_ISOLATE_PLUGINS: 'false'
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
     strategy:
+      fail-fast: false
       matrix:
-        node-version: [22.17.1, 24.x]
+        node-version: [22.17.1, 24.15.0]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Set up Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'yarn' # Automatic caching for Yarn
 
-      - name: Enable pinned Yarn version
-        run: corepack enable
+      - run: corepack yarn install --frozen-lockfile
 
-      - name: Install dependencies
-        # --frozen-lockfile ensures yarn.lock is respected exactly
-        run: yarn install --frozen-lockfile
+      - name: Check workflow metadata
+        run: node --test scripts/release-metadata.test.mjs
 
-      - name: Derive Nx SHAs
-        uses: nrwl/nx-set-shas@v4
+      - run: corepack yarn lint
+      - run: corepack yarn typecheck
+      - run: corepack yarn test:coverage
+      - run: corepack yarn build
 
-      - name: Detect if library is affected
-        id: affected
+      - name: Check and build the documentation site
         run: |
-          AFFECTED=$(yarn --silent nx show projects --affected --json)
-          LIBRARY_AFFECTED=$(jq -er 'if type == "array" then (index("sequelize-guard") != null | tostring) else error("Expected an Nx project array") end' <<< "$AFFECTED")
-          echo "library=$LIBRARY_AFFECTED" >> "$GITHUB_OUTPUT"
+          corepack yarn workspace sequelize-guard-docs lint
+          corepack yarn workspace sequelize-guard-docs build
 
-      - name: Run lint
-        # This runs lint with eslint
-        run: npx nx affected -t lint --parallel=3
-
-      - name: Run tests and generate coverage
-        if: steps.affected.outputs.library == 'true'
-        # This runs vitest with coverage enabled
-        run: npx nx affected -t test:coverage --parallel=3
-
-      - name: Check library types
-        if: steps.affected.outputs.library == 'true'
-        run: yarn typecheck
-
-      - name: Upload coverage to Coveralls
-        if: steps.affected.outputs.library == 'true' && matrix.node-version == '24.x'
-        uses: coverallsapp/github-action@v2
+      - name: Report coverage
+        if: matrix.node-version == '24.15.0' && inputs.release-version == ''
+        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
         with:
           base-path: packages/sequelize-guard
+          coverage-reporter-version: v0.6.22
 
-      - name: Build the library
-        run: npx nx affected -t build --parallel=3
+      - name: Pack the candidate
+        if: matrix.node-version == '24.15.0'
+        env:
+          RELEASE_VERSION: ${{ inputs.release-version }}
+        run: |
+          release_dir="$RUNNER_TEMP/package"
+          build_dir="./build/packages/sequelize-guard"
+          mkdir -p "$release_dir"
 
-      - name: Test packed package consumers
-        if: steps.affected.outputs.library == 'true'
-        run: yarn test:package
+          if [[ -n "$RELEASE_VERSION" ]]; then
+            (cd "$build_dir" && npm version "$RELEASE_VERSION" --no-git-tag-version --allow-same-version --ignore-scripts)
+          fi
+
+          npm pack "$build_dir" --ignore-scripts --json --pack-destination "$release_dir" | tee "$RUNNER_TEMP/pack.json"
+          filename=$(jq -er '.[0].filename' "$RUNNER_TEMP/pack.json")
+          mv "$release_dir/$filename" "$release_dir/sequelize-guard.tgz"
+          (cd "$release_dir" && sha256sum sequelize-guard.tgz | tee SHA256SUMS)
+
+      - name: Upload the candidate
+        if: matrix.node-version == '24.15.0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sequelize-guard-package
+          path: ${{ runner.temp }}/package/
+          if-no-files-found: error
+          overwrite: true
+
+  packed-consumers:
+    needs: build-and-test
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.17.1, 24.15.0]
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - run: corepack yarn install --frozen-lockfile
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sequelize-guard-package
+          path: ${{ runner.temp }}/package/
+
+      - name: Verify and test the candidate
+        env:
+          RELEASE_TARBALL: ${{ runner.temp }}/package/sequelize-guard.tgz
+          RELEASE_VERSION: ${{ inputs.release-version }}
+        run: |
+          (cd "$RUNNER_TEMP/package" && sha256sum -c SHA256SUMS)
+          node --test scripts/test-package.mjs
+
+  database:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.17.1, 24.15.0]
+        dialect: [postgres, mysql]
+
+    services:
+      postgres:
+        image: ${{ matrix.dialect == 'postgres' && 'postgres:17' || '' }}
+        env:
+          POSTGRES_DB: guard_test
+          POSTGRES_PASSWORD: guard-test
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d guard_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+        ports: ['5432/tcp']
+      mysql:
+        image: ${{ matrix.dialect == 'mysql' && 'mysql:8.4' || '' }}
+        env:
+          MYSQL_DATABASE: guard_test
+          MYSQL_ROOT_PASSWORD: guard-test
+          MYSQL_ROOT_HOST: '%'
+        options: >-
+          --health-cmd "mysql -h 127.0.0.1 -uroot -pguard-test -e 'SELECT 1' guard_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+        ports: ['3306/tcp']
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - run: corepack yarn install --frozen-lockfile
+
+      - name: Test schema installation and upgrade
+        env:
+          SEQUELIZE_GUARD_TEST_DATABASE_URL: >-
+            ${{ matrix.dialect == 'postgres'
+                && format('postgresql://postgres:guard-test@127.0.0.1:{0}/guard_test', job.services.postgres.ports['5432'])
+                || format('mysql://root:guard-test@127.0.0.1:{0}/guard_test', job.services.mysql.ports['3306']) }}
+        run: ./node_modules/.bin/vitest run --config packages/sequelize-guard/vitest.dialects.config.mts dialect.integration.ts
+
+      - name: Verify authorization against a lagging physical standby
+        if: matrix.dialect == 'postgres'
+        run: bash scripts/test-guard-replication.sh
