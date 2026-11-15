@@ -225,6 +225,12 @@ The agreed order is to validate and merge the combined maintenance PR first, the
 
 AI support is planned in the linked document; contributor instructions and the consumer skill have not been implemented yet.
 
+### Dependabot repair
+
+[PR #46](https://github.com/lotivo/sequelize-guard/pull/46) merged as `a9a3000` after both CI versions and the Vercel preview passed; the subsequent `master` CI passed too. PR #45 was rebased onto that commit. Nx and its plugins now share 22.7.10, Vitest/UI/coverage share exact 4.1.11 versions, and the Next ESLint configuration matches Next 16.4.1. Next regenerated its tracked environment declarations during the build.
+
+Aligning companion versions alone reproduced the Yarn linking failure. Deduplicating Vite to 7.3.7, which satisfies both the build and Vitest dependency ranges, fixed it without a dependency override. Yarn regenerated the lockfile and removed the unused Vite 8 dependency tree. A clean frozen installation with all workspace `node_modules` directories moved aside passed on Node 22.17.1. Node 22.17.1 and 24.15.0 then passed affected lint, library/docs builds, type checking, 103 tests and six packed-consumer checks with the Nx build cache bypassed. No Codex review threads were present on either PR when checked. Hosted checks on the repaired PR remain the final gate before any separate merge decision.
+
 ## Scope, limitations and what to skip
 
 The source review covered tracked first-party implementation, tests, configuration, docs app and documentation, with independent security and architecture reviews. The lockfile received a registry audit and targeted version inspection, not line-by-line dependency-source review. No credible embedded source credential was found; Git history and deployed secrets were not inspected. No first-party raw SQL injection, request-driven arbitrary file access or remotely supplied MDX execution was established.
