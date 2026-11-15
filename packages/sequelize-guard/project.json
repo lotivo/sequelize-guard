@@ -4,13 +4,28 @@
   "sourceRoot": "{projectRoot}/src",
   "projectType": "library",
   "tags": [],
+  "namedInputs": {
+    "default": [
+      "{projectRoot}/**/*",
+      "{workspaceRoot}/scripts/test-package.mjs",
+      "{workspaceRoot}/.github/workflows/ci-test.yml",
+      "{workspaceRoot}/.github/workflows/release.yml",
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/tsconfig.json",
+      "{workspaceRoot}/tsconfig.eslint.json",
+      "{workspaceRoot}/README.md",
+      "{workspaceRoot}/LICENSE"
+    ]
+  },
   "targets": {
+    "test:package": {
+      "dependsOn": ["build"]
+    },
     "build": {
       "cache": true,
       "executor": "@nx/vite:build",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "build/{projectRoot}",
         "configFile": "{projectRoot}/vite.config.mts",

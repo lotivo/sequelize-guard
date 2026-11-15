@@ -1,4 +1,4 @@
-import { merge } from 'lodash';
+import lodash from 'lodash';
 import type { QueryInterface, Sequelize } from 'sequelize';
 import { defaultOptions } from '../constants';
 import {
@@ -20,7 +20,7 @@ async function up(
   _Sequelize: Sequelize,
   options: GuardOptions = {},
 ): Promise<void> {
-  const opts = merge({}, defaultOptions, options);
+  const opts = lodash.merge({}, defaultOptions, options);
 
   const dateColumns = {
     ...(opts.timestamps && timestamps.basic),
@@ -73,7 +73,7 @@ async function down(
   _Sequelize: Sequelize,
   options: GuardOptions = {},
 ): Promise<void> {
-  const opts = merge({}, defaultOptions, options);
+  const opts = lodash.merge({}, defaultOptions, options);
 
   await queryInterface.dropTable(getTableName('role_user', opts));
   await queryInterface.dropTable(getTableName('role_permission', opts));

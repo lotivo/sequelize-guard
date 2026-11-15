@@ -4,7 +4,7 @@ description: Learn how to configure Sequelize Guard to fit your application's ne
 icon: Cog
 ---
 
-Sequelize Guard offers flexible configuration options to customize its behavior.
+Authorization now reads the database on every check. The nested `cache` examples below are legacy documentation and are not supported configuration; `userCache` is deprecated and does not re-enable authorization caching. See [Caching and Revocation](/docs/guide/caching) for current behavior. Other configuration examples on this page are being reconciled with the public `GuardOptions` type.
 
 ## Constructor Options
 

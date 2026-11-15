@@ -58,6 +58,7 @@ export default function Error({
             <RefreshCw className="h-4 w-4" />
             Try Again
           </button>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Reload the document to recover from a failed React tree. */}
           <a
             href="/"
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-fd-border px-6 py-3 text-sm font-medium text-fd-foreground transition-colors hover:bg-fd-accent"

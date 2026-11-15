@@ -1,4 +1,5 @@
 import {
+  BelongsToManyGetAssociationsMixin,
   CreationOptional,
   DataTypes,
   ModelAttributes,
@@ -24,7 +25,7 @@ export interface GuardUserModel extends SequelizeModelClass<GuardUserModel> {
   Roles?: NonAttribute<GuardRoleModel[]>;
 
   // Methods added by associations and guard extensions
-  getRoles?: () => Promise<GuardRoleModel[]>;
+  getRoles?: BelongsToManyGetAssociationsMixin<GuardRoleModel>;
   addRole?: (roleId: number) => Promise<void>;
   addRoles?: (roleIds: number[]) => Promise<void>;
   removeRoles?: (roles: GuardRoleModel[]) => Promise<void>;

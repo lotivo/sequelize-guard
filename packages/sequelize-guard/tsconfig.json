@@ -1,11 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": {},
+  "compilerOptions": {
+    "types": ["node", "vitest/globals"]
+  },
   "files": [],
-  "include": ["./src/**/*", "vite.config.mts"],
-  "references": [
-    {
-      "path": "./tsconfig.lib.json"
-    }
-  ]
+  "include": ["./src/**/*", "vite.config.mts"]
 }

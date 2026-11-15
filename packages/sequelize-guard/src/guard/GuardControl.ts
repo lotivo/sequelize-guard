@@ -1,4 +1,4 @@
-import { uniq } from 'lodash';
+import lodash from 'lodash';
 import type { SequelizeGuard } from '../SequelizeGuard';
 import type { AddPermsToRoleResult } from '../types';
 
@@ -54,11 +54,11 @@ export class GuardControl {
    */
   to(actions: string | string[]): this {
     if (typeof actions === 'string') {
-      this._actions = uniq([...this._actions, actions]);
+      this._actions = lodash.uniq([...this._actions, actions]);
     }
 
     if (Array.isArray(actions)) {
-      this._actions = uniq([...this._actions, ...actions]);
+      this._actions = lodash.uniq([...this._actions, ...actions]);
     }
 
     return this;
@@ -76,11 +76,11 @@ export class GuardControl {
    */
   on(resources: string | string[]): this {
     if (typeof resources === 'string') {
-      this._resources = uniq([...this._resources, resources]);
+      this._resources = lodash.uniq([...this._resources, resources]);
     }
 
     if (Array.isArray(resources)) {
-      this._resources = uniq([...this._resources, ...resources]);
+      this._resources = lodash.uniq([...this._resources, ...resources]);
     }
 
     return this;

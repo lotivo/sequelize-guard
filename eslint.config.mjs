@@ -12,6 +12,8 @@ export default [
     ignores: [
       'node_modules/**',
       'builds/**',
+      '**/build/**',
+      '**/coverage/**',
       'public/**',
       'resources/**',
       'dist/**',
@@ -27,7 +29,7 @@ export default [
 
   // Configuration for config files without type checking
   {
-    files: ['*.config.{js,mjs,ts,mts}', 'eslint.config.mjs'],
+    files: ['*.config.{js,mjs,ts,mts}', 'eslint.config.mjs', 'scripts/*.mjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -43,7 +45,7 @@ export default [
   // Base configuration for all files with type checking
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
-    ignores: ['*.config.{js,mjs,ts,mts}', 'eslint.config.mjs'],
+    ignores: ['*.config.{js,mjs,ts,mts}', 'eslint.config.mjs', 'scripts/*.mjs'],
     languageOptions: {
       ecmaVersion: 2018,
       sourceType: 'module',

@@ -1,4 +1,4 @@
-name: "CI: test & build"
+name: 'CI: test & build'
 
 on:
   pull_request:
@@ -8,14 +8,17 @@ on:
       - master
       - dev
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        # "node_js: - stable" logic (Node 24 is current LTS/stable)
-        node-version: [24.x]
+        node-version: [22.17.1, 24.x]
 
     steps:
       - name: Checkout code
@@ -27,7 +30,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: "yarn" # Automatic caching for Yarn
+          cache: 'yarn' # Automatic caching for Yarn
+
+      - name: Enable pinned Yarn version
+        run: corepack enable
 
       - name: Install dependencies
         # --frozen-lockfile ensures yarn.lock is respected exactly
@@ -39,8 +45,8 @@ jobs:
       - name: Detect if library is affected
         id: affected
         run: |
-          AFFECTED=$(npx nx print-affected --select=projects)
-          if echo "$AFFECTED" | tr ',' ' ' | tr ' ' '\n' | grep -xq "sequelize-guard"; then
+          AFFECTED=$(yarn --silent nx show projects --affected)
+          if echo "$AFFECTED" | grep -xq "sequelize-guard"; then
             echo "library=true" >> $GITHUB_OUTPUT
           else
             echo "library=false" >> $GITHUB_OUTPUT
@@ -55,11 +61,19 @@ jobs:
         # This runs vitest with coverage enabled
         run: npx nx affected -t test:coverage --parallel=3
 
-      - name: Upload coverage to Coveralls
+      - name: Check library types
         if: steps.affected.outputs.library == 'true'
+        run: yarn typecheck
+
+      - name: Upload coverage to Coveralls
+        if: steps.affected.outputs.library == 'true' && matrix.node-version == '24.x'
         uses: coverallsapp/github-action@v2
         with:
           base-path: packages/sequelize-guard
 
       - name: Build the library
         run: npx nx affected -t build --parallel=3
+
+      - name: Test packed package consumers
+        if: steps.affected.outputs.library == 'true'
+        run: yarn test:package

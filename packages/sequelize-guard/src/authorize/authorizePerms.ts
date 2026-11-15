@@ -17,21 +17,13 @@ export function extendWithAuthorizePerms(
     user: GuardUserModel,
     permission: string,
   ): Promise<boolean> {
-    const roles = await this.getUserRoles(user);
-
-    return firstTrue(
-      roles.map((role) =>
-        this.getCache()
-          .then((cache) => cache.getRolesWithPerms(this))
-          .then((roles) => roles[role.id].Permissions)
-          .then((perms) => {
-            if (!perms) {
-              return false;
-            }
-
-            return this.resolvePermission(perms, permission);
-          }),
-      ),
+    // Read membership and policy together from the writer, never from local snapshots.
+    const roles = await user.getRoles!({
+      include: ['Permissions'],
+      useMaster: true,
+    });
+    return roles.some((role) =>
+      this.resolvePermission(role.Permissions ?? [], permission),
     );
   };
 
@@ -84,18 +76,4 @@ export function extendWithAuthorizePerms(
 
     return false;
   };
-}
-
-/**
- * Helper function to return true when first promise resolves to true
- * @param promises
- */
-function firstTrue(promises: Promise<boolean>[]): Promise<boolean> {
-  const newPromises = promises.map((p) => {
-    return new Promise<boolean>((resolve, reject) => {
-      void p.then((v) => v && resolve(true), reject);
-    });
-  });
-  newPromises.push(Promise.all(promises).then(() => false));
-  return Promise.race(newPromises);
 }

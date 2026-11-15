@@ -1,4 +1,4 @@
-import { values } from 'lodash';
+import lodash from 'lodash';
 import NodeCache from 'node-cache';
 import { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
 import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
@@ -26,7 +26,7 @@ export class GuardCache extends NodeCache {
   async getRolesWithPerms(
     guard: SequelizeGuard,
   ): Promise<Record<number, GuardRoleModel>> {
-    const cRoles = values(this.getRoles());
+    const cRoles = lodash.values(this.getRoles());
     const r2Fetch = cRoles
       .filter((role) => !role.Permissions)
       .map((role) => role.id);

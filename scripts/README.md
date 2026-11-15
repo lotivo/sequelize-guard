@@ -2,6 +2,23 @@
 
 This directory contains utility scripts for the sequelize-guard project.
 
+## test-package.mjs
+
+Run `yarn test:package` to build and check the actual npm tarball in a temporary
+consumer directory. The checks exercise native Node ESM and CommonJS imports,
+SQLite authorization, and strict TypeScript consumers using NodeNext and Bundler
+resolution. They also check that tests and coverage files are not shipped.
+
+The library is extracted from `npm pack`; dependencies reuse the workspace's
+locked installations through symlinks, so the checks need no registry access.
+Temporary files are removed after the checks. CI runs them on Node 22.17.1 and
+24.x. Releases run `node --test scripts/test-package.mjs` after setting the tag
+version, so the check does not rebuild and overwrite the release version.
+
+The library's Nx inputs include this script and its shared build/CI files. Root
+Yarn commands remain convenient wrappers; `nx.includedScripts: []` keeps Nx from
+scheduling those wrappers alongside the underlying package targets.
+
 ## generate-api-docs.mjs
 
 Automatically generates API documentation from TypeScript source code.
