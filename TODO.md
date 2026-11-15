@@ -1,5 +1,7 @@
 # TODO
 
+Current consolidated checklist: [Pre-release improvements](docs/ai/feedback/2026-11-16-release-readiness-checklist.md). The original ideas below are retained as historical context and are included in that checklist.
+
 List of some major tasks to do.
 
 ## A. API Changes
