@@ -1,4 +1,5 @@
 import {
+  BelongsToManyGetAssociationsMixin,
   CreationOptional,
   DataTypes,
   ForeignKey,
@@ -37,7 +38,7 @@ export interface GuardRoleModel
 
   // TODO: Cleanup the association types
   // Methods added by associations
-  getPermissions?: () => Promise<GuardPermissionModel[]>;
+  getPermissions?: BelongsToManyGetAssociationsMixin<GuardPermissionModel>;
   addPermissions?: (
     permissions: (GuardPermissionModel | number)[],
   ) => Promise<void>;

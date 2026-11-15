@@ -60,6 +60,7 @@ export default function GlobalError({
               >
                 Try Again
               </button>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Reload the document to recover from a failed React tree. */}
               <a
                 href="/"
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"

@@ -32,14 +32,19 @@
     "node": ">=22.17.1"
   },
   "type": "module",
-  "main": "dist/cjs/index.cjs.js",
+  "main": "dist/cjs/index.cjs",
   "module": "dist/esm/index.esm.js",
   "types": "types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./types/index.d.ts",
-      "import": "./dist/esm/index.esm.js",
-      "require": "./dist/cjs/index.cjs.js"
+      "import": {
+        "types": "./types/index.d.ts",
+        "default": "./dist/esm/index.esm.js"
+      },
+      "require": {
+        "types": "./types/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
     }
   },
   "files": [
@@ -66,7 +71,8 @@
     "format:staged": "prettier --write",
     "lint:staged": "eslint --fix --max-warnings 0",
     "lint:staged:js": "eslint --fix",
-    "pre-commit": "yarn lint-staged && yarn typecheck"
+    "pre-commit": "yarn lint-staged && yarn typecheck",
+    "test:package": "node --test ../../scripts/test-package.mjs"
   },
   "dependencies": {
     "tslib": "^2.3.0",

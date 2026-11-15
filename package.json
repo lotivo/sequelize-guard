@@ -3,6 +3,7 @@
   "description": "Monorepo for Sequelize guard: An Authorization Library for Sequelize",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "repository": {
     "type": "git",
     "url": "https://github.com/lotivo/sequelize-guard.git"
@@ -26,6 +27,7 @@
     "test:watch": "nx run sequelize-guard:test:watch",
     "test:ui": "nx run sequelize-guard:test:ui",
     "test:coverage": "nx run sequelize-guard:test:coverage",
+    "test:package": "nx run sequelize-guard:test:package",
     "lint": "nx run sequelize-guard:lint",
     "lint:fix": "nx run sequelize-guard:lint:fix",
     "check:prettier": "nx run sequelize-guard:check:prettier",
@@ -33,7 +35,7 @@
     "format:staged": "prettier --write",
     "lint:staged": "eslint --fix --max-warnings 0",
     "lint:staged:js": "eslint --fix",
-    "pre-commit": "yarn lint-staged && tsc --noEmit",
+    "pre-commit": "yarn lint-staged && yarn typecheck",
     "affected:lint": "nx affected -t lint",
     "affected:test": "nx affected -t test",
     "affected:build": "nx affected -t build",
@@ -81,5 +83,7 @@
     "vite-plugin-static-copy": "^3.1.4",
     "vitest": "^4.0.9"
   },
-  "nx": {}
+  "nx": {
+    "includedScripts": []
+  }
 }

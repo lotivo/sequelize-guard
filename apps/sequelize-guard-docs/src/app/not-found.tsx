@@ -22,7 +22,7 @@ export default function NotFound() {
 
         {/* Description */}
         <p className="text-fd-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
 
         {/* Actions */}
@@ -49,10 +49,7 @@ export default function NotFound() {
             Looking for something specific?
           </p>
           <div className="flex flex-wrap gap-2 justify-center text-sm">
-            <Link
-              href="/docs"
-              className="text-fd-primary hover:underline"
-            >
+            <Link href="/docs" className="text-fd-primary hover:underline">
               Documentation
             </Link>
             <span className="text-fd-muted-foreground">•</span>

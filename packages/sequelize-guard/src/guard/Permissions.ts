@@ -1,4 +1,4 @@
-import { differenceBy, concat } from 'lodash';
+import lodash from 'lodash';
 import {
   Op,
   FindOptions,
@@ -156,7 +156,11 @@ async function insertPermissionsToDb(
     where: { name: permissions.map((d) => d.name.toLowerCase()) },
   });
 
-  const perms2insert = differenceBy(permissions, existPerms, (r) => r.name);
+  const perms2insert = lodash.differenceBy(
+    permissions,
+    existPerms,
+    (r) => r.name,
+  );
 
   const perms = await guard._models.GuardPermission.bulkCreate(
     perms2insert as Array<InferCreationAttributes<GuardPermissionModel>>,
@@ -166,7 +170,7 @@ async function insertPermissionsToDb(
 
   let result: GuardPermissionModel[] = perms;
   if (options.all) {
-    result = concat(existPerms, perms);
+    result = lodash.concat(existPerms, perms);
   }
   if (options.json) {
     return result.map((perm) => perm.toJSON());

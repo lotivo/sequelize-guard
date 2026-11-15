@@ -1,4 +1,4 @@
-import { includes } from 'lodash';
+import lodash from 'lodash';
 import { GuardUserModel } from '../sequelize-models';
 import type { SequelizeGuardType } from '../SequelizeGuard';
 
@@ -20,8 +20,8 @@ export function extendWithAuthorizeRoles(
   ): Promise<boolean> {
     const userRoles = await this.getUserRoles(user);
     const uRoles = userRoles.map((r) => r.name);
-    const checks = uRoles.map((r) => includes(roles, r));
-    return includes(checks, true);
+    const checks = uRoles.map((r) => lodash.includes(roles, r));
+    return lodash.includes(checks, true);
   };
 
   /**
@@ -36,12 +36,7 @@ export function extendWithAuthorizeRoles(
     const userRoles = await this.getUserRoles(user);
     const uRoles = userRoles.map((r) => r.name);
 
-    const checks =
-      uRoles.length >= roles.length
-        ? uRoles.map((r) => includes(roles, r))
-        : roles.map((r) => includes(uRoles, r));
-
-    return !includes(checks, false);
+    return roles.every((role) => uRoles.includes(role));
   };
 
   /**
@@ -55,6 +50,6 @@ export function extendWithAuthorizeRoles(
   ): Promise<boolean> {
     const userRoles = await this.getUserRoles(user);
     const checks = userRoles.map((r) => role === r.name);
-    return includes(checks, true);
+    return lodash.includes(checks, true);
   };
 }

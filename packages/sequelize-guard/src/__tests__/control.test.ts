@@ -131,62 +131,35 @@ describe('Control and Guard Setup', () => {
 
   describe('GuardSetup', () => {
     it('should assign role to user', async () => {
-      // setup
-      const user = await context.sequelize.models.User.findByPk(1);
-      // execute
-      if (user) {
-        const updatedUser = await context.guard.assignRole(user, 'superadmin');
-        const roles = await updatedUser.getRoles!();
-        // assert
-        expect(roles.length).toBe(1);
-      }
+      const user = await context.guard.makeUser();
+      const updatedUser = await context.guard.assignRole(user, 'superadmin');
+      expect((await updatedUser.getRoles!()).map((role) => role.name)).toEqual([
+        'superadmin',
+      ]);
     });
 
     it('should assign multiple roles to user', async () => {
-      // setup
-      const user = await context.sequelize.models.User.findByPk(2);
-      // execute
-      if (user) {
-        await context.guard.assignRoles(user, ['superadmin', 'admin', 'user']);
-        const roles = await user.getRoles!();
-        // assert
-        expect(roles.length).toBe(3);
-      }
+      const user = await context.guard.makeUser();
+      await context.guard.assignRoles(user, ['superadmin', 'admin', 'user']);
+      expect(await user.getRoles!()).toHaveLength(3);
     });
 
     it('should assign roles to multiple users', async () => {
-      // setup
-      const user3 = await context.sequelize.models.User.findByPk(3);
-      // execute
-      if (user3) {
-        const updatedUser = await context.guard.assignRole(user3, 'analyst');
-        const roles = await updatedUser.getRoles!();
-        // assert
-        expect(roles.length).toBe(1);
-      }
-
-      // setup
-      const user4 = await context.sequelize.models.User.findByPk(4);
-      // execute
-      if (user4) {
-        const updatedUser = await context.guard.assignRole(user4, 'user');
-        const roles = await updatedUser.getRoles!();
-        // assert
-        expect(roles.length).toBe(1);
-      }
+      const analyst = await context.guard.makeUser();
+      const reader = await context.guard.makeUser();
+      await context.guard.assignRole(analyst, 'analyst');
+      await context.guard.assignRole(reader, 'user');
+      expect(await analyst.isA!('analyst')).toBe(true);
+      expect(await reader.isA!('user')).toBe(true);
     });
 
     it('should remove assigned roles from user', async () => {
-      // setup
-      const user = await context.sequelize.models.User.findByPk(2);
-      // execute
-      if (user) {
-        const res = await context.guard.rmAssignedRoles(user, ['superadmin']);
-        // assert
-        expect(res).toBe(1);
-        const roles = await user.getRoles!();
-        expect(roles.length).toBe(2);
-      }
+      const user = await context.guard.makeUser();
+      await context.guard.assignRoles(user, ['superadmin', 'admin', 'user']);
+      expect(await user.isA!('superadmin')).toBe(true);
+      await context.guard.rmAssignedRoles(user, ['superadmin']);
+      expect(await user.getRoles!()).toHaveLength(2);
+      expect(await user.isA!('superadmin')).toBe(false);
     });
   });
 });

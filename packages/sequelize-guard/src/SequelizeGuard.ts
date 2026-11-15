@@ -1,10 +1,33 @@
 import type { Sequelize } from 'sequelize';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
+import type { GuardControl } from './guard/GuardControl';
 import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
 import migration from './migrations/guard-migrations';
+import type {
+  GuardPermissionModel,
+  GuardRoleData,
+  GuardRoleModel,
+  GuardUserModel,
+} from './sequelize-models';
 import { GuardModel, GuardModels, initGuardModels } from './sequelize-models';
 import { GuardOptions } from './types';
+import type {
+  AddPermsToRoleResult,
+  BulkPermissionInput,
+  CreatePermsOptions,
+  CreateRolesOptions,
+  FindPermsArgs,
+  FindRolesArgs,
+  GuardEventCallback,
+  PermissionData,
+  RemovePermsFromRoleResult,
+  RoleCreationParam,
+  RoleCreationResult,
+  UnsubscribeFn,
+} from './types/api';
 import { SequelizeWithGuard } from './types/helpers';
+import type { GuardCache } from './utils/cache';
+import type { GuardUserCache } from './utils/userCache';
 
 /**
  * SequelizeGuard - Authorization library for Sequelize
@@ -99,6 +122,116 @@ export class SequelizeGuard extends SequelizeGuardBase {
    * Migration utilities
    */
   static migration = migration;
+
+  // Implementations are installed on the prototype by the package entry point.
+  // init
+  declare init: () => GuardControl;
+  declare allow: (
+    role: string,
+    actions: string | string[],
+    resources: string | string[],
+  ) => Promise<AddPermsToRoleResult>;
+
+  // Permission guard methods
+  declare createPerms: (
+    resources: string | string[],
+    actions: string | string[],
+    options?: CreatePermsOptions,
+  ) => Promise<GuardPermissionModel[]>;
+  declare createPermsBulk: (
+    permissions: BulkPermissionInput[],
+    options?: CreatePermsOptions,
+  ) => Promise<GuardPermissionModel[]>;
+  declare findPerms: (args?: FindPermsArgs) => Promise<GuardPermissionModel[]>;
+  declare onPermsCreated: (
+    cb: GuardEventCallback<GuardPermissionModel[]>,
+  ) => UnsubscribeFn;
+  declare onPermsAddedToRole: (
+    cb: GuardEventCallback<GuardRoleModel>,
+  ) => UnsubscribeFn;
+  declare onPermsRemovedFromRole: (
+    cb: GuardEventCallback<GuardRoleModel>,
+  ) => UnsubscribeFn;
+  declare _sanitizePermsInput: (
+    resources: string | string[],
+    actions: string | string[],
+    options?: CreatePermsOptions,
+  ) => PermissionData[];
+
+  // Role guard methods
+  declare makeRole: (role: RoleCreationParam) => Promise<RoleCreationResult>;
+  declare makeRoles: (
+    roles: RoleCreationParam[],
+    options?: CreateRolesOptions,
+  ) => Promise<GuardRoleModel[]>;
+  declare deleteRoles: (
+    roles: string | RoleCreationParam[] | GuardRoleModel[],
+  ) => Promise<number>;
+  declare allRoles: () => Promise<GuardRoleModel[]>;
+  declare getRole: (role: string) => Promise<GuardRoleModel | null>;
+  declare findRoles: (args?: FindRolesArgs) => Promise<GuardRoleModel[]>;
+  declare addPermsToRole: (
+    role: string | GuardRoleModel,
+    actions: string | string[],
+    resources: string | string[],
+  ) => Promise<AddPermsToRoleResult>;
+  declare rmPermsFromRole: (
+    role: string,
+    actions: string | string[],
+    resources: string | string[],
+  ) => Promise<RemovePermsFromRoleResult>;
+  declare onRolesCreated: (
+    cb: GuardEventCallback<GuardRoleModel[]>,
+  ) => UnsubscribeFn;
+  declare onRolesDeleted: (
+    cb: GuardEventCallback<GuardRoleModel[]>,
+  ) => UnsubscribeFn;
+
+  // User guard methods
+  declare makeUser: () => Promise<GuardUserModel>;
+  declare assignRole: (
+    user: GuardUserModel,
+    role: string,
+  ) => Promise<GuardUserModel>;
+  declare assignRoles: (user: GuardUserModel, roles: string[]) => Promise<void>;
+  declare rmAssignedRoles: (
+    user: GuardUserModel,
+    roles: string[],
+  ) => Promise<void>;
+  declare getUserRoles: (user: GuardUserModel) => Promise<GuardRoleData[]>;
+
+  //User permission resolution methods
+  declare userCan: (
+    user: GuardUserModel,
+    permission: string,
+  ) => Promise<boolean>;
+  declare userCant: (
+    user: GuardUserModel,
+    permission: string,
+  ) => Promise<boolean>;
+  declare resolvePermission: (
+    givenPermissions: { action: string; resource: string }[],
+    wantedPermission: string,
+  ) => boolean;
+
+  // User role resolution methods
+  declare userHasRoles: (
+    user: GuardUserModel,
+    roles: string[],
+  ) => Promise<boolean>;
+  declare userHasAllRoles: (
+    user: GuardUserModel,
+    roles: string[],
+  ) => Promise<boolean>;
+  declare userIsA: (user: GuardUserModel, role: string) => Promise<boolean>;
+
+  // Cache
+  declare resetCache: () => GuardCache;
+  declare getCache: () => Promise<GuardCache>;
+
+  // User cache
+  declare resetUserCache: () => GuardUserCache;
+  declare getUserCache: () => GuardUserCache;
 }
 
 export type SequelizeGuardType = typeof SequelizeGuard;

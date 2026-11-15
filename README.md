@@ -49,11 +49,11 @@ Sequelize Guard v6 is a complete rewrite with major improvements:
 
 ## Features
 
-- 🚀 **Fast & Efficient** - Cache-based permission resolution for optimal performance
+- 🚀 **Current Authorization** - Database-backed permission checks observe committed revocations
 - 🎯 **Intuitive API** - Fluent, semantic API that reads like natural language
 - 🔐 **Flexible RBAC** - Assign multiple roles and permissions to users
 - 📊 **Event-Driven** - Listen for authorization events for logging and auditing
-- 💾 **Smart Caching** - Configurable user permission caching
+- 💾 **Cache Compatibility** - Existing cache APIs remain available; authorization reads the database
 - 🛡️ **Safe Operations** - Built-in safeguards for role and permission deletions
 
 ## Installation
@@ -71,7 +71,7 @@ pnpm add sequelize-guard sequelize
 
 **Requirements:**
 
-- Node.js ≥ 20.19.0
+- Node.js ≥ 22.17.1
 - Sequelize ≥ 6.37.7
 
 ## Quick Start
@@ -178,6 +178,9 @@ yarn test
 
 # Build
 yarn build
+
+# Verify ESM, CommonJS and TypeScript consumers of the packed build
+yarn test:package
 ```
 
 ### Documentation

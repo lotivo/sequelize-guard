@@ -1,4 +1,4 @@
-import { differenceBy } from 'lodash';
+import lodash from 'lodash';
 import { Op } from 'sequelize';
 import { GuardRoleData, GuardUserModel } from '../sequelize-models';
 import type { SequelizeGuardType } from '../SequelizeGuard';
@@ -40,7 +40,11 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
   ): Promise<void> {
     const allRoles = await this.makeRoles(roles, { all: true });
     const assignedRoles = await user.getRoles!();
-    const roles2insert = differenceBy(allRoles, assignedRoles, (r) => r.name);
+    const roles2insert = lodash.differenceBy(
+      allRoles,
+      assignedRoles,
+      (r) => r.name,
+    );
     await user.addRoles!(roles2insert.map((r) => r.id));
   };
 
@@ -55,36 +59,19 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
   ): Promise<void> {
     const rolesToRemove = await this._models.GuardRole.findAll({
       where: { name: { [Op.in]: roles } },
+      useMaster: true,
     });
     await user.removeRoles!(rolesToRemove);
   };
 
   /**
-   * Get user roles with caching
+   * Get current user roles from the database
    * @param user
    */
   SequelizeGuard.prototype.getUserRoles = async function (
     user: GuardUserModel,
   ): Promise<GuardRoleData[]> {
-    const cacheKey = `user_${String(user.get(this.options.userPk))}`;
-    const cache = this.getUserCache();
-
-    let cacheRoles: GuardRoleData[] | undefined = undefined;
-    if (this.options.userCache) {
-      cacheRoles = cache.get<GuardRoleData[]>(cacheKey);
-    }
-
-    if (cacheRoles) {
-      return cacheRoles;
-    }
-
-    const fetchedRoles = await user.getRoles!();
-    const jsonRoles = fetchedRoles.map((perm) => perm.toJSON());
-
-    if (this.options.userCache) {
-      cache.set(cacheKey, jsonRoles, this.options.userCacheTtl);
-    }
-
-    return jsonRoles;
+    const roles = await user.getRoles!({ useMaster: true });
+    return roles.map((role) => role.toJSON());
   };
 }

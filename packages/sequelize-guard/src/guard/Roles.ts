@@ -1,11 +1,4 @@
-import {
-  find,
-  differenceBy,
-  concat,
-  filter,
-  without,
-  intersectionBy,
-} from 'lodash';
+import lodash from 'lodash';
 import {
   Op,
   FindOptions,
@@ -45,7 +38,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     const roleData = makeRoleData(role);
     const cache = await this.getCache();
     const roles = Object.values(cache.getRoles());
-    const existingRole = find<GuardRoleModel>(roles, roleData);
+    const existingRole = lodash.find<GuardRoleModel>(roles, roleData);
 
     if (existingRole) {
       return { role: existingRole, created: false };
@@ -97,10 +90,10 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     }
 
     if (options.all) {
-      const existingFiltered = filter(existRoles, (r) =>
+      const existingFiltered = lodash.filter(existRoles, (r) =>
         toRemove.map((t) => t.name).includes(r.name),
       );
-      result = concat(existingFiltered, result);
+      result = lodash.concat(existingFiltered, result);
     }
 
     return result;
@@ -114,13 +107,10 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     roles: string | RoleCreationParam[] | GuardRoleModel[],
   ): Promise<number> {
     const sanitizedRoles = sanitizeRolesInput(roles);
-    const cache = await this.getCache();
-    const cacheRoles = Object.values(cache.getRoles());
-    const roleNames = sanitizedRoles.map((d) => d.name);
-    const rolesToDelete = filter(
-      cacheRoles,
-      (role) => roleNames.indexOf(role.name) >= 0,
-    );
+    const rolesToDelete = await this._models.GuardRole.findAll({
+      where: { name: { [Op.in]: sanitizedRoles.map((role) => role.name) } },
+      useMaster: true,
+    });
 
     if (!rolesToDelete.length) return 0;
 
@@ -214,7 +204,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     const roleToUpdate = roles[0];
 
     const assignedPerms = await roleToUpdate.getPermissions!();
-    const perms2add = differenceBy(perms, assignedPerms, (r) => r.name);
+    const perms2add = lodash.differenceBy(perms, assignedPerms, (r) => r.name);
 
     await roleToUpdate.addPermissions!(perms2add);
 
@@ -244,11 +234,16 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     const perms2rmIn = this._sanitizePermsInput(resources, actions);
 
     const { role: roleModel } = await this.makeRole(role);
-    const roles = await this.findRoles({ name: roleModel.name });
+    const roles = await this._models.GuardRole.findAll({
+      where: { name: roleModel.name },
+      useMaster: true,
+    });
     const roleToUpdate = roles[0];
 
-    const assignedPerms = await roleToUpdate.getPermissions!();
-    const perms2rm = intersectionBy(
+    const assignedPerms = await roleToUpdate.getPermissions!({
+      useMaster: true,
+    });
+    const perms2rm = lodash.intersectionBy(
       assignedPerms,
       perms2rmIn,
       (r) => r.resource + r.action,
@@ -256,7 +251,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
 
     await roleToUpdate.removePermissions!(perms2rm);
 
-    roleToUpdate.Permissions = without(assignedPerms, ...perms2rm);
+    roleToUpdate.Permissions = lodash.without(assignedPerms, ...perms2rm);
     // roleToUpdate.dataValues.Permissions = roleToUpdate.Permissions;
 
     //TODO: Make enum for all the events, create proper event management system

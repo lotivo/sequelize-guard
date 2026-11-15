@@ -416,8 +416,7 @@ if (await checker.isAdmin()) {
 
 1. **Check Early**: Authorize as early as possible in your request flow
 2. **Fail Secure**: Deny access by default
-3. **Cache Results**: Use caching for frequently checked permissions
+3. **Check Current Policy**: Await authorization for each protected operation. Reusing a permission result can retain access after revocation; see the [caching and consistency guide](/docs/guide/caching).
 4. **Log Denials**: Log authorization failures for security audits
 5. **Clear Errors**: Provide clear error messages for debugging
 6. **Test Thoroughly**: Test all authorization paths
-

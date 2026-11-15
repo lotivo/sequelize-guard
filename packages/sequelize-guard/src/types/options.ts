@@ -72,13 +72,15 @@ export interface GuardOptions {
   safeGuardDeletes?: boolean;
 
   /**
-   * Cache user roles for faster permission resolution
+   * @deprecated Authorization and getUserRoles always read the database.
+   * Retained for configuration compatibility; does not enable authorization caching.
    * @default true
    */
   userCache?: boolean;
 
   /**
-   * Time to cache user roles (in seconds)
+   * TTL for entries manually stored in getUserCache() (in seconds).
+   * Authorization does not read this cache.
    * @default 60
    */
   userCacheTtl?: number;

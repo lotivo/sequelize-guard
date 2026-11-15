@@ -3,8 +3,6 @@
  * @packageDocumentation
  */
 
-import './sequelize-guard.types.d';
-
 import { extendWithAuthorizePerms } from './authorize/authorizePerms';
 import { extendWithAuthorizeRoles } from './authorize/authorizeRoles';
 import { extendWithGuardControl } from './guard/init';

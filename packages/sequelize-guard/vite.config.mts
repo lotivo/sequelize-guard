@@ -1,3 +1,4 @@
+import { copyFile } from 'node:fs/promises';
 import path from 'path';
 import { defineConfig } from 'vite';
 import dtsPlugin from 'vite-plugin-dts';
@@ -34,13 +35,26 @@ const outputDirDts = path.resolve(outputDirBase, 'types');
 export default defineConfig({
   plugins: [
     dtsPlugin({
-      root: __dirname,
+      // Resolve declaration entry points against the staged package manifest.
+      root: outputDirBase,
+      entryRoot: path.resolve(__dirname, 'src'),
       outDir: outputDirDts,
       tsconfigPath: path.resolve(__dirname, 'tsconfig.lib.json'),
       pathsToAliases: true,
+      rollupTypes: true,
+      afterBuild: () =>
+        copyFile(
+          path.join(outputDirDts, 'index.d.ts'),
+          path.join(outputDirDts, 'index.d.cts'),
+        ),
     }),
     viteStaticCopy({
+      hook: 'generateBundle',
       targets: [
+        {
+          src: path.resolve(__dirname, 'package.json'),
+          dest: './',
+        },
         {
           src: path.resolve(__dirname, '../../README.md'),
           dest: './',
@@ -58,18 +72,18 @@ export default defineConfig({
     '../../node_modules/.vite/packages/sequelize-guard',
   ),
   build: {
-    // outDir: outputDirBase,
+    outDir: outputDirBase,
     emptyOutDir: true,
     reportCompressedSize: true,
     sourcemap: true,
     minify: 'esbuild',
     target: 'es2020',
     lib: {
-      entry: './src/index.ts',
+      entry: path.resolve(__dirname, 'src/index.ts'),
       name: 'SequelizeGuard',
-      formats: ['es'], // 'cjs for CommonJS, 'es' for ES Modules
+      formats: ['es', 'cjs'],
       fileName: (format) =>
-        format === 'es' ? `dist/esm/index.esm.js` : `dist/cjs/index.cjs.js`,
+        format === 'es' ? `dist/esm/index.esm.js` : `dist/cjs/index.cjs`,
     },
 
     rollupOptions: {
