@@ -16,9 +16,9 @@ The orchestrator owns integration, scheduling, design decisions, cross-category 
 
 | Category | Responsibility | Prerequisites | State |
 | --- | --- | --- | --- |
-| A | Authorization, permission grammar, safe mutations and transactions | Baseline | Ready |
-| B | Schema, migrations, custom identities and database integration | Baseline; coordinate constraints with A | Ready |
-| D | Dependency/security cleanup and authentication example requirements | Baseline; owns dependency manifest/lock changes | Ready |
+| A | Authorization, permission grammar, safe mutations and transactions | Baseline | Running |
+| B | Schema, migrations, custom identities and database integration | Baseline; coordinate constraints with A | Running |
+| D | Dependency/security cleanup and authentication example requirements | Baseline; owns dependency manifest/lock changes | Running |
 | F | Bulk assignment, role inheritance, polymorphic role holders | Integrated A + B and user design choices | Waiting |
 | C | Public API/types/options/lifecycle and compatibility audit | Integrated A + B + F | Waiting |
 | I | CI/release hardening and dry-run checks | D; coordinate B database jobs and H consumers | Waiting |
@@ -28,15 +28,15 @@ The orchestrator owns integration, scheduling, design decisions, cross-category 
 
 D4/D5 security prose and examples are handed to E for final writing; D remains responsible for their security acceptance criteria. C6 compatibility prose and I6 upgrade notes likewise land in the final documentation phase. Final release approval is not implied by preparing the PR.
 
-## Pending design choices
+## Confirmed design choices
 
-Optional questions were sent before implementation starts on dependent features:
+The user confirmed these choices on 16 November 2026:
 
-1. Role hierarchy: recommended single parent, inherited permissions, direct-membership role checks.
-2. Allow/deny: recommended allow-only semantics with explicit deprecation of the unused field.
-3. Polymorphism: recommended registered models hold roles; permissions remain attached to roles.
+1. Role hierarchy: single parent, inherited permissions, direct-membership role checks.
+2. Allow/deny: allow-only semantics with explicit deprecation of the unused field.
+3. Polymorphism: registered models hold roles; permissions remain attached to roles.
 
-Independent work can proceed while these answers are pending. If no preference arrives after a reasonable opportunity, the orchestrator records the recommended assumptions before starting dependent implementation. No production data changes or release publication are part of this task.
+No production data changes or release publication are part of this task. Category A will preserve non-whitespace Unicode/punctuation permission tokens, reserve whole-token wildcards, reject extra grammar tokens, and canonicalize action sets while recognizing equivalent legacy stored definitions.
 
 ## Final integration gate
 
