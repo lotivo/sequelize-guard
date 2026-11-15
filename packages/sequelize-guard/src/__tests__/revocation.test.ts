@@ -1,7 +1,6 @@
 import { Sequelize } from 'sequelize';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SequelizeGuard } from '../index';
-import type { GuardRoleModel } from '../sequelize-models';
 import { closeTestDatabase, createTestDatabase, TestContext } from './setup';
 
 describe('Authorization after revocation', () => {
@@ -66,6 +65,7 @@ describe('Authorization after revocation', () => {
     expect(await user.can!('read document')).toBe(true);
     expect(await user.isA!('reader')).toBe(true);
 
+    guard.options.safeGuardDeletes = false;
     expect(await guard.deleteRoles('reader')).toBe(1);
 
     await expect(user.can!('read document')).resolves.toBe(false);
@@ -128,6 +128,7 @@ describe('Authorization after revocation', () => {
     await user.assignRole!('reader');
     expect(await user.can!('read document')).toBe(true);
 
+    other.options.safeGuardDeletes = false;
     expect(await other.deleteRoles('reader')).toBe(1);
     expect(await user.can!('read document')).toBe(false);
     expect(await user.isA!('reader')).toBe(false);
@@ -193,7 +194,7 @@ describe('Authorization after revocation', () => {
     await expect(user.isA!('reader')).rejects.toThrow(error);
   });
 
-  it('does not restore a revoked permission when an older grant finishes later', async () => {
+  it('preserves a revocation racing an earlier grant on another connection', async () => {
     const { guard } = context;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
@@ -201,26 +202,39 @@ describe('Authorization after revocation', () => {
     expect(await user.can!('read document')).toBe(true);
     const grantStarted = Promise.withResolvers<void>();
     const releaseGrant = Promise.withResolvers<void>();
-    const prototype = guard.models().GuardRole.prototype as GuardRoleModel;
-    const addPermissions = prototype.addPermissions!;
-    vi.spyOn(prototype, 'addPermissions').mockImplementationOnce(
-      async function (this: GuardRoleModel, permissions) {
-        grantStarted.resolve();
-        await releaseGrant.promise;
-        return addPermissions.call(this, permissions);
+    guard.models().RolePermission.beforeBulkCreate(async () => {
+      grantStarted.resolve();
+      await releaseGrant.promise;
+    });
+    otherConnection = new Sequelize({
+      dialect: 'sqlite',
+      storage: context.dbPath,
+      logging: false,
+    });
+    const other = new SequelizeGuard(otherConnection, {
+      sync: false,
+      timestamps: true,
+    });
+    const revocationStarted = Promise.withResolvers<void>();
+    const queryInterface = otherConnection.getQueryInterface();
+    const startTransaction =
+      queryInterface.startTransaction.bind(queryInterface);
+    vi.spyOn(queryInterface, 'startTransaction').mockImplementationOnce(
+      (...args) => {
+        revocationStarted.resolve();
+        return startTransaction(...args);
       },
     );
 
     const earlierGrant = guard.allow('reader', 'edit', 'document');
     await grantStarted.promise;
-    try {
-      const removal = await guard.rmPermsFromRole('reader', 'read', 'document');
-      expect(removal.permsRemoved).toHaveLength(1);
-    } finally {
-      releaseGrant.resolve();
-      await earlierGrant;
-    }
+    const pendingRemoval = other.rmPermsFromRole('reader', 'read', 'document');
+    await revocationStarted.promise;
+    releaseGrant.resolve();
 
+    const removal = await pendingRemoval;
+    expect(removal.permsRemoved).toHaveLength(1);
+    await earlierGrant;
     expect(await user.can!('read document')).toBe(false);
     expect(await user.can!('edit document')).toBe(true);
   });
