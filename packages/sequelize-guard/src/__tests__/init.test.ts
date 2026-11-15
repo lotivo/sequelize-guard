@@ -95,7 +95,9 @@ describe('SequelizeGuard Setup', () => {
   describe('Migrations', () => {
     it('should run up migration', async () => {
       // setup
-      const { stub, migration: migrationArr } = createQueryInterfaceStub();
+      const { stub, migration: migrationArr } = createQueryInterfaceStub(
+        context.sequelize,
+      );
       const expected = migrationOrder.up.map((m) =>
         getTableName(m, { prefix: 'guard_' }),
       );
@@ -107,7 +109,9 @@ describe('SequelizeGuard Setup', () => {
 
     it('should run up migration with options', async () => {
       // setup
-      const { stub, migration: migrationArr } = createQueryInterfaceStub();
+      const { stub, migration: migrationArr } = createQueryInterfaceStub(
+        context.sequelize,
+      );
       const expected = migrationOrder.up.map((m) =>
         getTableName(m, { prefix: 'guard_' }),
       );
@@ -123,7 +127,9 @@ describe('SequelizeGuard Setup', () => {
 
     it('should run down migrations', async () => {
       // setup
-      const { stub, migration: migrationArr } = createQueryInterfaceStub();
+      const { stub, migration: migrationArr } = createQueryInterfaceStub(
+        context.sequelize,
+      );
       const expected = migrationOrder.down.map((m) =>
         getTableName(m, { prefix: 'guard_' }),
       );
@@ -135,7 +141,9 @@ describe('SequelizeGuard Setup', () => {
 
     it('should run down migrations with options', async () => {
       // setup
-      const { stub, migration: migrationArr } = createQueryInterfaceStub();
+      const { stub, migration: migrationArr } = createQueryInterfaceStub(
+        context.sequelize,
+      );
       const expected = migrationOrder.down.map((m) =>
         getTableName(m, { prefix: 'guard_' }),
       );

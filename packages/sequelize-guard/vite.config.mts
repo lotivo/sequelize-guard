@@ -15,6 +15,7 @@ const outputDirBase = path.resolve(
 const vitestConfig = vitestDefineConfig({
   test: {
     globals: true,
+    server: { deps: { inline: ['sequelize-guard-previous'] } },
     environment: 'node',
     coverage: {
       provider: 'v8',

@@ -62,11 +62,14 @@ export async function closeTestDatabase(context: TestContext): Promise<void> {
   }
 }
 
-export function createQueryInterfaceStub() {
+export function createQueryInterfaceStub(sequelize: Sequelize) {
   const migration: string[] = [];
   const seeds: string[] = [];
 
   const queryInterfaceStub = {
+    sequelize,
+    tableExists: () => false,
+    addIndex: () => undefined,
     createTable: function (tableName: string) {
       migration.push(tableName);
     },
