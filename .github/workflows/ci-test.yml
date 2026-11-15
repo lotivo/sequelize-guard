@@ -45,12 +45,9 @@ jobs:
       - name: Detect if library is affected
         id: affected
         run: |
-          AFFECTED=$(yarn --silent nx show projects --affected)
-          if echo "$AFFECTED" | grep -xq "sequelize-guard"; then
-            echo "library=true" >> $GITHUB_OUTPUT
-          else
-            echo "library=false" >> $GITHUB_OUTPUT
-          fi
+          AFFECTED=$(yarn --silent nx show projects --affected --json)
+          LIBRARY_AFFECTED=$(jq -er 'if type == "array" then (index("sequelize-guard") != null | tostring) else error("Expected an Nx project array") end' <<< "$AFFECTED")
+          echo "library=$LIBRARY_AFFECTED" >> "$GITHUB_OUTPUT"
 
       - name: Run lint
         # This runs lint with eslint
