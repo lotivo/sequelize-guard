@@ -63,9 +63,23 @@ export function validateGuardTables(
   sequelize: Sequelize,
   options: GuardInternalOptions,
 ): void {
-  const owned = ownedTypes(options).map((type) =>
-    guardTable(sequelize, options, type),
-  );
+  const types = ownedTypes(options);
+  const owned = types.map((type) => guardTable(sequelize, options, type));
+  const legacy = { ...options, tables: {} };
+  for (const [index, table] of owned.entries()) {
+    if (
+      types.some(
+        (type) =>
+          type !== types[index] &&
+          physicalTableKey(sequelize, guardTable(sequelize, legacy, type)) ===
+            physicalTableKey(sequelize, table),
+      )
+    ) {
+      throw new Error(
+        'Guard table names may not reuse the legacy name of another guard table',
+      );
+    }
+  }
   const application = options.UserModel?.getTableName();
   const tables = application ? [...owned, application] : owned;
   if (

@@ -52,12 +52,15 @@ export function guardUserKey(
       `userPk must identify the supplied UserModel primary key "${attribute}"`,
     );
   }
+  if (sequelize.getDialect() === 'sqlite' && type instanceof DataTypes.BIGINT) {
+    throw new Error(
+      'SQLite UserModel primary keys must fit JavaScript safe integers; use INTEGER, STRING, or UUID',
+    );
+  }
   if (
     !(
       type instanceof DataTypes.INTEGER ||
-      type instanceof DataTypes.BIGINT ||
       type instanceof DataTypes.STRING ||
-      type instanceof DataTypes.CHAR ||
       type instanceof DataTypes.UUID
     )
   ) {
