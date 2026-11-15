@@ -21,7 +21,7 @@ export type GuardRoleData = {
   id: CreationOptional<number>;
   name: string;
   description?: string;
-  parent_id?: ForeignKey<GuardRoleModel['id']>;
+  parent_id?: ForeignKey<GuardRoleModel['id']> | null;
 };
 
 /**
