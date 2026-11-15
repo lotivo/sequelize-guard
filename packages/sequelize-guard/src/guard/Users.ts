@@ -1,9 +1,9 @@
 import type { Model } from 'sequelize';
 import type { GuardRoleData, GuardUserModel } from '../sequelize-models';
 import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
-import type { PolicyMutationOptions } from '../types';
-import { findOrInsertPolicyRecord, mutatePolicy } from './policyMutation';
-import { createRoles, lockRoles, normalizeRoleName, roleInputs } from './Roles';
+import type { PolicyMutationOptions, UserRoleAssignment } from '../types';
+import { mutatePolicy } from './policyMutation';
+import { assignMemberships, removeMemberships } from './RoleMemberships';
 
 /**
  * Extend SequelizeGuard with user management methods
@@ -41,50 +41,48 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
     roles: string[],
     options: PolicyMutationOptions = {},
   ): Promise<void> {
-    const userId = getUserId(this, user);
-    const requested = roleInputs(roles);
-    if (!requested.length) return;
-
-    await mutatePolicy(this, options, async (mutation) => {
-      const { transaction } = mutation;
-      const assigned = await createRoles(this, requested, mutation, {
-        all: true,
-      });
-      for (const role of assigned) {
-        const membership = { user_id: userId, role_id: role.id };
-        await findOrInsertPolicyRecord(
-          this._models.RoleUser,
-          { where: membership, transaction, lock: true, useMaster: true },
-          membership,
-        );
-      }
-    });
+    await this.assignUserRoles([{ user, roles }], options);
   };
 
-  /**
-   * Remove roles from user.
-   */
+  SequelizeGuard.prototype.assignRolesToUsers = async function (
+    users: readonly Model[],
+    roles: readonly string[],
+    options: PolicyMutationOptions = {},
+  ) {
+    return this.assignUserRoles(
+      users.map((user) => ({ user, roles })),
+      options,
+    );
+  };
+
+  SequelizeGuard.prototype.assignUserRoles = async function (
+    assignments: readonly UserRoleAssignment[],
+    options: PolicyMutationOptions = {},
+  ) {
+    return assignMemberships(
+      this,
+      userMemberships(this),
+      assignments.map(({ user, roles }) => ({
+        member: getPolicyUser(this, user),
+        roles,
+      })),
+      options,
+    );
+  };
+
+  /** Remove direct memberships from a user. */
   SequelizeGuard.prototype.rmAssignedRoles = async function (
     user: Model,
     roles: string[],
     options: PolicyMutationOptions = {},
-  ): Promise<void> {
-    const userId = getUserId(this, user);
-    const names = [...new Set(roles.map(normalizeRoleName))];
-    if (!names.length) return;
-
-    await mutatePolicy(this, options, async ({ transaction }) => {
-      const rolesToRemove = await lockRoles(this, names, transaction);
-      if (!rolesToRemove.length) return;
-      await this._models.RoleUser.destroy({
-        where: {
-          user_id: userId,
-          role_id: rolesToRemove.map((role) => role.id),
-        },
-        force: true,
-        transaction,
-      });
-    });
+  ) {
+    return removeMemberships(
+      this,
+      userMemberships(this),
+      getPolicyUser(this, user),
+      roles,
+      options,
+    );
   };
 
   /**
@@ -111,11 +109,7 @@ export function getPolicyUser(
   return user as GuardUserModel;
 }
 
-function getUserId(guard: SequelizeGuard, user: Model) {
-  const key = guard._models.GuardUser.primaryKeyAttribute;
-  const id: unknown = getPolicyUser(guard, user).get(key);
-  if (typeof id !== 'number' && typeof id !== 'string') {
-    throw new TypeError('Guard user must have a string or numeric primary key');
-  }
-  return id;
+export function userMemberships(guard: SequelizeGuard) {
+  const { GuardUser, RoleUser } = guard._models;
+  return { members: GuardUser, links: RoleUser };
 }

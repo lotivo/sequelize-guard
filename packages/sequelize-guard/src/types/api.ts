@@ -1,4 +1,4 @@
-import type { Transaction } from 'sequelize';
+import type { Model, Transaction } from 'sequelize';
 import type { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
 
 /**
@@ -41,6 +41,17 @@ export interface PolicyMutationOptions {
    * and suppresses its events. Callers own notifications after commit.
    */
   transaction?: Transaction;
+}
+
+/** Direct role names to assign to a persisted guard user. */
+export interface UserRoleAssignment {
+  readonly user: Model;
+  readonly roles: readonly string[];
+}
+
+export interface RoleAssignmentResult {
+  /** Number of distinct assignments added by this operation. */
+  assigned: number;
 }
 
 /**
