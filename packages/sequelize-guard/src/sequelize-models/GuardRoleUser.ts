@@ -7,7 +7,7 @@ import {
   ModelStatic,
 } from 'sequelize';
 import { GuardRoleModel, GuardRoleModelStatic } from './GuardRole';
-import { GuardUserModel, GuardUserModelStatic } from './GuardUser';
+import { GuardUserModelStatic } from './GuardUser';
 import {
   AssociationModelType,
   getTableName,
@@ -22,7 +22,7 @@ import { modelOptions } from './utils';
 export interface RoleUserModel extends SequelizeModelClass<RoleUserModel> {
   id: CreationOptional<number>;
   role_id: ForeignKey<GuardRoleModel['id']>;
-  user_id: ForeignKey<GuardUserModel['id']>;
+  user_id: ForeignKey<string | number>;
 }
 
 export type GuardRoleUserModelStatic = ModelStatic<RoleUserModel>;
