@@ -76,9 +76,9 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "lodash": "^4.17.21",
+    "lodash": "^4.18.1",
     "node-cache": "^5.1.2",
-    "sequelize": "^6.37.7"
+    "sequelize": "^6.37.8"
   },
   "peerDependencies": {
     "sequelize": ">=6.0.0"
