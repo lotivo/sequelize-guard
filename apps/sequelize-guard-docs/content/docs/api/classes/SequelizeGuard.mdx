@@ -176,6 +176,8 @@ Synchronizes guard models and reloads their cached roles and permissions. Accept
 
 This includes a supplied `UserModel` and excludes unrelated Sequelize models. `force` drops tables and `alter` may remove data. Use migrations for production schema changes. Run synchronization before serving requests; it does not coordinate with concurrent application reads or writes.
 
+An explicit `schema` must match the schema already bound to every guard model. Otherwise synchronization rejects before any database work. Per-call `searchPath` is also rejected because cache and authorization queries would not share that override. Configure schema routing on Sequelize (for example, `define.schema`, including the supplied user model) before constructing the guard; `sync()` does not move tables between schemas.
+
 ```typescript
 const guard = new SequelizeGuard(sequelize, { sync: false });
 await guard.sync({ logging: false });

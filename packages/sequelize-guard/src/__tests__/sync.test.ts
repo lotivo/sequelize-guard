@@ -1,7 +1,7 @@
 import { DataTypes, Sequelize } from 'sequelize';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SequelizeGuard } from '../index';
-import type { GuardModel } from '../sequelize-models';
+import type { GuardModel, GuardUserModel } from '../sequelize-models';
 
 describe('Guard synchronization', () => {
   let sequelize: Sequelize;
@@ -117,6 +117,87 @@ describe('Guard synchronization', () => {
     ).rejects.toThrow('does not match');
     expect(query).not.toHaveBeenCalled();
     expect(await guard.models().GuardRole.count()).toBe(1);
+  });
+
+  it.each([{}, { force: true }, { alter: true }])(
+    'rejects a schema override before any database work (%j)',
+    async (options) => {
+      const guard = new SequelizeGuard(sequelize);
+      await guard.ready;
+      await guard.makeRole('keep');
+      const query = vi.spyOn(sequelize, 'query');
+      await expect(guard.sync({ ...options, schema: 'other' })).rejects.toThrow(
+        'schema',
+      );
+      expect(query).not.toHaveBeenCalled();
+      expect(await guard.models().GuardRole.count()).toBe(1);
+    },
+  );
+
+  it('accepts a schema already bound to every guard model', async () => {
+    await sequelize.close();
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+      define: { schema: 'tenant' },
+    });
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await expect(guard.sync({ schema: 'tenant' })).resolves.toBe(guard);
+    await guard.makeRole('reader');
+    expect(await guard.models().GuardRole.count()).toBe(1);
+    await guard.sync({ schema: 'tenant', force: true });
+    await guard.allow('reader', 'read', 'document');
+    const user = await guard.makeUser();
+    await guard.assignRole(user, 'reader');
+    await expect(guard.userCan(user, 'read document')).resolves.toBe(true);
+  });
+
+  it('rejects schema changes before creating any tables', async () => {
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    const query = vi.spyOn(sequelize, 'query');
+    await expect(guard.sync({ schema: 'tenant' })).rejects.toThrow('schema');
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('validates the custom user model schema before any drops', async () => {
+    await sequelize.close();
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+      define: { schema: 'tenant' },
+    });
+    const UserModel = sequelize.define<GuardUserModel>(
+      'CustomUser',
+      {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      },
+      { schema: 'users' },
+    );
+    const guard = new SequelizeGuard(sequelize, { sync: false, UserModel });
+    const query = vi.spyOn(sequelize, 'query');
+    await expect(guard.sync({ schema: 'tenant', force: true })).rejects.toThrow(
+      'schema',
+    );
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('rejects per-call PostgreSQL searchPath routing before database work', async () => {
+    await sequelize.close();
+    sequelize = new Sequelize({
+      dialect: 'postgres',
+      database: 'guard',
+      dialectModule: {},
+      logging: false,
+      dialectOptions: { prependSearchPath: true },
+    });
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    const query = vi.spyOn(sequelize, 'query');
+    await expect(
+      guard.sync({ searchPath: 'tenant', force: true }),
+    ).rejects.toThrow('searchPath');
+    expect(query).not.toHaveBeenCalled();
   });
 
   it('queues explicit synchronization behind automatic startup', async () => {

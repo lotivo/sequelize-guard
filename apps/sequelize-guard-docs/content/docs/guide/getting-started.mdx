@@ -50,6 +50,8 @@ Synchronization includes the configured `UserModel`, if supplied, and excludes u
 
 `guard.init()` starts a fluent permission statement; it does not initialize the database.
 
+Configure schema routing on Sequelize before constructing the guard. An explicit `sync({ schema })` must match every model's existing schema, including a supplied `UserModel`. Per-call `searchPath` overrides are rejected because later cache and authorization queries would not share them. Both checks reject before database work.
+
 ## Core Concepts
 
 ### Roles

@@ -101,6 +101,7 @@ export class SequelizeGuard extends SequelizeGuardBase {
    * Synchronize guard models, then reload their cached roles and permissions.
    * Calls are serialized, including automatic startup. Errors reject the caller.
    * Includes a supplied UserModel; unrelated Sequelize models are not synced.
+   * schema must match every model's bound schema; per-call searchPath is rejected.
    * @param options - Sequelize sync options. force and alter may destroy data.
    * @returns This guard after synchronization and cache initialization complete.
    */
@@ -119,7 +120,26 @@ export class SequelizeGuard extends SequelizeGuardBase {
         );
       }
 
+      if (syncOptions.searchPath !== undefined) {
+        throw new Error(
+          'sync searchPath overrides are not supported; configure schema routing on Sequelize before constructing the guard',
+        );
+      }
       const models: GuardModel[] = Object.values(this._models);
+      // Model.sync can create in a new schema while drop/index queries use the old one.
+      if (
+        syncOptions.schema !== undefined &&
+        models.some((model) => {
+          const table = model.getTableName();
+          return (
+            typeof table === 'string' || table.schema !== syncOptions.schema
+          );
+        })
+      ) {
+        throw new Error(
+          'sync schema must match the schema already bound to every guard model',
+        );
+      }
       // Drop junction tables before the tables they reference.
       if (syncOptions.force) {
         for (const model of [...models].reverse())

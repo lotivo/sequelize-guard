@@ -107,6 +107,8 @@ await guard.sync({ logging: false });
 
 Synchronization includes a supplied `UserModel`, but excludes unrelated Sequelize models. `force` drops tables and `alter` can remove data; use migrations for production schema changes. Run synchronization before serving requests, not alongside authorization or policy writes.
 
+The `schema` option must match the schema already bound to every guard model, including a supplied `UserModel`; mismatches reject before database work. Per-call `searchPath` is rejected because later authorization queries would not share that override. Configure schema routing on Sequelize before constructing the guard, for example with `define.schema`, rather than moving tables through `sync()`.
+
 ## Documentation
 
 For comprehensive guides, API reference, and examples, visit our documentation:
