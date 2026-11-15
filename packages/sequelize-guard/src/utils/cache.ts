@@ -110,8 +110,10 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.resetCache = function (): GuardCache {
     if (!this._cache) {
       this._cache = new GuardCache();
+      bindGuardListeners(this);
     }
     this._cache.flushAll();
+    this._cacheReady = undefined;
     return this._cache;
   };
 
@@ -119,39 +121,36 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
    * Get or create cache instance
    */
   SequelizeGuard.prototype.getCache = async function (): Promise<GuardCache> {
-    if (!this._cache) {
-      const cache = this.resetCache();
-      this._cache = cache;
+    const cache = this._cache ?? this.resetCache();
+    if (!this._cacheReady) {
+      const initialization = Promise.resolve()
+        .then(async () => {
+          const roles = await this.models().GuardRole.findAll({
+            include: 'Permissions',
+            useMaster: true,
+          });
 
-      try {
-        const roles = await this.models().GuardRole.findAll({
-          include: 'Permissions',
+          const mappedRoles = mappedRolesToIds(roles);
+
+          const perms = await this.models().GuardPermission.findAll({
+            useMaster: true,
+          });
+          const mappedPerms = mappedPermsToIds(perms);
+
+          // A reset supersedes an in-flight snapshot.
+          if (this._cacheReady !== initialization) return this.getCache();
+          cache.setRoles(mappedRoles);
+          cache.setPerms(mappedPerms);
+          return cache;
+        })
+        .catch((error: unknown) => {
+          if (this._cacheReady === initialization) this._cacheReady = undefined;
+          throw error;
         });
-
-        const mappedRoles = mappedRolesToIds(roles);
-
-        const perms = await this.models().GuardPermission.findAll();
-        const mappedPerms = mappedPermsToIds(perms);
-
-        cache.setRoles(mappedRoles);
-        cache.setPerms(mappedPerms);
-
-        bindGuardListeners(this);
-      } catch (error) {
-        console.log(`
-          ====================================
-          '\tTables for Guard not created, make sure you have run migrations or enabled sync option',
-
-          ERROR: ${
-            (error as Error).message ||
-            'Unknown error during cache initialization'
-          }
-          ====================================
-          `);
-      }
+      this._cacheReady = initialization;
     }
 
-    return this._cache;
+    return this._cacheReady;
   };
 }
 

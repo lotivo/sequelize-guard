@@ -82,8 +82,10 @@ import SequelizeGuard from 'sequelize-guard';
 
 const sequelize = new Sequelize(/* config */);
 const guard = new SequelizeGuard(sequelize);
+await guard.ready;
 
 // Assign roles and permissions
+const user = await guard.makeUser();
 await user.assignRole('admin');
 await guard.allow('admin', ['view', 'edit'], 'blog');
 
@@ -93,6 +95,19 @@ const isAdmin = await user.isA('admin');
 ```
 
 > **Note:** Works with both TypeScript and JavaScript (ESM/CommonJS). See [documentation](https://sequelize-guard.js.org/getting-started) for JavaScript examples.
+
+To control when tables are synchronized and pass Sequelize sync options:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, { sync: false });
+await guard.sync({ logging: false });
+```
+
+`sync()` resolves to the guard after its models and role/permission cache are ready, and rejects on failure. Calls are serialized with automatic startup. With `sync: false`, construction and `ready` do no database work; either await `sync()` or prepare tables with your migrations before using the guard. `init()` builds fluent permission statements and does not initialize the database.
+
+Synchronization includes a supplied `UserModel`, but excludes unrelated Sequelize models. `force` drops tables and `alter` can remove data; use migrations for production schema changes. Run synchronization before serving requests, not alongside authorization or policy writes.
+
+The `schema` option must match the schema already bound to every guard model, including a supplied `UserModel`; mismatches reject before database work. Per-call `searchPath` is rejected because later authorization queries would not share that override. Configure schema routing on Sequelize before constructing the guard, for example with `define.schema`, rather than moving tables through `sync()`.
 
 ## Documentation
 

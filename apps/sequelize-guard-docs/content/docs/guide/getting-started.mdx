@@ -25,42 +25,32 @@ export const sequelize = new Sequelize({
 
 ### 2. Initialize Sequelize Guard
 
-Create and initialize the guard instance:
+By default, the constructor starts synchronizing the guard's models. Await `ready` before creating roles, assigning permissions or checking access:
 
 ```typescript filename="guard.ts"
 import { SequelizeGuard } from 'sequelize-guard';
 import { sequelize } from './database';
 
-export const guard = new SequelizeGuard(sequelize, {
-  prefix: 'app_', // Optional: prefix for table names
-  cache: {
-    enabled: true,
-    ttl: 300, // Cache TTL in seconds
-  },
-});
-
-// Initialize the guard system
-export async function initializeGuard() {
-  await guard.init();
-  console.log('Guard initialized successfully');
-}
+export const guard = new SequelizeGuard(sequelize, { prefix: 'app_' });
+await guard.ready;
 ```
 
-### 3. Run Migrations
+### 3. Control synchronization explicitly
 
-Create the required database tables:
+To defer all database work and pass Sequelize sync options, disable automatic synchronization:
 
-```typescript filename="setup.ts"
-import { guard } from './guard';
-
-async function setup() {
-  // This will create all necessary tables
-  await guard.migrations.run();
-  console.log('Database tables created');
-}
-
-setup();
+```typescript
+const guard = new SequelizeGuard(sequelize, { sync: false });
+await guard.sync({ logging: false });
 ```
+
+`sync()` resolves to the guard after model synchronization and cache loading finish. It rejects on database errors; correct the underlying problem before retrying. Calls run sequentially, including automatic startup. `ready` represents only the constructor's startup, so with `sync: false` it resolves without database work. Await each explicit `sync()` call itself.
+
+Synchronization includes the configured `UserModel`, if supplied, and excludes unrelated Sequelize models. `force: true` drops tables and `alter` can remove data. Use migrations for production schema changes, and run synchronization before serving requests. If migrations already created the tables, use `sync: false` and call `await guard.getCache()` after migrations to initialize the legacy administrative snapshot without synchronizing tables.
+
+`guard.init()` starts a fluent permission statement; it does not initialize the database.
+
+Configure schema routing on Sequelize before constructing the guard. An explicit `sync({ schema })` must match every model's existing schema, including a supplied `UserModel`. Per-call `searchPath` overrides are rejected because later cache and authorization queries would not share them. Both checks reject before database work.
 
 ## Core Concepts
 
@@ -172,8 +162,7 @@ async function main() {
   const guard = new SequelizeGuard(sequelize);
 
   // 2. Initialize
-  await guard.init();
-  await guard.migrations.run();
+  await guard.ready;
 
   // 3. Create roles
   const adminRole = await guard.roles.createRole('admin', 'Administrator');

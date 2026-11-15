@@ -62,8 +62,9 @@ assert.equal(Guard, SequelizeGuard);
 assert.equal(migration, Guard.migration);
 const sequelize = new Sequelize({ dialect: 'sqlite', storage: ':memory:', logging: false });
 try {
-  const guard = new Guard(sequelize);
+  const guard = new Guard(sequelize, { sync: false });
   await guard.ready;
+  assert.equal(await guard.sync({ logging: false }), guard);
   await guard.allow('reader', 'read', 'document');
   const user = await guard.makeUser();
   await user.assignRole('reader');
@@ -113,6 +114,9 @@ import { Sequelize } from 'sequelize';
 export async function useGuard(sequelize: Sequelize, options: GuardOptions) {
   const guard: SequelizeGuard = new Guard(sequelize, options);
   await guard.ready;
+  const synced: SequelizeGuard = await guard.sync({ logging: false, alter: { drop: false } });
+  // @ts-expect-error Sync options follow Sequelize's types.
+  await guard.sync({ force: 'yes' });
   await guard.allow('reader', ['read'], 'document');
   await guard.init().allow('editor').to('edit').on('document').commit();
   const user = await guard.makeUser();
@@ -125,7 +129,7 @@ export async function useGuard(sequelize: Sequelize, options: GuardOptions) {
   await guard.assignRole(user, 123);
   // @ts-expect-error Permission checks return booleans.
   const wrong: string = await guard.userCan(user, 'read document');
-  return { allowed, roles, cache };
+  return { allowed, roles, cache, synced };
 }
 `;
 

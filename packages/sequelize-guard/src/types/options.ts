@@ -42,7 +42,8 @@ export interface GuardOptions {
   paranoid?: boolean;
 
   /**
-   * Auto create tables, set to false if using migrations
+   * Auto sync tables and initialize the cache; await guard.ready for completion.
+   * Set false to defer database work to guard.sync(options) or use migrations.
    * @default true
    */
   sync?: boolean;

@@ -21,6 +21,9 @@ export abstract class SequelizeGuardBase {
    */
   public _cache?: GuardCache;
 
+  /** @internal Pending or completed cache initialization. */
+  public _cacheReady?: Promise<GuardCache>;
+
   /**
    * @internal
    * User cache instance - internal use only
