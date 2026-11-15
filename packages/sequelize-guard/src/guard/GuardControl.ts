@@ -1,6 +1,6 @@
 import lodash from 'lodash';
 import type { SequelizeGuard } from '../SequelizeGuard';
-import type { AddPermsToRoleResult } from '../types';
+import type { AddPermsToRoleResult, PolicyMutationOptions } from '../types';
 
 /**
  * GuardControl - Fluent API for creating guard statements
@@ -94,11 +94,11 @@ export class GuardControl {
    * await control.commit()
    * ```
    */
-  commit(): Promise<AddPermsToRoleResult> {
+  commit(options?: PolicyMutationOptions): Promise<AddPermsToRoleResult> {
     const roles = this._roles;
     const actions = this._actions;
     const resources = this._resources;
 
-    return this.guard.addPermsToRole(roles, actions, resources);
+    return this.guard.addPermsToRole(roles, actions, resources, options);
   }
 }

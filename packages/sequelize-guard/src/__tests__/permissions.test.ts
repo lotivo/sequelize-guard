@@ -26,7 +26,7 @@ describe('Permissions', () => {
       // execute
       const perms = await context.guard.createPerms('blog', ['view', 'edit']);
       // assert
-      expect(perms[0].name).toBe('blog:[view,edit]');
+      expect(perms[0].name).toBe('blog:[edit,view]');
     });
 
     it('should not create duplicate permission', async () => {

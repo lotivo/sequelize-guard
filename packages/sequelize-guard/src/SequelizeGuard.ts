@@ -1,4 +1,4 @@
-import type { Sequelize, SyncOptions } from 'sequelize';
+import type { Model, Sequelize, SyncOptions } from 'sequelize';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
 import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
@@ -21,6 +21,7 @@ import type {
   FindRolesArgs,
   GuardEventCallback,
   PermissionData,
+  PolicyMutationOptions,
   RemovePermsFromRoleResult,
   RoleCreationParam,
   RoleCreationResult,
@@ -182,6 +183,7 @@ export class SequelizeGuard extends SequelizeGuardBase {
     role: string,
     actions: string | string[],
     resources: string | string[],
+    options?: PolicyMutationOptions,
   ) => Promise<AddPermsToRoleResult>;
 
   // Permission guard methods
@@ -211,13 +213,17 @@ export class SequelizeGuard extends SequelizeGuardBase {
   ) => PermissionData[];
 
   // Role guard methods
-  declare makeRole: (role: RoleCreationParam) => Promise<RoleCreationResult>;
+  declare makeRole: (
+    role: RoleCreationParam,
+    options?: PolicyMutationOptions,
+  ) => Promise<RoleCreationResult>;
   declare makeRoles: (
     roles: RoleCreationParam[],
     options?: CreateRolesOptions,
   ) => Promise<GuardRoleModel[]>;
   declare deleteRoles: (
     roles: string | RoleCreationParam[] | GuardRoleModel[],
+    options?: PolicyMutationOptions,
   ) => Promise<number>;
   declare allRoles: () => Promise<GuardRoleModel[]>;
   declare getRole: (role: string) => Promise<GuardRoleModel | null>;
@@ -226,11 +232,13 @@ export class SequelizeGuard extends SequelizeGuardBase {
     role: string | GuardRoleModel,
     actions: string | string[],
     resources: string | string[],
+    options?: PolicyMutationOptions,
   ) => Promise<AddPermsToRoleResult>;
   declare rmPermsFromRole: (
     role: string,
     actions: string | string[],
     resources: string | string[],
+    options?: PolicyMutationOptions,
   ) => Promise<RemovePermsFromRoleResult>;
   declare onRolesCreated: (
     cb: GuardEventCallback<GuardRoleModel[]>,
@@ -240,42 +248,38 @@ export class SequelizeGuard extends SequelizeGuardBase {
   ) => UnsubscribeFn;
 
   // User guard methods
-  declare makeUser: () => Promise<GuardUserModel>;
-  declare assignRole: (
-    user: GuardUserModel,
-    role: string,
+  declare makeUser: (
+    options?: PolicyMutationOptions,
   ) => Promise<GuardUserModel>;
-  declare assignRoles: (user: GuardUserModel, roles: string[]) => Promise<void>;
-  declare rmAssignedRoles: (
-    user: GuardUserModel,
+  declare assignRole: <TUser extends Model>(
+    user: TUser,
+    role: string,
+    options?: PolicyMutationOptions,
+  ) => Promise<TUser>;
+  declare assignRoles: (
+    user: Model,
     roles: string[],
+    options?: PolicyMutationOptions,
   ) => Promise<void>;
-  declare getUserRoles: (user: GuardUserModel) => Promise<GuardRoleData[]>;
+  declare rmAssignedRoles: (
+    user: Model,
+    roles: string[],
+    options?: PolicyMutationOptions,
+  ) => Promise<void>;
+  declare getUserRoles: (user: Model) => Promise<GuardRoleData[]>;
 
   //User permission resolution methods
-  declare userCan: (
-    user: GuardUserModel,
-    permission: string,
-  ) => Promise<boolean>;
-  declare userCant: (
-    user: GuardUserModel,
-    permission: string,
-  ) => Promise<boolean>;
+  declare userCan: (user: Model, permission: string) => Promise<boolean>;
+  declare userCant: (user: Model, permission: string) => Promise<boolean>;
   declare resolvePermission: (
     givenPermissions: { action: string; resource: string }[],
     wantedPermission: string,
   ) => boolean;
 
   // User role resolution methods
-  declare userHasRoles: (
-    user: GuardUserModel,
-    roles: string[],
-  ) => Promise<boolean>;
-  declare userHasAllRoles: (
-    user: GuardUserModel,
-    roles: string[],
-  ) => Promise<boolean>;
-  declare userIsA: (user: GuardUserModel, role: string) => Promise<boolean>;
+  declare userHasRoles: (user: Model, roles: string[]) => Promise<boolean>;
+  declare userHasAllRoles: (user: Model, roles: string[]) => Promise<boolean>;
+  declare userIsA: (user: Model, role: string) => Promise<boolean>;
 
   // Cache
   declare resetCache: () => GuardCache;

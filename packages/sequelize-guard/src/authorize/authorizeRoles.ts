@@ -1,5 +1,5 @@
-import lodash from 'lodash';
-import { GuardUserModel } from '../sequelize-models';
+import type { Model } from 'sequelize';
+import { normalizeRoleName } from '../guard/Roles';
 import type { SequelizeGuardType } from '../SequelizeGuard';
 
 /**
@@ -15,13 +15,12 @@ export function extendWithAuthorizeRoles(
    * @param roles
    */
   SequelizeGuard.prototype.userHasRoles = async function (
-    user: GuardUserModel,
+    user: Model,
     roles: string[],
   ): Promise<boolean> {
+    const names = new Set(roles.map(normalizeRoleName));
     const userRoles = await this.getUserRoles(user);
-    const uRoles = userRoles.map((r) => r.name);
-    const checks = uRoles.map((r) => lodash.includes(roles, r));
-    return lodash.includes(checks, true);
+    return userRoles.some(({ name }) => names.has(name));
   };
 
   /**
@@ -30,13 +29,14 @@ export function extendWithAuthorizeRoles(
    * @param roles
    */
   SequelizeGuard.prototype.userHasAllRoles = async function (
-    user: GuardUserModel,
+    user: Model,
     roles: string[],
   ): Promise<boolean> {
-    const userRoles = await this.getUserRoles(user);
-    const uRoles = userRoles.map((r) => r.name);
-
-    return roles.every((role) => uRoles.includes(role));
+    const names = roles.map(normalizeRoleName);
+    const userRoles = new Set(
+      (await this.getUserRoles(user)).map(({ name }) => name),
+    );
+    return names.every((name) => userRoles.has(name));
   };
 
   /**
@@ -45,11 +45,11 @@ export function extendWithAuthorizeRoles(
    * @param role
    */
   SequelizeGuard.prototype.userIsA = async function (
-    user: GuardUserModel,
+    user: Model,
     role: string,
   ): Promise<boolean> {
+    const name = normalizeRoleName(role);
     const userRoles = await this.getUserRoles(user);
-    const checks = userRoles.map((r) => role === r.name);
-    return lodash.includes(checks, true);
+    return userRoles.some((role) => role.name === name);
   };
 }

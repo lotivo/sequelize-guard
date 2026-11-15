@@ -1,5 +1,11 @@
-import { GuardUserModel } from '../sequelize-models';
+import type { Model } from 'sequelize';
+import { getPolicyUser } from '../guard/Users';
 import type { SequelizeGuardType } from '../SequelizeGuard';
+import {
+  isPermissionToken,
+  parsePermissionRequest,
+  readPermissionActions,
+} from './permissionGrammar';
 
 /**
  * Extend SequelizeGuard with permission-based authorization
@@ -14,13 +20,16 @@ export function extendWithAuthorizePerms(
    * @param permission
    */
   SequelizeGuard.prototype.userCan = async function (
-    user: GuardUserModel,
+    user: Model,
     permission: string,
   ): Promise<boolean> {
+    if (!parsePermissionRequest(permission)) return false;
+
     // Read membership and policy together from the writer, never from local snapshots.
-    const roles = await user.getRoles!({
+    const roles = await getPolicyUser(this, user).getRoles!({
       include: ['Permissions'],
       useMaster: true,
+      transaction: null,
     });
     return roles.some((role) =>
       this.resolvePermission(role.Permissions ?? [], permission),
@@ -33,7 +42,7 @@ export function extendWithAuthorizePerms(
    * @param permission
    */
   SequelizeGuard.prototype.userCant = async function (
-    user: GuardUserModel,
+    user: Model,
     permission: string,
   ): Promise<boolean> {
     return this.userCan(user, permission).then((result) => !result);
@@ -48,32 +57,21 @@ export function extendWithAuthorizePerms(
     givenPermissions,
     wantedPermission,
   ) {
-    const allSymbol = '*';
-    if (wantedPermission === '*') wantedPermission = '* *';
+    const requested = parsePermissionRequest(wantedPermission);
+    if (!requested) return false;
 
-    const wPerms = wantedPermission.split(' ');
-    const wAction = wPerms[0];
-    const wResource = wPerms[1];
-
-    const gActions: string[][] = [];
-    const gResources: string[] = [];
-
-    givenPermissions.forEach((p) => {
-      gActions.push(JSON.parse(p.action) as string[]);
-      gResources.push(p.resource);
-    });
-
-    for (let i = 0; i <= gResources.length; i++) {
+    return givenPermissions.some(({ resource, action }) => {
       if (
-        (gResources[i] === allSymbol &&
-          (gActions[i]?.includes('*') || gActions[i]?.includes(wAction))) ||
-        (gResources[i] === wResource &&
-          (gActions[i]?.includes('*') || gActions[i]?.includes(wAction)))
+        !isPermissionToken(resource) ||
+        (resource !== '*' && resource !== requested.resource)
       ) {
-        return true;
+        return false;
       }
-    }
-
-    return false;
+      const actions = readPermissionActions(action);
+      return (
+        actions !== null &&
+        (actions.includes('*') || actions.includes(requested.action))
+      );
+    });
   };
 }
