@@ -506,7 +506,9 @@ describe('Policy mutations', () => {
     const { guard } = context;
     const user = await guard.makeUser();
     const failure = new Error('test membership write failure');
-    vi.spyOn(guard.models().RoleUser, 'create').mockRejectedValueOnce(failure);
+    vi.spyOn(guard.models().RoleUser, 'bulkCreate').mockRejectedValueOnce(
+      failure,
+    );
 
     await expect(guard.assignRoles(user, ['first', 'second'])).rejects.toThrow(
       failure,

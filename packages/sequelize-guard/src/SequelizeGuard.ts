@@ -27,9 +27,11 @@ import type {
   PermissionData,
   PolicyMutationOptions,
   RemovePermsFromRoleResult,
+  RoleAssignmentResult,
   RoleCreationParam,
   RoleCreationResult,
   UnsubscribeFn,
+  UserRoleAssignment,
 } from './types/api';
 import { SequelizeWithGuard } from './types/helpers';
 import type { GuardCache } from './utils/cache';
@@ -267,6 +269,15 @@ export class SequelizeGuard extends SequelizeGuardBase {
     roles: string[],
     options?: PolicyMutationOptions,
   ) => Promise<void>;
+  declare assignRolesToUsers: (
+    users: readonly Model[],
+    roles: readonly string[],
+    options?: PolicyMutationOptions,
+  ) => Promise<RoleAssignmentResult>;
+  declare assignUserRoles: (
+    assignments: readonly UserRoleAssignment[],
+    options?: PolicyMutationOptions,
+  ) => Promise<RoleAssignmentResult>;
   declare rmAssignedRoles: (
     user: Model,
     roles: string[],
