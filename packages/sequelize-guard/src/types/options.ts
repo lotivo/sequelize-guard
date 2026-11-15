@@ -1,19 +1,23 @@
-import type { ModelStatic } from 'sequelize';
-import { GuardUserModel } from '../sequelize-models';
+import type { Model, ModelStatic } from 'sequelize';
 
 /**
  * Configuration options for SequelizeGuard
  */
 export interface GuardOptions {
   /**
-   * Table names configuration
+   * Table suffixes. Each name is prefixed with `prefix`. A supplied UserModel
+   * determines its own table.
    */
   tables?: {
+    /** @deprecated Reserved for compatibility. */
     meta?: string;
+    /** @deprecated Reserved for compatibility. */
     parents?: string;
     permissions?: string;
     resources?: string;
     roles?: string;
+    role_permission?: string;
+    role_user?: string;
     users?: string;
   };
 
@@ -36,7 +40,7 @@ export interface GuardOptions {
   timestamps?: boolean;
 
   /**
-   * Enable soft deletes of items
+   * Enable soft deletes when timestamps are enabled
    * @default false
    */
   paranoid?: boolean;
@@ -58,11 +62,11 @@ export interface GuardOptions {
    * Model used for User (pass model, not string name)
    * @default null
    */
-  UserModel?: ModelStatic<GuardUserModel> | null;
+  UserModel?: ModelStatic<Model> | null;
 
   /**
-   * Primary key used for User Model
-   * @default 'id'
+   * Attribute or physical column name of the user model's single primary key.
+   * Defaults to the supplied model's primary key, or `id` for the built-in model.
    */
   userPk?: string;
 
@@ -90,6 +94,8 @@ export interface GuardOptions {
 /**
  * Internal options with all defaults applied
  */
-export interface GuardInternalOptions extends Required<GuardOptions> {
-  tables: Required<NonNullable<GuardOptions['tables']>>;
+export interface GuardInternalOptions
+  extends Required<Omit<GuardOptions, 'userPk'>> {
+  tables: NonNullable<GuardOptions['tables']>;
+  userPk: string | undefined;
 }

@@ -4,9 +4,12 @@ import {
   DataTypes,
   ForeignKey,
   ModelAttributes,
+  ModelAttributeColumnReferencesOptions,
   ModelStatic,
   NonAttribute,
 } from 'sequelize';
+import { guardIndexes } from './guard-indexes';
+import { guardTable } from './guard-tables';
 import { GuardPermissionModel } from './GuardPermission';
 import { GuardUserModel } from './GuardUser';
 import {
@@ -61,22 +64,38 @@ export const initGuardRole = (
   const modelType = BaseModelType.Roles;
 
   const tableName = getTableName(modelType, options);
-  const schema = getGuardRoleSchema();
+  const schema = getGuardRoleSchema({
+    model: guardTable(sequelize, options, modelType),
+    key: 'id',
+  });
 
   const GuardRole = sequelize.define<GuardRoleModel>(
     ModelClassNameMap[modelType],
     schema,
-    modelOptions(options, tableName),
+    {
+      ...modelOptions(options, tableName),
+      indexes: guardIndexes(modelType, tableName),
+    },
   );
 
   // Set up Role self-associations for hierarchy
-  GuardRole.hasMany(GuardRole, { as: 'ChildRoles', foreignKey: 'parent_id' });
-  GuardRole.belongsTo(GuardRole, { foreignKey: 'parent_id', as: 'Parent' });
+  GuardRole.hasMany(GuardRole, {
+    as: 'ChildRoles',
+    foreignKey: 'parent_id',
+    constraints: false,
+  });
+  GuardRole.belongsTo(GuardRole, {
+    foreignKey: 'parent_id',
+    as: 'Parent',
+    constraints: false,
+  });
 
   return GuardRole;
 };
 
-export const getGuardRoleSchema = () => {
+export const getGuardRoleSchema = (
+  parentReference?: ModelAttributeColumnReferencesOptions,
+) => {
   const schema: ModelAttributes<GuardRoleModel> = {
     id: {
       type: DataTypes.INTEGER,
@@ -96,6 +115,9 @@ export const getGuardRoleSchema = () => {
     parent_id: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      references: parentReference,
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
     },
   };
 

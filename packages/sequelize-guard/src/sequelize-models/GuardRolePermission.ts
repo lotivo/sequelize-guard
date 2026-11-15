@@ -6,6 +6,7 @@ import {
   ModelAttributes,
   ModelStatic,
 } from 'sequelize';
+import { guardIndexes } from './guard-indexes';
 import {
   GuardPermissionModel,
   GuardPermissionModelStatic,
@@ -61,26 +62,25 @@ export const initGuardRolePermission = (
     schema,
     {
       ...modelOptions(options, tableName),
-      indexes: [
-        {
-          unique: true,
-          fields: ['role_id', 'permission_id'],
-        },
-      ],
+      indexes: guardIndexes(modelType, tableName),
     },
   );
 
   // Set up Role-Permission many-to-many association
   GuardRole.belongsToMany(GuardPermission, {
-    through: RolePermission,
+    through: { model: RolePermission, unique: false },
+    constraints: false,
     as: 'Permissions',
     foreignKey: 'role_id',
+    otherKey: 'permission_id',
   });
 
   GuardPermission.belongsToMany(GuardRole, {
-    through: RolePermission,
+    through: { model: RolePermission, unique: false },
+    constraints: false,
     as: 'Roles',
     foreignKey: 'permission_id',
+    otherKey: 'role_id',
   });
 
   return RolePermission;
@@ -95,6 +95,7 @@ export const getGuardRolePermissionSchema = (params?: {
   const schema: ModelAttributes<RolePermissionModel> = {
     id: {
       type: DataTypes.INTEGER,
+      allowNull: false,
       primaryKey: true,
       autoIncrement: true,
     },
@@ -102,11 +103,15 @@ export const getGuardRolePermissionSchema = (params?: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: roleReference,
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
     },
     permission_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: permissionReference,
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
     },
   };
 

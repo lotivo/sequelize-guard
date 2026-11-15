@@ -1,4 +1,5 @@
 import type { SequelizeGuard } from '../SequelizeGuard';
+import { validateGuardTables } from './guard-tables';
 import {
   GuardPermissionModelStatic,
   initGuardPermission,
@@ -11,12 +12,16 @@ import {
 } from './GuardRolePermission';
 import { GuardRoleUserModelStatic, initGuardRoleUser } from './GuardRoleUser';
 import { GuardUserModelStatic, initOrSetupGuardUser } from './GuardUser';
+import { guardUserKey } from './user-key';
 
 /**
  * Initialize and return all Guard models
  * @param guard
  */
 export function initGuardModels(guard: SequelizeGuard): GuardModels {
+  const userKey = guardUserKey(guard.sequelize, guard.options);
+  validateGuardTables(guard.sequelize, guard.options);
+
   const GuardResource = initGuardResource(guard);
   const GuardPermission = initGuardPermission(guard);
   const GuardRole = initGuardRole(guard);
@@ -28,10 +33,14 @@ export function initGuardModels(guard: SequelizeGuard): GuardModels {
 
   const GuardUser = initOrSetupGuardUser(guard);
 
-  const RoleUser = initGuardRoleUser(guard, {
-    GuardRole,
-    GuardUser,
-  });
+  const RoleUser = initGuardRoleUser(
+    guard,
+    {
+      GuardRole,
+      GuardUser,
+    },
+    userKey,
+  );
 
   return {
     GuardResource,

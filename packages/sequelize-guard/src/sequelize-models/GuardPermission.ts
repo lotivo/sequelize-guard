@@ -24,6 +24,7 @@ export interface GuardPermissionModel
   description?: string;
   resource: string;
   action: string; // JSON stringified array
+  /** @deprecated Reserved for compatibility. Guard permissions only grant access. */
   allow: CreationOptional<number>;
 
   // Associations

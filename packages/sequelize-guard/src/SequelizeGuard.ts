@@ -11,6 +11,10 @@ import type {
   GuardUserModel,
 } from './sequelize-models';
 import { GuardModels, initGuardModels } from './sequelize-models';
+import {
+  assertGuardSchema,
+  assertNoLegacyTableNames,
+} from './sequelize-models/guard-tables';
 import { GuardOptions } from './types';
 import type {
   AddPermsToRoleResult,
@@ -141,6 +145,8 @@ export class SequelizeGuard extends SequelizeGuardBase {
           'sync schema must match the schema already bound to every guard model',
         );
       }
+      await assertGuardSchema(this.sequelize, this.options, syncOptions);
+      await assertNoLegacyTableNames(this.sequelize, this.options, syncOptions);
       // Drop junction tables before the tables they reference.
       if (syncOptions.force) {
         for (const model of [...models].reverse())

@@ -20,7 +20,7 @@ export const defaultOptions: GuardInternalOptions = {
   sync: true,
   debug: false,
   UserModel: null,
-  userPk: 'id',
+  userPk: undefined,
   safeGuardDeletes: true,
   userCache: true,
   userCacheTtl: 60,

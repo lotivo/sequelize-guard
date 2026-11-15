@@ -78,7 +78,7 @@ export const initOrSetupGuardUser = (
 
   // Handle User Model - use custom or create default
   if (options.UserModel) {
-    return options.UserModel;
+    return options.UserModel as GuardUserModelStatic;
   }
 
   const GuardUser = sequelize.define<GuardUserModel>(
@@ -94,6 +94,7 @@ export const getGuardUserSchema = () => {
   const schema: ModelAttributes<GuardUserModel> = {
     id: {
       type: DataTypes.INTEGER,
+      allowNull: false,
       primaryKey: true,
       autoIncrement: true,
     },

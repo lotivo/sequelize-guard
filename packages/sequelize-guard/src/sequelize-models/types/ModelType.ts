@@ -1,3 +1,5 @@
+import type { GuardInternalOptions } from '../../types';
+
 export enum BaseModelType {
   Resources = 'resources',
   Permissions = 'permissions',
@@ -41,7 +43,8 @@ export const ModelClassNameMap = {
 
 export const getTableName = (
   modelType: ModelType | `${ModelType}`,
-  options: { prefix: string },
+  options: Pick<GuardInternalOptions, 'prefix'> &
+    Partial<Pick<GuardInternalOptions, 'tables'>>,
 ) => {
-  return options.prefix + tablesMap[modelType];
+  return options.prefix + (options.tables?.[modelType] ?? tablesMap[modelType]);
 };
