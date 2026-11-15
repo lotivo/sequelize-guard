@@ -13,17 +13,20 @@
       }
     },
     {
-      "plugin": "@nx/vite/plugin",
+      "plugin": "@nx/js/typescript",
+      "include": ["packages/sequelize-guard/**/*"],
       "options": {
-        "buildTargetName": "vite:build",
-        "testTargetName": "vite:test",
-        "serveTargetName": "serve",
-        "devTargetName": "vite:dev",
-        "previewTargetName": "preview",
-        "serveStaticTargetName": "serve-static",
-        "typecheckTargetName": "vite:typecheck",
-        "buildDepsTargetName": "build-deps",
-        "watchDepsTargetName": "watch-deps"
+        "typecheck": { "targetName": "vite:typecheck" },
+        "build": false
+      }
+    },
+    {
+      "plugin": "@nx/vite/plugin"
+    },
+    {
+      "plugin": "@nx/vitest",
+      "options": {
+        "testTargetName": "vite:test"
       }
     }
   ],

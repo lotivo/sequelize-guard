@@ -4,7 +4,7 @@
   "files": [],
   "references": [
     {
-      "path": "./packages/sequelize-guard/tsconfig.json"
+      "path": "./packages/sequelize-guard"
     }
   ],
   "ts-node": {
