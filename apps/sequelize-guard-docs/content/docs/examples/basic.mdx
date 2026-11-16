@@ -3,16 +3,180 @@ title: Basic and custom-user recipes
 description: Simple examples to get you started with Sequelize Guard.
 ---
 
-Canonical recipes live in [examples/](https://github.com/lotivo/sequelize-guard/blob/master/examples/). The exact packed package consumer checks run these files; copy the complete file rather than combining snippets from different versions.
+Start with the SQLite example below. It creates a disposable in-memory database, grants access, checks it, then revokes it. The complete files shown here are also run against the packaged library in CI.
 
-[ESM automatic setup](https://github.com/lotivo/sequelize-guard/blob/master/examples/basic.mjs), [CommonJS manual setup](https://github.com/lotivo/sequelize-guard/blob/master/examples/basic.cjs), [strict TypeScript custom user](https://github.com/lotivo/sequelize-guard/blob/master/examples/custom-user.ts), and [migration setup](https://github.com/lotivo/sequelize-guard/blob/master/examples/migrations.mjs). Each demonstrates real SQLite persistence, grant/assign/check/revoke and negative assertions. The custom-user recipe preserves application data during Guard rollback.
+## Install the dependencies
 
-`new SequelizeGuard(sequelize)` starts automatic initialization; await `guard.ready` before work and stop startup if it rejects. For a new disposable database, [basic.mjs](https://github.com/lotivo/sequelize-guard/blob/master/examples/basic.mjs) demonstrates that path.
+```bash
+npm install sequelize-guard "sequelize@^6.37.8" sqlite3
+```
 
-For explicit setup, construct with `{ sync:false }`, await `ready` (this performs **zero database work**), then await `guard.sync()`. `sync()` initializes/provisions; it is not an upgrade strategy. Retrying initialization is explicit through `sync()`. Never use `force` or `alter` as a production migration substitute. Explicit `guard.sync({ force, alter })` also passes these options to a supplied `UserModel`; it can change application user data. Registered holder models are never synced or dropped by Guard.
+| Example | Use it to learn |
+| --- | --- |
+| [Automatic setup](#run-the-basic-example) | Grant, check and revoke access with ESM. |
+| [CommonJS](#use-commonjs) | Use `require()` and explicit initialization. |
+| [Custom user](#use-a-custom-user-with-typescript) | Keep required application fields and a custom primary key. |
+| [Migrations](#prepare-tables-with-migrations) | Separate table creation from application startup. |
 
-Production deployment runs application migrations first, then the matching static `migration.up(queryInterface, sequelize, options)` once, and only then starts workers with the same options and `sync:false`. Await `ready`; reject startup or requests on database failures. Static migrations do not own a supplied user table. [migrations.mjs](https://github.com/lotivo/sequelize-guard/blob/master/examples/migrations.mjs) is the canonical runnable recipe.
+## Run the basic example
 
-`guard.init()` is a fluent **policy builder**, not database initialization: `await guard.init().allow('reader').to('read').on('article').commit()`. An incomplete statement remains editable after rejection. A completed statement is consumed before persistence, including on failure; rebuild it before retrying.
+Save this as `basic.mjs`, then run `node basic.mjs`. Each assertion checks the result shown in the code. A successful run exits without output; a failed assertion reports the mismatch.
 
-The canonical [advanced recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/advanced.mjs) executes holder isolation, inheritance/revocation, caller-transaction rollback and event suppression against the exact archive.
+```javascript filename="examples/basic.mjs"
+import assert from 'node:assert/strict';
+import { Sequelize } from 'sequelize';
+import { SequelizeGuard } from 'sequelize-guard';
+
+// Automatic initialization is convenient for a new disposable database.
+const sequelize = new Sequelize('sqlite::memory:', { logging: false });
+try {
+  const guard = new SequelizeGuard(sequelize);
+  await guard.ready;
+  const user = await guard.makeUser();
+  assert.equal(await user.can('read article'), false);
+  await guard.allow('reader', ['read', 'edit'], 'article');
+  await guard.assignRole(user, 'reader');
+  assert.equal(await user.can('read article'), true);
+  await guard.rmPermsFromRole('reader', 'edit', 'article');
+  assert.equal(await user.can('edit article'), false);
+  assert.equal(await user.can('read article'), true);
+  await guard.rmAssignedRoles(user, ['reader']);
+  assert.equal(await user.can('read article'), false);
+  assert.equal(await user.can('read article extra'), false);
+} finally {
+  await sequelize.close();
+}
+```
+
+`allow()` grants permissions to a role; `assignRole()` gives that role to the user. Removing one action preserves the others. Removing the role assignment then removes the remaining access.
+
+## Use CommonJS
+
+Save this as `basic.cjs` and run `node basic.cjs`. It disables automatic synchronization and waits for the explicit `sync()` call instead.
+
+```javascript filename="examples/basic.cjs"
+const assert = require('node:assert/strict');
+const { Sequelize } = require('sequelize');
+const { SequelizeGuard } = require('sequelize-guard');
+
+(async () => {
+  const sequelize = new Sequelize('sqlite::memory:', { logging: false });
+  try {
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await guard.ready; // No database work with sync:false.
+    await guard.sync(); // Explicit provisioning for this disposable database.
+    const user = await guard.makeUser();
+    await guard.init().allow('reader').to('read').on('article').commit();
+    await guard.assignRole(user, 'reader');
+    assert.equal(await user.can('read article'), true);
+    await guard.rmAssignedRoles(user, ['reader']);
+    assert.equal(await user.can('read article'), false);
+  } finally {
+    await sequelize.close();
+  }
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+```
+
+## Use a custom user with TypeScript
+
+This version uses a string primary key and a required email field. It creates users through the model returned by Guard so TypeScript keeps those application fields.
+
+Save it as `custom-user.ts` and compile it with your application's TypeScript setup before running the emitted JavaScript. `Account.sync()` is only for this disposable demonstration; existing applications run their own account migration first.
+
+```typescript filename="examples/custom-user.ts"
+import assert from 'node:assert/strict';
+import { DataTypes, Model, Sequelize } from 'sequelize';
+import { SequelizeGuard } from 'sequelize-guard';
+
+class Account extends Model<{ uid: string; email: string }> {
+  declare uid: string;
+  declare email: string;
+}
+const sequelize = new Sequelize('sqlite::memory:', { logging: false });
+try {
+  Account.init(
+    {
+      uid: { type: DataTypes.STRING, primaryKey: true },
+      email: { type: DataTypes.STRING, allowNull: false },
+    },
+    { sequelize, tableName: 'accounts', timestamps: false },
+  );
+  // Existing applications run their own account migration first.
+  await Account.sync();
+  const guard = new SequelizeGuard(sequelize, {
+    UserModel: Account,
+    userPk: 'uid',
+    sync: false,
+  });
+  await guard.ready;
+  await SequelizeGuard.migration.up(sequelize.getQueryInterface(), sequelize, {
+    UserModel: Account,
+    userPk: 'uid',
+    sync: false,
+  });
+  // makeUser() cannot supply required application attributes.
+  const user = await guard
+    .models()
+    .GuardUser.create({ uid: 'acct-1', email: 'test@example.invalid' });
+  await guard.allow('reader', 'read', 'article');
+  await guard.assignRole(user, 'reader');
+  assert.equal(await user.can('read article'), true);
+  await guard.rmAssignedRoles(user, ['reader']);
+  assert.equal(await user.can('read article'), false);
+  await SequelizeGuard.migration.down(
+    sequelize.getQueryInterface(),
+    sequelize,
+    {
+      UserModel: Account,
+      userPk: 'uid',
+      sync: false,
+    },
+  );
+  assert.equal(await Account.count(), 1);
+} finally {
+  await sequelize.close();
+}
+```
+
+The final assertion verifies that rolling back Guard's tables leaves the application account intact. See [Users and registered holders](/docs/guide/users) for assignment and registration options.
+
+## Prepare tables with migrations
+
+Save this as `migrations.mjs` and run `node migrations.mjs`. Table creation happens before Guard starts; the application then uses `sync: false`.
+
+```javascript filename="examples/migrations.mjs"
+import assert from 'node:assert/strict';
+import { Sequelize } from 'sequelize';
+import { SequelizeGuard, migration } from 'sequelize-guard';
+
+const sequelize = new Sequelize('sqlite::memory:', { logging: false });
+const options = { prefix: 'app_guard_', sync: false };
+try {
+  // Deployment migration: run once before starting application workers.
+  await migration.up(sequelize.getQueryInterface(), sequelize, options);
+  // Application startup: no sync/alter/force on an existing database.
+  const guard = new SequelizeGuard(sequelize, options);
+  await guard.ready;
+  await guard.allow('reader', 'read', 'article');
+  const user = await guard.makeUser();
+  await guard.assignRole(user, 'reader');
+  assert.equal(await user.can('read article'), true);
+  await migration.down(sequelize.getQueryInterface(), sequelize, options);
+} finally {
+  await sequelize.close();
+}
+```
+
+The final `down()` is a demonstration rollback on an in-memory database. Do not put it in normal application shutdown. For deployment ordering and ownership rules, see [Production migrations](/docs/guide/db-migrations).
+
+## Continue with application features
+
+- [Express integration](/docs/examples/express): authenticate a request, check permission and handle failures.
+- [Role inheritance](/docs/guide/roles#inherit-permissions-from-a-parent): share permissions through a parent role.
+- [Registered holders](/docs/guide/users#give-a-team-its-own-roles): give teams or other models their own roles.
+- [Transactions and events](/docs/guide/permissions#save-related-changes-together): commit related policy changes together.
+
+The [source examples](https://github.com/lotivo/sequelize-guard/tree/master/examples) also include a complete advanced integration and an offline upgrade fixture.

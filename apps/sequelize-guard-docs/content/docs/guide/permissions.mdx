@@ -4,12 +4,125 @@ description: Learn how to manage permissions in Sequelize Guard.
 icon: BadgeCheck
 ---
 
-Use exact action/resource tokens, for example `await user.can('read article')`. Checks accept exactly two whitespace-separated tokens (outer whitespace is trimmed), or `'*'` for `'* *'`. Tokens are case-sensitive, nonempty and contain no whitespace, NUL, lone surrogate or embedded `*`; wildcard `*` must be the entire token. Thus `read article extra`, `read:article` and `r* article` deny. Creation rejects malformed inputs; malformed stored grants are ignored. Equivalent action sets are deduplicated/canonicalized. Do not reuse a supplied permission name for an incompatible definition.
+A permission pairs an action with a resource: `read article`, for example. Give permissions to a role, then assign that role to a user.
 
-`await guard.allow('reader', ['read', 'edit'], 'article')` grants permissions through a role. `createPerms(resources, actions)` creates permission definitions without assigning access. `await guard.rmPermsFromRole('reader', 'edit', 'article')` removes that exact action while retaining `read`, without changing unrelated roles. Removing an action from a wildcard grant does not invent an exception/deny rule.
+The snippets below use an initialized `guard`. Follow [Getting started](/docs/guide/getting-started) if you haven't created one yet.
 
-`createPerms` and `createPermsBulk` return models by default and plain data with `{ json:true }`. `makeRoles` returns plain data when options are omitted/undefined; explicit `{}` or `{ json:false }` returns models. `getRole` returns a model or null; `allRoles`/`findRoles` return models. `getUserRoles`/`getHolderRoles` return plain active direct-role data; `user.roles()` returns active direct-role models without join payload.
+## Grant access through a role
 
-Mutations accept `{ transaction }` where their declarations expose `PolicyMutationOptions`. Guard-owned operations commit atomically and emit events only after successful commit. Caller-owned transactions use an operation savepoint and suppress built-in events, including after the caller commits. Authorization checks do not accept a caller transaction option. Never interpret event delivery as durable auditing. Event registration returns an unsubscribe function; listener failures may warn after the write has committed.
+`allow()` creates the role if needed and attaches the requested permissions. Here, a reader can read and edit articles:
 
-`safeGuardDeletes:true` (default) makes `deleteRoles` reject roles with permission links, user/holder memberships (including archived links), or child roles. With it disabled, role deletion removes membership/permission links and detaches children before deleting the role; this must be an intentional administrative action.
+```typescript
+await guard.allow('reader', ['read', 'edit'], 'article');
+
+const user = await guard.makeUser();
+await guard.assignRole(user, 'reader');
+
+console.log(await user.can('read article')); // true
+console.log(await user.can('delete article')); // false
+```
+
+Prefer a chained statement? The fluent builder performs the same operation:
+
+```typescript
+await guard
+  .init()
+  .allow('reader')
+  .to(['read', 'edit'])
+  .on('article')
+  .commit();
+```
+
+`init()` starts a policy statement; it does not initialize the database. An incomplete statement remains editable after rejection. Once complete, `commit()` clears the statement before saving, even if the write fails. Build a new statement before retrying that write.
+
+## Choose action and resource names
+
+Checks accept two whitespace-separated tokens, with surrounding whitespace trimmed. Names are case-sensitive. A single `*` is shorthand for `* *`.
+
+| Check | Meaning |
+| --- | --- |
+| `read article` | Read articles. |
+| `* article` | Require a grant for every action on articles. |
+| `read *` | Require a grant to read every resource. |
+| `*` | Require a grant for every action on every resource. |
+| `read:article` | Invalid: action and resource need whitespace between them. |
+| `read article extra` | Invalid: there are more than two tokens. |
+| `r* article` | Invalid: a wildcard must occupy the whole token. |
+
+Individual tokens cannot contain whitespace, NUL characters or lone Unicode surrogates. Creation rejects malformed input; checks deny malformed requests and ignore malformed stored grants.
+
+### Grant a wildcard deliberately
+
+```typescript
+await guard.allow('article-admin', '*', 'article');
+await guard.allow('auditor', 'read', '*');
+```
+
+These are broad grants. Permissions only allow access: the deprecated `allow` field does not define deny rules.
+
+## Revoke one action
+
+You can remove `edit` without removing `read` from the same permission bundle:
+
+```typescript
+await guard.rmPermsFromRole('reader', 'edit', 'article');
+
+console.log(await user.can('edit article')); // false
+console.log(await user.can('read article')); // true
+```
+
+This changes the reader role's direct grants without altering other roles. A separate wildcard, inherited grant or another assigned role can still allow editing. Removing `edit` from a `*` grant does not create an exception; replace the wildcard with explicit actions if you need narrower access.
+
+## Create permission definitions
+
+Use `createPerms()` to prepare definitions without giving anyone access. Its argument order is **resources, then actions**:
+
+```typescript
+const permissions = await guard.createPerms('article', ['read', 'edit']);
+
+const bundles = await guard.createPermsBulk([
+  { resource: 'comment', actions: ['read', 'delete'], name: 'moderate-comments' },
+  { resource: 'profile', actions: ['read'] },
+]);
+```
+
+Equivalent action sets share a definition regardless of order or duplicates. Omitted names are generated. A supplied name must not already describe a different permission.
+
+| Option | Effect |
+| --- | --- |
+| Omitted | Return newly created Sequelize models. |
+| `{ json: true }` | Return plain data instead of models. |
+| `{ all: true }` | Also return existing matching definitions. |
+
+## Save related changes together
+
+Pass a transaction when a grant and an assignment must succeed together. Await each operation in order:
+
+```typescript
+await sequelize.transaction(async (transaction) => {
+  await guard.allow('reviewer', 'read', 'article', { transaction });
+  await guard.assignRole(user, 'reviewer', { transaction });
+});
+```
+
+Guard uses a savepoint for each operation in your transaction. Authorization checks do not accept a transaction option; check access after the policy changes commit.
+
+### Listen for committed changes
+
+```typescript
+const unsubscribe = guard.onPermsAddedToRole((role) => {
+  console.log('Permissions updated for', role.name);
+});
+
+await guard.allow('reader', 'list', 'article');
+unsubscribe();
+```
+
+| Transaction owner | Built-in events |
+| --- | --- |
+| Guard, when no transaction is supplied | Emitted after a successful commit. |
+| Your application, via `{ transaction }` | Suppressed, including after your transaction commits. |
+
+Events are in-process notifications. Store durable audit history in your application; a listener failure may warn after the database write has already committed.
+
+See [Roles](/docs/guide/roles) for inheritance and deletion safeguards, or [Authorization](/docs/guide/authorization) for handling denied access in a request.

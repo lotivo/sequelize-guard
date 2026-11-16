@@ -4,14 +4,83 @@ description: Set up and manage your database schema for Sequelize Guard.
 icon: Database
 ---
 
-`new SequelizeGuard(sequelize)` starts automatic initialization; await `guard.ready` before work and stop startup if it rejects. For a new disposable database, [basic.mjs](https://github.com/lotivo/sequelize-guard/blob/master/examples/basic.mjs) demonstrates that path.
+Use deployment migrations to prepare production tables before application workers start. Automatic synchronization is useful for a new disposable database; an existing installation needs a reviewed migration.
 
-For explicit setup, construct with `{ sync:false }`, await `ready` (this performs **zero database work**), then await `guard.sync()`. `sync()` initializes/provisions; it is not an upgrade strategy. Retrying initialization is explicit through `sync()`. Never use `force` or `alter` as a production migration substitute. Explicit `guard.sync({ force, alter })` also passes these options to a supplied `UserModel`; it can change application user data. Registered holder models are never synced or dropped by Guard.
+## Choose the setup path
 
-Production deployment runs application migrations first, then the matching static `migration.up(queryInterface, sequelize, options)` once, and only then starts workers with the same options and `sync:false`. Await `ready`; reject startup or requests on database failures. Static migrations do not own a supplied user table. [migrations.mjs](https://github.com/lotivo/sequelize-guard/blob/master/examples/migrations.mjs) is the canonical runnable recipe.
+| Situation | Use |
+| --- | --- |
+| New disposable development database | Construct Guard and await `guard.ready`. |
+| Explicit setup of a disposable database | Set `sync: false`, then await `guard.sync()`. |
+| New production installation | Run `migration.up()`, then start workers with `sync: false`. |
+| Existing Guard schema | Follow the matching [upgrade guide](/docs/migration). |
 
-`guard.init()` is a fluent **policy builder**, not database initialization: `await guard.init().allow('reader').to('read').on('article').commit()`. An incomplete statement remains editable after rejection. A completed statement is consumed before persistence, including on failure; rebuild it before retrying.
+**Do not use `force` or `alter` to upgrade production data.** Explicit `guard.sync()` forwards those options to a supplied `UserModel`, so they can affect application user data as well as Guard tables. Registered holder models are never synced or dropped by Guard.
 
-## Upgrading an existing database
+## Share the schema options
 
-Use the [migration guides](/docs/migration) for your source version. Upgrades require a distinct destination namespace, a backup and an offline cutover; fresh installation and `guard.sync()` are not upgrade strategies.
+Use the same table names, user model, timestamps and holder registrations in migrations and application startup. This minimal example uses Guard's built-in user:
+
+```typescript filename="guard-options.ts"
+import type { GuardOptions } from 'sequelize-guard';
+
+export const guardOptions: GuardOptions = {
+  prefix: 'app_guard_',
+  sync: false,
+};
+```
+
+For a custom user or registered holders, initialize those model classes on the migration's Sequelize connection and include them in these options. Apply your application's table migrations first. Static Guard migrations do not own supplied user or holder tables.
+
+## Run the deployment migration
+
+Import your configured connection and options, then run this once through your migration runner:
+
+```typescript filename="create-guard-tables.ts"
+import { migration } from 'sequelize-guard';
+import { sequelize } from './database.js';
+import { guardOptions } from './guard-options.js';
+
+await migration.up(sequelize.getQueryInterface(), sequelize, guardOptions);
+```
+
+The order is:
+
+1. Create or migrate application tables.
+2. Create Guard tables and associations with `migration.up()`.
+3. Start application workers.
+
+Do not call fresh `up()` over a legacy namespace. Use a distinct destination and the [offline upgrade procedure](/docs/migration/upgrade-to-v6-1).
+
+## Start the application
+
+```typescript filename="guard.ts"
+import { SequelizeGuard } from 'sequelize-guard';
+import { sequelize } from './database.js';
+import { guardOptions } from './guard-options.js';
+
+export const guard = new SequelizeGuard(sequelize, guardOptions);
+await guard.ready;
+```
+
+With `sync: false`, construction and `ready` perform **no database work**. They do not verify that deployment migrations ran successfully. Complete migrations before serving requests, and handle database failures without allowing protected operations.
+
+For a disposable database where you want explicit provisioning, call `await guard.sync()` instead. Await that call itself: `ready` only represents the constructor's automatic startup. A failed setup can be retried with another explicit `sync()` after correcting the cause.
+
+## Roll back a fresh installation
+
+Your migration runner can call:
+
+```typescript
+await migration.down(sequelize.getQueryInterface(), sequelize, guardOptions);
+```
+
+This drops verified Guard-owned tables, including the built-in user table when configured. It preserves supplied application user and holder tables and refuses mismatched ownership or external application references. Back up data and review dependencies before running it.
+
+MySQL DDL can commit before a migration finishes; interrupted creation or rollback may need manual recovery. Read the [upgrade and recovery guide](/docs/migration/upgrade-to-v6-1) before attempting cleanup.
+
+## Try the complete example
+
+The [runnable migration example](/docs/examples/basic#prepare-tables-with-migrations) creates a disposable database, prepares tables, checks access and rolls back. Your application owns the Sequelize connection and closes it when finished.
+
+For permission statements, use `guard.init().allow(...).to(...).on(...).commit()`. That [fluent builder](/docs/guide/permissions#grant-access-through-a-role) changes policy, not database structure.

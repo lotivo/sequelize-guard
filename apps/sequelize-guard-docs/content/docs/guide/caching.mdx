@@ -32,11 +32,32 @@ To revoke one action from a grant containing several, call `await guard.rmPermsF
 
 ## Compatibility with existing cache configuration
 
-`userCache` remains accepted for compatibility but is deprecated: it no longer caches user membership or authorization, whether it is `true` or `false`. `userCacheTtl` controls entries that callers manually place in `guard.getUserCache()`; it does not delay revocation. There is no supported nested `cache: { enabled, ttl }` option.
+Use authorization methods for access decisions. The remaining cache APIs are for data you read or store explicitly:
 
-`getCache()` exposes a local snapshot of role models and plain permission data. `resetCache()` clears it, and the next awaited `getCache()` reloads it from the writer connection. Concurrent readers share initialization. Failed loads reject and can be retried. The role cache has no background timer. `getRole()` and `allRoles()` read the writer directly. Use authorization methods for access decisions.
+| API or option | Behavior |
+| --- | --- |
+| `userCache` | Deprecated compatibility option; neither `true` nor `false` enables authorization caching. |
+| `userCacheTtl` | Lifetime of manually stored user-cache entries, in seconds. It does not delay revocation. |
+| `getCache()` | A local snapshot of role models and plain permission data. |
+| `resetCache()` | Clears that snapshot; the next awaited `getCache()` reloads it from the writer. |
+| `getUserCache()` | A manual cache whose expiry timer you close when finished. |
+| `resetUserCache()` | Clears and reuses the same manual user cache. |
 
-If you use `getUserCache()`, keep the instance and call `cache.close()` when finished. `resetUserCache()` reuses that cache. TTL and expiry notifications apply only to manual entries. Applications own database connection cleanup and any persisted privilege expiration.
+There is no nested `cache: { enabled, ttl }` configuration option. Concurrent role-cache readers share initialization; failed loads reject and can be retried. That cache has no background timer. `getRole()` and `allRoles()` read the writer directly.
+
+If you use the manual user cache, keep the instance and close it when finished:
+
+```typescript
+const cache = guard.getUserCache();
+try {
+  cache.set('display-name', 'Example reader');
+  console.log(cache.get('display-name'));
+} finally {
+  cache.close();
+}
+```
+
+TTL and expiry notifications apply only to manual entries. Your application still owns database connection cleanup and any persisted privilege expiry.
 
 ## Performance
 

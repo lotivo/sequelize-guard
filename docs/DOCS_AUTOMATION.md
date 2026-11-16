@@ -1,9 +1,50 @@
 # API documentation automation
 
-Run `yarn docs:generate` using the pinned Yarn 1.22.22 and Node 22/24 after a frozen install. The generator uses the current checkout/revision, converts TypeDoc Markdown to MDX and replaces the complete API tree so deleted exports do not survive. `DOCS_SOURCE_REVISION` may specify the exact checked-out release revision; it does not fetch or switch source. Uncommitted edits are included in local previews and must not be mistaken for immutable release evidence.
+The API reference is generated from the released source. Human guides and examples are edited separately; the release workflow opens a documentation PR for the generated pages.
 
-Feature PRs keep the committed API pages unchanged. CI regenerates them before checking links and building the site; only the automated post-release docs PR commits the generated output.
+## Preview API changes locally
 
-After the npm release workflow succeeds, the docs workflow checks out the validated exact release tag, enables the pinned package manager, generates API docs from that source, detects added/modified/deleted files and opens a documentation PR against `master` for review and manual merge. Generation uses read-only permissions; a separate job copies the complete generated API tree into the PR, including additions and removals. It waits for npm publication to become visible and verifies the release is still npm latest before proposing an update. It does not regenerate from an arbitrary later master or latest tag. Prereleases retain reference docs in their tagged source; stable public docs follow the approved stable release. Manual recovery takes a stable tag created with this workflow; the tag must include the release metadata script. Nothing here authorizes npm publication.
+Use the pinned Yarn 1.22.22 and Node 22 or 24. Install development dependencies before generating:
 
-Validate `node scripts/check-docs.mjs`, `yarn workspace sequelize-guard-docs lint`, and `yarn workspace sequelize-guard-docs build`. Human guide recipes link to canonical `examples/` files; `scripts/test-package.mjs` copies and executes them against a fresh installation of the exact archive, including strict TypeScript and denial/error assertions. Review the generated diff and version/source provenance before release. Markdown-link checks cover local files, navigation and docs routes; external network links require separate service availability.
+```bash
+corepack yarn install --frozen-lockfile
+corepack yarn docs:generate
+```
+
+The generator runs local TypeDoc against the current checkout, converts Markdown to MDX and replaces the entire generated API directory. Removed exports therefore disappear from the reference too.
+
+`DOCS_SOURCE_REVISION` can identify the exact checked-out release revision for source links. It does not fetch or switch source. Local uncommitted changes appear in previews, so a preview is not proof of what a release contained.
+
+**Keep generated API changes out of feature PRs.** CI regenerates them for validation. Only the automated post-release documentation PR commits that output.
+
+## What happens after a release
+
+1. The stable npm release workflow completes successfully.
+2. The documentation workflow checks out the validated, exact release tag.
+3. A read-only job generates the API reference and uploads it as an artifact.
+4. A separate job copies that complete API tree into a PR against `master`, including additions and removals.
+5. A maintainer reviews and merges the documentation PR.
+
+The workflow waits for npm publication to become visible and checks that the version is still npm's latest stable release before proposing an update. It does not generate from a later `master` or whichever tag happens to be newest.
+
+| Release type | Documentation behavior |
+| --- | --- |
+| Stable | Opens a generated-reference PR for manual review and merge. |
+| Prerelease | Keeps its reference in the tagged source; stable website docs stay unchanged. |
+| Manual recovery | Accepts a stable tag created with this workflow, containing the release metadata script. |
+
+Running the documentation workflow does not authorize or perform npm publication.
+
+## Validate a documentation change
+
+After generating the reference locally, run:
+
+```bash
+node scripts/check-docs.mjs
+corepack yarn workspace sequelize-guard-docs lint
+corepack yarn workspace sequelize-guard-docs build
+```
+
+The checks cover local links, navigation, docs routes and required UI metadata. Complete examples displayed on the website are compared with their canonical files. External links still depend on the destination service being available.
+
+The packed-consumer tests execute canonical `examples/` against a fresh installation of the exact package archive, including TypeScript, denial and error cases. When reviewing a release documentation PR, check both the generated diff and its source revision.

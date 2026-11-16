@@ -4,22 +4,82 @@ description: Learn how to check permissions and control access in your applicati
 icon: ShieldCheck
 ---
 
-Authentication belongs to your application. Resolve the actor from a verified session or credential verifier, then map that trusted principal to a persisted user or registered holder. Never authenticate an arbitrary `x-user-id`, body ID, query ID or unsigned JWT claim. Keep acting identity and target identity separate. Protect every policy mutation with dedicated administrative authorization, validate input and enforce tenant/object scope. Cookie-authenticated writes also require application CSRF protection.
+Use permission checks immediately before the operation they protect. Your application establishes who the caller is; Sequelize Guard checks what that caller may do.
 
-Return 401 for absent/invalid identity, 403 for authenticated denial, and a sanitized 5xx for identity/database failures; never execute the protected action on those paths. Authorization database failures reject rather than returning a policy denial. Follow the [executable HTTP integration](https://github.com/lotivo/sequelize-guard/blob/master/examples/authorization.mjs), including its injected verified-session dependency and real Guard tests.
+## Check a permission
 
-Wildcards are broad privileges: grant them only deliberately. Permissions are allow-only; the deprecated stored `allow` field does not implement deny rules. Soft-deleted users/holders lose access. Add application object/tenant checks where coarse role permissions are insufficient.
+Once your authentication flow has loaded a persisted user:
 
-Authorization reads current writer-backed database state and never trusts the manual cache. A check already in flight or an older database transaction can see earlier state. A successful check and a subsequent business operation are not automatically atomic. Plan writer capacity and coordinate business consistency explicitly. Events are best-effort in-process notifications, not durable audit records. Applications own durable committed audit history and persisted expiry enforcement; timers do not provide reliable privilege expiration across restarts/workers.
+```typescript
+const allowed = await user.can('read article');
 
-[Report vulnerabilities privately](https://github.com/lotivo/sequelize-guard/security/advisories/new), with package/Node/Sequelize/dialect versions and a private minimal reproduction. Exclude secrets and customer data. See [SECURITY.md](https://github.com/lotivo/sequelize-guard/blob/master/SECURITY.md) for release support and dependency exposure limits.
+if (allowed) {
+  // Perform the protected read, with your application's tenant/object checks.
+} else {
+  // Refuse the operation.
+}
+```
 
-Use exact action/resource tokens, for example `await user.can('read article')`. Checks accept exactly two whitespace-separated tokens (outer whitespace is trimmed), or `'*'` for `'* *'`. Tokens are case-sensitive, nonempty and contain no whitespace, NUL, lone surrogate or embedded `*`; wildcard `*` must be the entire token. Thus `read article extra`, `read:article` and `r* article` deny. Creation rejects malformed inputs; malformed stored grants are ignored. Equivalent action sets are deduplicated/canonicalized. Do not reuse a supplied permission name for an incompatible definition.
+`can()` includes permissions inherited from parent roles. `cant()` returns the opposite result. Both query the writer database and reject on database errors; an error must not become permission to proceed.
 
-`await guard.allow('reader', ['read', 'edit'], 'article')` grants permissions through a role. `createPerms(resources, actions)` creates permission definitions without assigning access. `await guard.rmPermsFromRole('reader', 'edit', 'article')` removes that exact action while retaining `read`, without changing unrelated roles. Removing an action from a wildcard grant does not invent an exception/deny rule.
+Use role checks when you specifically need direct membership:
 
-`createPerms` and `createPermsBulk` return models by default and plain data with `{ json:true }`. `makeRoles` returns plain data when options are omitted/undefined; explicit `{}` or `{ json:false }` returns models. `getRole` returns a model or null; `allRoles`/`findRoles` return models. `getUserRoles`/`getHolderRoles` return plain active direct-role data; `user.roles()` returns active direct-role models without join payload.
+```typescript
+await user.isA('editor');
+await user.isAnyOf(['editor', 'moderator']);
+await user.isAllOf(['editor', 'reviewer']);
+```
 
-Mutations accept `{ transaction }` where their declarations expose `PolicyMutationOptions`. Guard-owned operations commit atomically and emit events only after successful commit. Caller-owned transactions use an operation savepoint and suppress built-in events, including after the caller commits. Authorization checks do not accept a caller transaction option. Never interpret event delivery as durable auditing. Event registration returns an unsubscribe function; listener failures may warn after the write has committed.
+An inherited permission doesn't make the user a direct member of its parent role. See [Roles and inheritance](/docs/guide/roles) for an example.
 
-`safeGuardDeletes:true` (default) makes `deleteRoles` reject roles with permission links, user/holder memberships (including archived links), or child roles. With it disabled, role deletion removes membership/permission links and detaches children before deleting the role; this must be an intentional administrative action.
+## Authenticate before authorizing
+
+For each request:
+
+1. Verify the session or credential using your application's authentication system.
+2. Look up the persisted user or registered holder for that verified identity.
+3. Check the required permission.
+4. Apply any tenant or object ownership checks, then perform the operation.
+
+A caller-supplied `x-user-id`, body field, query parameter or unsigned JWT claim is not verified identity. Keep the **acting user** separate from any **target user** named in a request.
+
+The [Express example](/docs/examples/express) shows this flow in code, including the error paths.
+
+### Return the right response
+
+| Situation | HTTP response | Protected operation |
+| --- | --- | --- |
+| Missing or invalid identity | `401 Unauthorized` | Do not run. |
+| Valid identity without permission | `403 Forbidden` | Do not run. |
+| Identity service or database failure | A sanitized `5xx` response | Do not run; log details privately. |
+| Identity and access checks pass | Your endpoint's success response | Run within the allowed scope. |
+
+A denied check returns `false`. An unavailable database rejects the promise. Keep those cases distinct so clients don't mistake a service outage for a permanent lack of access.
+
+## Protect policy administration
+
+Granting a role or changing its permissions affects other users. Protect those operations with a dedicated administrative permission, such as `manage policy`.
+
+- Validate role names, actions, resources and target IDs supplied by callers.
+- Enforce the administrator's tenant and object scope.
+- Use CSRF protection for cookie-authenticated writes.
+- Grant wildcards deliberately; permissions have no deny-rule precedence.
+
+Guard's built-in methods do not authenticate the administrator for you. The [permission guide](/docs/guide/permissions) covers grants, revocation and transactions.
+
+## Understand when access changes take effect
+
+After revocation commits, a new check outside an older transaction snapshot reads the change from the writer database. Soft-deleted users and registered holders lose access. Manual caches do not supply authorization results.
+
+Two boundaries still matter:
+
+- A check already in progress can see the earlier state.
+- A successful check and the later business operation are not automatically one atomic action.
+
+Coordinate database transactions and locking in your application when the business operation needs that stronger guarantee. See [Caching and revocation](/docs/guide/caching) for details.
+
+Store durable audit history and privilege expiry in application-managed storage. Guard events are best-effort notifications within one process; timers alone cannot enforce expiry across restarts and workers.
+
+## Report a security problem
+
+[Report vulnerabilities privately](https://github.com/lotivo/sequelize-guard/security/advisories/new). Include package, Node, Sequelize and database versions plus a minimal reproduction. Leave out secrets and customer data. The [security policy](https://github.com/lotivo/sequelize-guard/blob/master/SECURITY.md) explains release support and dependency exposure limits.

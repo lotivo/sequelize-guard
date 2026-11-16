@@ -2,26 +2,108 @@
 title: Upgrade from published 6.0.2
 ---
 
-This guide targets the published **6.0.2** schema and upgrades it to **6.1**, not an in-place force-sync. Back up both policy and application data; inventory actual physical table names, custom keys, timestamp/paranoid configuration, holders and external FKs. Rehearse on a restored copy. Stop old and new policy writers and keep DDL quiescent for the entire migration/cutover.
+This guide copies policy from the published **6.0.2** schema into the **6.1** schema. The destination uses separate tables; the copy preserves the source policy and its IDs.
 
-Published options may have been ignored: `from` must describe the tables that actually exist, not merely the old configuration. Choose a wholly distinct target prefix. Match the supplied UserModel and timestamp/effective paranoid settings in both configurations. No source policy tables or IDs are changed by the copy.
+Use this procedure for an existing installation. For a fresh database, follow [Production migrations](/docs/guide/db-migrations).
 
-```js
+## Before you start
+
+- Back up both application and policy data, then rehearse on a restored copy.
+- Inventory the actual table names, custom keys, timestamps, soft deletes, holder registrations and external foreign keys.
+- Choose a wholly distinct destination prefix.
+- Stop old and new policy writers and prevent concurrent schema changes throughout the migration and cutover.
+
+Some options in the published package may have been ignored. **Describe the tables that actually exist in `from`**, rather than copying an old configuration without checking it.
+
+## Copy into a new namespace
+
+With your configured `sequelize` connection, run:
+
+```javascript
+import { migration } from 'sequelize-guard';
+
+const from = { prefix: 'guard_', sync: false };
+const to = { prefix: 'guard_next_', sync: false };
+
 await migration.upgrade(sequelize.getQueryInterface(), sequelize, {
-  from: { prefix: 'guard_', sync: false },
-  to: { prefix: 'guard_v610_', sync: false },
+  from,
+  to,
   inheritExistingParents: false,
 });
 ```
 
-Import `migration` from `sequelize-guard` and use your configured `sequelize` connection. Use the same complete `to` configuration when starting the new Guard with `sync:false`. Do not call fresh `up` over an existing legacy namespace. The upgrade rejects overlap, noncanonical legacy role names and canonical name collisions before destination DDL. Remediate names on a backed-up offline copy while preserving IDs and reviewing all memberships; do not replace roles with newly generated IDs. Previously inert parent pointers do not automatically activate inheritance: explicitly opt into `inheritExistingParents:true` only after reviewing the graph and intended grants; validation rejects invalid graphs.
+The prefix values above are examples. Supply your actual source configuration and an unused destination. Match the supplied `UserModel`, timestamps and effective `paranoid` settings in both configurations, and include the complete holder registrations where applicable.
 
-Verify destination counts/IDs, application FKs, expected grants, denials and committed revocation before cutover. Review stricter permission grammar; malformed grants/checks no longer authorize. Review one-parent inheritance, holder registration, soft-delete enforcement, initialization errors, return shapes, builder consumption, events and manual caches in the guides. 6.0.2 already exposed `ready`; 6.1.0 adds the explicit awaitable `sync(options)` and stronger failure handling. Node floor remains 22.17.1; Sequelize now requires `^6.37.8`.
+The upgrade rejects overlapping tables, noncanonical legacy role names and canonical name collisions before creating destination tables. If names need correction, work on a backed-up offline copy, preserve IDs and review every affected membership. Recreating roles with new IDs can break those relationships.
 
-Keep the source tables and exact 6.0.2 package during the rollback window. Before any new writes, reverting workers to the old package/source namespace is possible after verifying the source snapshot. After cutover writes, restore/reconcile the matching pre-upgrade backup under an application-specific recovery plan; the copy does not synchronize later changes back. Never promise a data-preserving reverse migration after divergent writes.
+Do not run fresh `migration.up()` over the legacy tables or use force-sync as an upgrade.
 
-`migration.down(queryInterface, sequelize, toOptions)` drops only owned destination tables, including the built-in user table when configured. It preserves supplied application users/holders and refuses external application references or mismatched ownership/bindings. Do not remove the receipt or fabricate a complete receipt to force rollback. PostgreSQL/SQLite transactional failures can ordinarily be retried after fixing the cause. MySQL DDL implicitly commits: failed creation with failed cleanup, or interrupted rollback after receipt deletion, requires manual recovery and refuses automatic adoption/drop of remaining names. Preserve exact names, backup, errors and executed DDL; inspect all remaining tables and incoming references with DDL quiescent, back up retained data, remove only proven owned tables in junction-before-parent order, then rerun up once that namespace is empty. Preserve unrelated reused names. Restore backup when policy data must be recovered.
+### Decide whether to activate parent inheritance
 
-MySQL incoming-FK preflight requires visibility of referencing database metadata, not just the current schema. Use a migration account with that visibility and prevent concurrent DDL. Production permissions/schema maintenance remain application operational responsibilities.
+Legacy parent pointers may have existed without affecting access. The default `inheritExistingParents: false` avoids turning those pointers into new grants automatically.
 
-The [executable published-6.0.2 upgrade recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/upgrade.mjs) creates legacy policy with the exact published package, closes its connection, copies to a distinct target prefix, verifies access/revocation and preserves application users. Its narrowly scoped legacy Lodash bridge is test compatibility glue; current package imports remain native.
+Set it to `true` only after reviewing the parent graph and intended permissions. Validation still rejects invalid graphs. See [Role inheritance](/docs/guide/roles#inherit-permissions-from-a-parent) for the resulting behavior.
+
+## Verify before switching workers
+
+Check the copied data and representative application requests:
+
+| Check | What to verify |
+| --- | --- |
+| Rows and IDs | Destination counts and identities match the intended copy. |
+| Application relationships | Custom users and external references still point to the right records. |
+| Allowed requests | Expected direct and inherited grants work. |
+| Denied requests | Missing access and malformed permission requests are denied. |
+| Revocation | A check after committed revocation loses the removed access. |
+
+Review these application-facing changes before cutover:
+
+- [Permission syntax and return formats](/docs/guide/permissions).
+- [Single-parent inheritance](/docs/guide/roles) and [holder registration](/docs/guide/users).
+- [Initialization and explicit sync](/docs/guide/configuration).
+- [Transaction events](/docs/guide/permissions#listen-for-committed-changes) and [manual caches](/docs/guide/caching).
+
+The source release already exposed `ready`; the new schema release adds explicit awaitable `sync(options)` and stronger failure handling. Node's minimum remains 22.17.1, and Sequelize requires `^6.37.8`.
+
+Start the new Guard with the same complete destination options:
+
+```javascript
+import { SequelizeGuard } from 'sequelize-guard';
+
+const guard = new SequelizeGuard(sequelize, to);
+await guard.ready;
+```
+
+With `sync: false`, this does not create or validate tables. Finish the migration and verification before starting workers. Use a new Sequelize instance if the old one already has a Guard attached.
+
+## Plan the rollback window
+
+Keep the source tables, backup and exact source package while you verify the deployment.
+
+| When you roll back | Recovery approach |
+| --- | --- |
+| Before any new writes | Verify the retained source snapshot, then return workers to the old package and namespace. |
+| After destination writes | Restore or reconcile data using your application's recovery plan. The copy does not synchronize changes back to the source. |
+
+There is no automatic data-preserving reverse migration after the two installations have received different writes.
+
+To remove a verified destination, `migration.down(queryInterface, sequelize, to)` drops only owned tables, including the built-in user table when configured. Supplied application users and holders remain. External application references or mismatched ownership cause rollback to refuse the operation.
+
+**Do not delete or fabricate an ownership receipt to force cleanup.** It records which tables Guard is allowed to manage.
+
+## Recover an interrupted migration
+
+PostgreSQL and SQLite transactional failures can ordinarily be retried after correcting the cause. MySQL DDL implicitly commits, so interrupted creation or rollback can leave tables that need manual inspection. Automatic adoption or deletion of those remaining names is refused.
+
+For MySQL recovery:
+
+1. Keep schema changes stopped and preserve the backup, exact table names, errors and executed DDL.
+2. Inspect remaining tables and incoming foreign keys. Back up retained data.
+3. Remove only tables you can prove belong to the failed destination, in junction-before-parent order. Preserve unrelated or reused names.
+4. Once that destination namespace is empty, rerun the intended creation or upgrade. Restore the backup if policy data needs recovery.
+
+The incoming-foreign-key check needs visibility of referencing database metadata, including references outside the current schema. Use a migration account with that visibility and prevent concurrent DDL.
+
+## Rehearse with the runnable fixture
+
+The [published-6.0.2 upgrade example](https://github.com/lotivo/sequelize-guard/blob/master/examples/upgrade.mjs) creates legacy policy with the exact published package, closes its connection, copies into a separate namespace, then checks access, revocation and application-user preservation. Its legacy Lodash bridge exists only to run that old package in the test environment; current imports use the normal package entry points.

@@ -35,23 +35,25 @@ export const guard = new SequelizeGuard(sequelize, { prefix: 'app_' });
 await guard.ready;
 ```
 
-### 3. Control synchronization explicitly
+### 3. Choose how to prepare tables
 
-To defer all database work and pass Sequelize sync options, disable automatic synchronization:
+| Environment | Setup |
+| --- | --- |
+| New disposable database | Automatic sync, as above; await `guard.ready`. |
+| Production | Run [deployment migrations](/docs/guide/db-migrations), then start Guard with `sync: false`. |
+| Explicit development setup | Set `sync: false`, then await `guard.sync()`. |
+
+For explicit setup on a disposable database:
 
 ```typescript
 const guard = new SequelizeGuard(sequelize, { sync: false });
-await guard.ready;
+await guard.ready; // No database work while automatic sync is disabled.
 await guard.sync({ logging: false });
 ```
 
-`sync()` resolves to the guard after model synchronization and cache loading finish. It rejects on database errors; correct the underlying problem before retrying. Calls run sequentially, including automatic startup. `ready` represents only the constructor's startup, so with `sync: false` it resolves without database work. Await each explicit `sync()` call itself.
+`ready` represents constructor startup; await each explicit `sync()` call separately. Sync calls run in sequence and finish after model synchronization and cache loading. Correct any initialization error before retrying with `sync()` or serving requests.
 
-Explicit synchronization includes the configured `UserModel`, if supplied, and excludes unrelated Sequelize models and registered holder application models. `force: true` drops tables and `alter` can remove data, including from a supplied user table. For production, run application migrations first, then [Guard migrations](/docs/guide/db-migrations). Start application workers with the same schema options and `sync: false`, and await `ready`.
-
-Use `guard.init()` to build a fluent permission statement, for example `await guard.init().allow('reader').to('read').on('article').commit()`.
-
-Configure schema routing on Sequelize before constructing the guard. An explicit `sync({ schema })` must match every Guard-managed model's existing schema, including a supplied `UserModel`. Guard rejects per-call `searchPath` overrides before database work because later cache and authorization queries would use the existing routing.
+Explicit `force` or `alter` options can destroy data, including in a supplied user model. Use migrations for production. See [Configuration](/docs/guide/configuration) for model and schema routing rules.
 
 Create one Guard per Sequelize instance. Your application owns the connection and closes it at shutdown.
 

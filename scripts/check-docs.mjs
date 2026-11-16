@@ -37,6 +37,15 @@ const pages = [
 ];
 for (const file of pages) {
   const text = readFileSync(file, 'utf8');
+  for (const [, example, code] of text.matchAll(
+    /^```\w+ filename="(examples\/[^"\n]+)"\n([\s\S]*?)^```/gm,
+  )) {
+    assert.equal(
+      code.trimEnd(),
+      readFileSync(join(root, example), 'utf8').trimEnd(),
+      `website example differs from ${example} in ${file}`,
+    );
+  }
   if (file.startsWith(join(docs, 'guide') + '/') || file === join(docs, 'api/index.mdx')) {
     const frontmatter = text.split('---', 3)[1] || '';
     for (const field of ['description', 'icon']) {

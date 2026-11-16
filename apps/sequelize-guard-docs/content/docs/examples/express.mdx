@@ -3,16 +3,126 @@ title: Verified identity HTTP integration
 description: Learn how to integrate Sequelize Guard with Express.js applications.
 ---
 
-Authentication belongs to your application. Resolve the actor from a verified session or credential verifier, then map that trusted principal to a persisted user or registered holder. Never authenticate an arbitrary `x-user-id`, body ID, query ID or unsigned JWT claim. Keep acting identity and target identity separate. Protect every policy mutation with dedicated administrative authorization, validate input and enforce tenant/object scope. Cookie-authenticated writes also require application CSRF protection.
+This example puts authentication and authorization in the request path. A verified session identifies the account, and Guard checks its permission before the handler returns protected content or changes policy.
 
-Return 401 for absent/invalid identity, 403 for authenticated denial, and a sanitized 5xx for identity/database failures; never execute the protected action on those paths. Authorization database failures reject rather than returning a policy denial. Follow the [executable HTTP integration](https://github.com/lotivo/sequelize-guard/blob/master/examples/authorization.mjs), including its injected verified-session dependency and real Guard tests.
+## Connect your application dependencies
 
-Wildcards are broad privileges: grant them only deliberately. Permissions are allow-only; the deprecated stored `allow` field does not implement deny rules. Soft-deleted users/holders lose access. Add application object/tenant checks where coarse role permissions are insufficient.
+The handler below expects an initialized Guard and two application functions:
 
-Authorization reads current writer-backed database state and never trusts the manual cache. A check already in flight or an older database transaction can see earlier state. A successful check and a subsequent business operation are not automatically atomic. Plan writer capacity and coordinate business consistency explicitly. Events are best-effort in-process notifications, not durable audit records. Applications own durable committed audit history and persisted expiry enforcement; timers do not provide reliable privilege expiration across restarts/workers.
+| Dependency | Responsibility |
+| --- | --- |
+| `guard` | Use your configured models and migrated tables. |
+| `verifySession(credential)` | Verify a credential and return `{ accountId }`, or `null` for invalid credentials. Throw on a verifier outage. |
+| `findAccount(accountId)` | Load the persisted account for that verified identity. |
 
-[Report vulnerabilities privately](https://github.com/lotivo/sequelize-guard/security/advisories/new), with package/Node/Sequelize/dialect versions and a private minimal reproduction. Exclude secrets and customer data. See [SECURITY.md](https://github.com/lotivo/sequelize-guard/blob/master/SECURITY.md) for release support and dependency exposure limits.
+Never implement `verifySession()` by trusting an arbitrary user ID or decoding unsigned claims. Use your existing authentication system. The [complete runnable fixture](https://github.com/lotivo/sequelize-guard/blob/master/examples/authorization.mjs) uses an opaque-session map for testing only.
 
-The shared [Express recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/authorization.mjs) mounts the tested handler with `const app = express(); app.use(handler);` and serves it through Node HTTP. Install `express@5.1.0` with your application dependencies. The exact packed-package consumer executes this actual Express integration. The handler verifies the session before every route and keeps the actor in server-owned local state. Its injected opaque-session map is a test identity provider; production applications supply a maintained verifier/session store.
+## Handle access and failures
 
-The fixture asserts missing/forged credentials, conflicting forged actor IDs, non-admin mutation denial with unchanged policy, authorized mutation, allowed access, committed revocation, verifier outage and real database failure. Denied requests cannot reach the protected action. The demonstration policy endpoint has a fixed server-owned target; real endpoints validate request data and object/tenant scope separately.
+Copy this handler to `authorization.mjs`. It uses the Node request/response interface that Express supplies:
+
+```javascript filename="authorization.mjs"
+export function createHandler({ verifySession, guard, findAccount }) {
+  return async (req, res) => {
+    const send = (status, message) => {
+      res.writeHead(status, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ message }));
+    };
+    try {
+      const identity = await verifySession(req.headers.authorization);
+      if (!identity) return send(401, 'Authentication required');
+      const actor = await findAccount(identity.accountId);
+      if (!actor) return send(401, 'Authentication required');
+      if (req.method === 'GET' && req.url === '/articles') {
+        if (!(await guard.userCan(actor, 'read article')))
+          return send(403, 'Forbidden');
+        return send(200, 'Protected article');
+      }
+      // Fixed demonstration operation: no user-controlled policy or target.
+      // Real cookie-authenticated writes also need application CSRF protection.
+      if (req.method === 'POST' && req.url === '/admin/grant') {
+        if (!(await guard.userCan(actor, 'manage policy')))
+          return send(403, 'Forbidden');
+        await guard.allow('reader', 'read', 'article');
+        return send(200, 'Policy updated');
+      }
+      return send(404, 'Not found');
+    } catch {
+      // Log diagnostic details privately in the application's error handler.
+      return send(503, 'Service unavailable');
+    }
+  };
+}
+```
+
+The `/articles` route requires `read article`. The fixed demonstration `/admin/grant` operation requires `manage policy` before changing the reader role. The acting account stays in server-owned local state; a forged request header cannot replace it.
+
+## Mount the handler in Express
+
+Install Express in your application if needed:
+
+```bash
+npm install express
+```
+
+This wiring assumes your application exports its configured Guard and session verifier from the shown modules. Adapt the imports to your project:
+
+```javascript filename="app.mjs"
+import express from 'express';
+import { createHandler } from './authorization.mjs';
+import { guard } from './guard.mjs';
+import { verifySession } from './sessions.mjs';
+
+await guard.ready;
+
+const app = express();
+app.use(createHandler({
+  guard,
+  verifySession,
+  findAccount: (id) =>
+    guard.models().GuardUser.findByPk(id, { useMaster: true }),
+}));
+
+app.listen(3000);
+```
+
+## Know what each response means
+
+| Request outcome | Response |
+| --- | --- |
+| No verified identity, or no matching account | `401` |
+| Authenticated account lacks the required permission | `403` |
+| Article read or authorized policy update succeeds | `200` |
+| Authenticated request reaches an unknown route | `404` |
+| Session verification or database query fails | `503` with a generic message |
+
+The catch path never runs the protected operation. Log diagnostic details privately in your application instead of returning database or credential errors to the client.
+
+## Adapt the administration route
+
+The sample deliberately uses a fixed role, action and resource. Before accepting policy changes from request data:
+
+- Validate every requested role, action, resource and target.
+- Check that the administrator can manage the target tenant or object.
+- Keep the verified actor separate from the target account.
+- Add CSRF protection if authentication uses cookies.
+- Store a durable audit record when your application requires one.
+
+A permission check and a later business write are not automatically atomic. See [Authorization and security](/docs/guide/authorization) for transaction and revocation boundaries.
+
+## Run the full integration example
+
+Copy the [complete fixture](https://github.com/lotivo/sequelize-guard/blob/master/examples/authorization.mjs) to `authorization-test.mjs`, install `sequelize-guard`, Sequelize, `sqlite3` and Express, then run:
+
+```bash
+node authorization-test.mjs
+```
+
+It starts a local server with disposable SQLite storage and asserts the following before closing both:
+
+- Missing and forged credentials cannot access protected routes.
+- A non-admin cannot change policy, even with a forged actor ID.
+- Authorized grants enable access; committed revocation removes it.
+- Verifier and database outages return an error without allowing the operation.
+
+A successful run exits without output.

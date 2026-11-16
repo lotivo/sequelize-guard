@@ -4,12 +4,150 @@ description: Learn how to manage users in Sequelize Guard.
 icon: User
 ---
 
-Supply an initialized Sequelize model on the same connection using `UserModel`, with one supported primary key (integer, string or UUID). `userPk` names its primary-key attribute or physical column. Composite/unsupported identities are rejected before DDL. Constructor inference preserves mandatory application fields: use `guard.models().GuardUser.create(values)`; `makeUser()` supplies no required fields. See the [strict executable custom-user recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/custom-user.ts).
+A user receives permissions through assigned roles. You can use Guard's built-in user model, connect your application's existing user model, or assign roles to another model such as a team.
 
-Use `assignRole(user, role)`, `assignRoles(user, roles)`, `rmAssignedRoles(user, roles)`, `assignRolesToUsers(users, roles)`, or `assignUserRoles([{ user, roles }])`. Bulk operations are atomic, deduplicate input and return `{ assigned }`, counting new active memberships. Explicit reassign/regrant reactivates archived links. Users must be persisted instances of the configured model.
+## Use the built-in user
 
-Register other application models at construction with `roleHolders: { team: Team }`. Type keys start with a lower-case ASCII letter and contain lower-case ASCII letters, digits or underscores. Each model gets a separate typed junction with a real FK; identical IDs in different models do not share grants. Use `assignRolesToHolder(team, ['reader'])`, `holderCan(team, 'read article')`, `getHolderRoles(team)`, and `removeRolesFromHolder(team, ['reader'])`. Permissions remain attached to roles, not directly to arbitrary holders. Application migrations create holder tables before Guard migrations. `migration.addRoleHolders(queryInterface, sequelize, options)` adds new junctions to an existing owned schema. Its `roleHolders` option must contain **only newly added registrations**; repeating an existing type is rejected. Keep all other schema options matched to the existing installation. Run this migration before starting a new application Guard. The subsequent constructor, `migration.down`, and `migration.upgrade` configurations must contain the **complete set of registrations**, including every prior type. Guard never syncs/drops application holder tables.
+With an initialized `guard`, create a user and assign a role:
 
-One Guard owns each Sequelize instance for that instance's lifetime. Use a separate connection for another Guard; a new prefix does not permit a second Guard on the same connection. Colliding registry names, extension members and physical tables are rejected before side effects. Schema-defining options and model bindings are fixed: do not reinitialize models, change schema defaults or mutate table identities after binding. The application owns and closes its Sequelize connection.
+```typescript
+const user = await guard.makeUser();
+await guard.allow('reader', 'read', 'article');
+await user.assignRole('reader');
 
-The canonical [advanced recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/advanced.mjs) executes holder isolation, inheritance/revocation, caller-transaction rollback and event suppression against the exact archive.
+console.log(await user.can('read article')); // true
+console.log(await user.isA('reader')); // true
+
+await user.rmAssignedRoles(['reader']);
+console.log(await user.can('read article')); // false
+```
+
+Use persisted instances of the configured model when passing a user to Guard methods. An ID alone is not a user instance or proof of identity; your application handles [authentication](/docs/guide/authorization).
+
+## Connect an existing user model
+
+Define your model on the same Sequelize instance before constructing Guard. Run your application and Guard [migrations](/docs/guide/db-migrations) before using this setup:
+
+```typescript
+import { DataTypes, Model } from 'sequelize';
+import { SequelizeGuard } from 'sequelize-guard';
+
+class Account extends Model<{ uid: string; email: string }> {
+  declare uid: string;
+  declare email: string;
+}
+
+Account.init(
+  {
+    uid: { type: DataTypes.STRING, primaryKey: true },
+    email: { type: DataTypes.STRING, allowNull: false },
+  },
+  { sequelize, tableName: 'accounts', timestamps: false },
+);
+
+const guard = new SequelizeGuard(sequelize, {
+  UserModel: Account,
+  userPk: 'uid',
+  sync: false,
+});
+await guard.ready;
+
+const user = await guard.models().GuardUser.create({
+  uid: 'acct-1',
+  email: 'reader@example.com',
+});
+await user.assignRole('reader');
+```
+
+Creating through `guard.models().GuardUser` preserves your model's required TypeScript fields and exposes the added Guard methods. `makeUser()` supplies no attributes, so it cannot fill required fields such as `email`.
+
+The model needs one supported primary key: integer, string or UUID. `userPk` accepts its attribute name or physical column name; omit it to use the model's primary key. Composite and unsupported keys are rejected before schema changes.
+
+The [complete custom-user example](/docs/examples/basic#use-a-custom-user-with-typescript) includes migration setup and verifies that Guard rollback preserves the application user table.
+
+## Assign roles in bulk
+
+Give the same roles to several users in one operation:
+
+```typescript
+const alice = await guard.makeUser();
+const bob = await guard.makeUser();
+
+const result = await guard.assignRolesToUsers([alice, bob], ['reader']);
+console.log(result.assigned); // 2
+```
+
+This snippet uses the built-in user model. With a custom model, create users with their required attributes as shown above.
+
+For different roles per user, pass individual assignments:
+
+```typescript
+await guard.assignUserRoles([
+  { user: alice, roles: ['reader', 'editor'] },
+  { user: bob, roles: ['reader'] },
+]);
+```
+
+Bulk assignment is atomic and deduplicates input. The returned `assigned` count includes new or reactivated memberships; an unchanged existing membership does not increase it.
+
+### Read direct memberships
+
+| Method | Result |
+| --- | --- |
+| `guard.getUserRoles(user)` | Plain data for active direct roles. |
+| `user.roles()` | Active direct role models without junction data. |
+| `user.getRoles()` | The standard Sequelize association method and query options. |
+| `user.isA('editor')` | Whether the user directly holds that role. |
+| `user.isAnyOf(['editor', 'reader'])` | Whether at least one listed role is directly assigned. |
+| `user.isAllOf(['editor', 'reader'])` | Whether every listed role is directly assigned. |
+
+Inherited permissions affect `can()`, but do not add parent roles to these direct membership checks.
+
+## Give a team its own roles
+
+Register initialized application models when constructing Guard. In this example, `Team` is your existing model and its table has already been created by application migrations:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  sync: false,
+  roleHolders: { team: Team },
+});
+await guard.ready;
+
+const team = await Team.findByPk(teamId, { rejectOnEmpty: true });
+await guard.allow('reader', 'read', 'article');
+await guard.assignRolesToHolder(team, ['reader']);
+
+console.log(await guard.holderCan(team, 'read article')); // true
+console.log(await guard.getHolderRoles(team)); // Plain data for direct roles
+
+await guard.removeRolesFromHolder(team, ['reader']);
+console.log(await guard.holderCan(team, 'read article')); // false
+```
+
+Run the matching Guard migration with the same `roleHolders` configuration before this startup code. Guard creates separate association tables with foreign keys for each registered model. A team and another model with the same ID do not share grants. Permissions still belong to roles.
+
+Registration keys start with a lowercase ASCII letter and contain only lowercase ASCII letters, digits or underscores. Guard never syncs or drops application holder tables.
+
+### Add a holder type to an existing installation
+
+1. Create the new application's table with your own migration.
+2. Call `migration.addRoleHolders()` with **only the new registrations** and the existing schema options.
+3. Start the next application deployment with **all registrations**, including the old types.
+
+For example, if teams are already registered and devices are new:
+
+```typescript
+await migration.addRoleHolders(sequelize.getQueryInterface(), sequelize, {
+  ...schemaOptions,
+  roleHolders: { device: Device },
+});
+```
+
+Here, `migration` is imported from `sequelize-guard`, `Device` is initialized on this connection, and `schemaOptions` matches the existing installation. Repeating an existing type in this call is rejected. Future constructors, `migration.down()` and `migration.upgrade()` must use the complete set, such as `{ team: Team, device: Device }`.
+
+## Keep model bindings stable
+
+Create one Guard per Sequelize instance for its lifetime. A different prefix does not allow a second Guard on that same instance.
+
+Finalize model definitions and schema routing first. Do not reinitialize models or change table identities after registration. Guard rejects conflicting registry names, helper methods and tables before applying changes. Your application owns the connection and closes it at shutdown.

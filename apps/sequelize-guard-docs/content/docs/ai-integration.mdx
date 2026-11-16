@@ -3,33 +3,57 @@ title: AI integration
 description: Portable agent guidance and executable recipes for the installed Sequelize Guard package.
 ---
 
-The npm package ships one portable integration skill at `skills/sequelize-guard/SKILL.md` and the same [executable recipes](/docs/examples) used by our packed-consumer checks. Contributor instructions in the repository's `AGENTS.md` apply to this monorepo, not to consuming applications.
+If you use an AI coding assistant, give it the guidance shipped with the package installed in your application. That keeps its examples and API assumptions aligned with your dependency.
+
+You can also read and copy the [website examples](/docs/examples/basic) directly. AI tooling is optional.
+
+## What's included
+
+| File or route | Purpose |
+| --- | --- |
+| `skills/sequelize-guard/SKILL.md` in the npm package | Integration guidance for an assistant working in your application. |
+| `examples/` in the npm package | Complete examples tested against that package. |
+| Repository `AGENTS.md` | Instructions for contributors working on this monorepo. |
+| [/llms.txt](/llms.txt) | A short index of the website documentation. |
+| [/llms-full.txt](/llms-full.txt) | Processed documentation, including the public API reference. |
 
 ## Load the installed skill explicitly
 
-From an application with `sequelize-guard` installed, locate `node_modules/sequelize-guard/skills/sequelize-guard/SKILL.md` using your package manager's resolved installation location. Open that file in your agent's context, or copy the **entire** `skills/sequelize-guard` directory to a skill directory supported by your chosen tool. For example, when the package is installed at the usual npm location:
+From your application directory:
 
-```sh
+1. Locate `sequelize-guard` using your package manager's resolved installation path.
+2. Open `skills/sequelize-guard/SKILL.md` from that installation in your assistant's context.
+3. If your tool supports installed skills, copy the **whole skill directory**, including its references, to the location it expects.
+
+For a standard npm installation and a tool that supports `.agents/skills`:
+
+```bash
 mkdir -p .agents/skills
 cp -R node_modules/sequelize-guard/skills/sequelize-guard .agents/skills/sequelize-guard
 ```
 
-Only use that destination if your agent supports `.agents/skills`; otherwise follow its documented installation mechanism. Tools do not universally discover skills in `node_modules`. Review copied guidance when upgrading the package.
+Other tools may use a different destination. Skills in `node_modules` are not universally discovered automatically. Review copied guidance when upgrading the dependency.
 
-The skill remains usable when copied: run its `references/installed-package.mjs` detector **from the application directory** to locate the actual resolved version, declarations and examples. It resolves the public package entry point and reads its enclosing manifest on disk, without requiring a `package.json` export. For the usual installation path:
+### Check which package the assistant is using
 
-```sh
+Run the supplied detector from the application directory:
+
+```bash
 node node_modules/sequelize-guard/skills/sequelize-guard/references/installed-package.mjs
 ```
 
-## What to verify
+It reports the resolved version and the paths to the package, examples and skill. The detector also works from a copied skill directory; keep your working directory at the application so it resolves that application's dependency.
 
-The skill starts with existing models, migrations, verified identity and application tests. It teaches the actual exports, readiness, grant/assignment/check/revocation, custom user keys, and denial versus database failures. Applications authenticate users and protect policy administration themselves; a user ID in a request header is not authentication. Existing databases use explicit deployment migrations with `sync:false`, not force-sync.
+## Review the generated integration
 
-Installed `examples/` covers ESM, CommonJS, custom users, migration ownership, verified-session HTTP administration, inheritance/holders/transactions and the offline 6.0.2 upgrade. These run against disposable databases; inspect each fixture before adapting its setup or rollback to your application. Follow [schema setup](/docs/guide/db-migrations), [upgrade guidance](/docs/migration) and [authorization boundaries](/docs/guide/authorization).
+The skill starts from your existing models, migrations, authentication and tests. Before accepting changes, check that the integration:
 
-## Documentation discovery
+- Loads the acting user from verified identity, not an untrusted request ID.
+- Prepares an existing database with deployment migrations and starts with `sync: false`.
+- Awaits startup and handles authorization failures without allowing the operation.
+- Protects role and permission administration separately.
+- Tests denied access, revocation and database errors in your application.
 
-[/llms.txt](/llms.txt) is a short documentation index built from the documentation source. [/llms-full.txt](/llms-full.txt) includes this page and the processed documentation, including generated public API pages. The installed package version takes precedence over a newer website when working with an older application.
+The shipped examples cover ESM, CommonJS, custom users, migrations, HTTP authorization, inheritance, holders and transactions. They use disposable databases; review setup and rollback code before adapting it.
 
-Metadata, references, packaged files and executable recipes are checked automatically. Test agent-generated integrations in your own application; static Markdown checks alone do not establish code quality.
+The installed package is the reference for an older application, even if the website documents a newer release. Automated checks keep packaged guidance and examples connected, but your application tests establish whether the integration works for your users.

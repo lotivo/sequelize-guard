@@ -4,16 +4,100 @@ description: Learn how to manage roles in Sequelize Guard.
 icon: ShieldUser
 ---
 
-Roles have one nullable parent. Create both roles first with `makeRole` or `makeRoles`; `setRoleParent` requires existing roles. `await guard.setRoleParent('editor', 'reader')` makes editor inherit reader permissions; detach with null. Children inherit ancestor grants; role checks and role-list methods report direct memberships only. Cycles, self-links, orphan graphs and invalid stored lineage are rejected/deny access. Hierarchy is allow-only, with no deny precedence. Guard serializes graph mutations; coordinate policy changes through its APIs.
+Roles group permissions so you can assign the same access to several users. A role can also inherit permissions from one parent.
 
-Use `makeRole`, `makeRoles`, `getRole`, `findRoles`, `allRoles` and `deleteRoles`; see the [generated declarations](/docs/api/classes/SequelizeGuard) for exact arguments/results. Delete safeguards reject associated roles by default. Do not insert raw hierarchy rows or treat a parent field in a legacy database as activated inheritance.
+These examples use the `guard` created in [Getting started](/docs/guide/getting-started).
 
-Supply an initialized Sequelize model on the same connection using `UserModel`, with one supported primary key (integer, string or UUID). `userPk` names its primary-key attribute or physical column. Composite/unsupported identities are rejected before DDL. Constructor inference preserves mandatory application fields: use `guard.models().GuardUser.create(values)`; `makeUser()` supplies no required fields. See the [strict executable custom-user recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/custom-user.ts).
+## Create and find roles
 
-Use `assignRole(user, role)`, `assignRoles(user, roles)`, `rmAssignedRoles(user, roles)`, `assignRolesToUsers(users, roles)`, or `assignUserRoles([{ user, roles }])`. Bulk operations are atomic, deduplicate input and return `{ assigned }`, counting new active memberships. Explicit reassign/regrant reactivates archived links. Users must be persisted instances of the configured model.
+```typescript
+const { role, created } = await guard.makeRole({
+  name: 'editor',
+  description: 'Edits and publishes articles',
+});
 
-Register other application models at construction with `roleHolders: { team: Team }`. Type keys start with a lower-case ASCII letter and contain lower-case ASCII letters, digits or underscores. Each model gets a separate typed junction with a real FK; identical IDs in different models do not share grants. Use `assignRolesToHolder(team, ['reader'])`, `holderCan(team, 'read article')`, `getHolderRoles(team)`, and `removeRolesFromHolder(team, ['reader'])`. Permissions remain attached to roles, not directly to arbitrary holders. Application migrations create holder tables before Guard migrations. `migration.addRoleHolders(queryInterface, sequelize, options)` adds newly registered junctions to an existing owned schema; retain every prior registration. Guard never syncs/drops application holder tables.
+console.log(role.name); // editor
+console.log(created); // true on the first call, false if it already exists
 
-One Guard owns each Sequelize instance for that instance's lifetime. Use a separate connection for another Guard; a new prefix does not permit a second Guard on the same connection. Colliding registry names, extension members and physical tables are rejected before side effects. Schema-defining options and model bindings are fixed: do not reinitialize models, change schema defaults or mutate table identities after binding. The application owns and closes its Sequelize connection.
+const editor = await guard.getRole('editor');
+const matches = await guard.findRoles({ names: ['editor', 'reader'] });
+```
 
-The canonical [advanced recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/advanced.mjs) executes holder isolation, inheritance/revocation, caller-transaction rollback and event suppression against the exact archive.
+`getRole()` returns `null` when the role doesn't exist. `allRoles()` lists active roles with their direct permissions.
+
+### Create several roles
+
+```typescript
+const roles = await guard.makeRoles(['reader', 'moderator']);
+```
+
+Only newly created roles are returned by default. Use `all: true` to include existing matches.
+
+| Call | Result |
+| --- | --- |
+| `makeRole(name)` | `{ role, created }`, with a Sequelize model. |
+| `makeRoles(names)` | Plain role data. |
+| `makeRoles(names, {})` | Sequelize models. |
+| `makeRoles(names, { json: true })` | Plain role data. |
+| `getRole(name)` | A Sequelize model or `null`. |
+| `findRoles()` / `allRoles()` | Sequelize models. |
+
+The difference between omitted options and an explicit `{}` in `makeRoles()` is part of its existing API. Set `json` explicitly when you want the result format to be obvious.
+
+## Inherit permissions from a parent
+
+Suppose editors should have everything readers have, plus permission to publish. Create both roles before linking them:
+
+```typescript
+await guard.allow('reader', 'read', 'article');
+await guard.allow('editor', 'publish', 'article');
+await guard.setRoleParent('editor', 'reader');
+
+const user = await guard.makeUser();
+await guard.assignRole(user, 'editor');
+
+console.log(await user.can('read article')); // true: inherited from reader
+console.log(await user.can('publish article')); // true: granted to editor
+console.log(await user.isA('reader')); // false: reader wasn't assigned directly
+console.log(await user.isA('editor')); // true
+```
+
+**Permissions inherit; role membership stays direct.** Role checks and role lists won't report the parent as an assigned role. A child inherits grants from its ancestors, with no deny-rule precedence.
+
+Detach the parent to stop inheriting its permissions:
+
+```typescript
+await guard.setRoleParent('editor', null);
+console.log(await user.can('read article')); // false
+```
+
+Each role has at most one parent. Both roles must exist, and self-links and cycles are rejected. Invalid stored lineage fails closed during authorization. Use the Guard APIs for hierarchy changes; they serialize graph edits. Legacy parent fields require an explicit [upgrade decision](/docs/migration/upgrade-to-v6-1) before becoming inherited access.
+
+## Assign roles to users
+
+```typescript
+await guard.assignRoles(user, ['reader', 'editor']);
+console.log(await guard.getUserRoles(user)); // Plain data for direct roles
+
+await guard.rmAssignedRoles(user, ['editor']);
+```
+
+Assignments create missing role names and restore archived membership links when necessary. See [Users and registered holders](/docs/guide/users) for bulk assignments and roles assigned to teams or other models.
+
+## Delete an unused role
+
+```typescript
+await guard.makeRole('temporary-reviewer');
+const deleted = await guard.deleteRoles('temporary-reviewer');
+console.log(deleted); // 1
+```
+
+With `safeGuardDeletes: true` (the default), deletion rejects a role that still has:
+
+- Permission links.
+- User or registered-holder memberships, including archived links.
+- Child roles.
+
+With the safeguard disabled, deletion removes membership and permission links, detaches children, then deletes the role. Reserve that setting for an intentional administrative operation.
+
+For a complete inheritance and revocation example, see the [advanced recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/advanced.mjs).

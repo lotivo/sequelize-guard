@@ -24,6 +24,18 @@ Timestamps and soft deletes default to `false`. Soft deletes require timestamps.
 
 ## Configuration Options
 
+| Option | Default | Use it for |
+| --- | --- | --- |
+| `prefix` | `guard_` | A shared prefix for Guard table names. |
+| `sync` | `true` | Automatic startup on a new disposable database. Use `false` with deployment migrations. |
+| `timestamps` | `false` | Creation and update timestamps. |
+| `paranoid` | `false` | Soft deletes; requires timestamps. |
+| `safeGuardDeletes` | `true` | Refuse to delete roles with links or children. |
+| `UserModel` | Built-in user | Your initialized application user model. |
+| `roleHolders` | None | Other application models that can receive roles. |
+| `debug` | `false` | Diagnostic logging. |
+
+
 ### Table Prefix
 
 Add a prefix to all Guard-related table names:
@@ -97,6 +109,10 @@ const sequelize = new Sequelize(process.env.DATABASE_URL!, {
 });
 ```
 
+### Schema routing
+
+Configure schema routing on Sequelize before constructing Guard. An explicit `sync({ schema })` must match every managed model's bound schema, including a supplied `UserModel`. Per-call `searchPath` overrides are rejected before database work because later queries use the original routing.
+
 ### Transaction Support
 
 Pass the caller transaction to supported policy mutations. Await each operation in order. Guard uses a savepoint per operation and suppresses its events for operations on supplied transactions.
@@ -123,4 +139,4 @@ Use `guard.init()` to start a fluent policy statement. An incomplete statement r
 - Keep database credentials in environment configuration.
 - Use consistent prefixes between the migrations and worker configuration.
 - Leave `debug` off unless troubleshooting. It defaults to `false`.
-- Keep `safeGuardDeletes` enabled to protect associated roles and permissions. It defaults to `true`.
+- Keep `safeGuardDeletes` enabled to prevent deletion of roles with memberships, permissions or children. It defaults to `true`.
