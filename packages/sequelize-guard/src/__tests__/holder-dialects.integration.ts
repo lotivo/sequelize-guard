@@ -102,6 +102,14 @@ it('serializes bulk assignment and hierarchy edits across connections and suppor
   await guard.assignRolesToHolder(room, ['child']);
   const alias = await OtherRoom.findByPk("room-'1", { rejectOnEmpty: true });
   await expect(other.holderCan(alias, 'read article')).resolves.toBe(true);
+  const resource = "Asset'$holderId";
+  await guard.allow('parent', 'inspect', resource);
+  await expect(other.holderCan(alias, `inspect ${resource}`)).resolves.toBe(
+    true,
+  );
+  await expect(
+    other.holderCan(alias, `inspect ${resource.toLowerCase()}`),
+  ).resolves.toBe(false);
   await other.rmPermsFromRole('parent', 'read', 'article');
   await expect(guard.holderCan(room, 'read article')).resolves.toBe(false);
   await expect(guard.userCan(user, 'read article')).resolves.toBe(false);
