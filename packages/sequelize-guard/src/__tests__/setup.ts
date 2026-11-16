@@ -73,6 +73,9 @@ export function createQueryInterfaceStub() {
     dropTable: function (tableName: string) {
       migration.push(tableName);
     },
+    tableExists: function () {
+      return Promise.resolve(false);
+    },
     bulkInsert: function (tableName: string) {
       seeds.push(tableName);
     },

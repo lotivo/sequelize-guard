@@ -1,6 +1,7 @@
 import { DataTypes, Sequelize } from 'sequelize';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SequelizeGuard } from '../index';
+import migration from '../migrations/guard-migrations';
 import type { GuardModel, GuardUserModel } from '../sequelize-models';
 
 describe('Guard synchronization', () => {
@@ -24,6 +25,91 @@ describe('Guard synchronization', () => {
     const guard = new SequelizeGuard(sequelize, { sync: false });
     await guard.ready;
     expect(query).not.toHaveBeenCalled();
+  });
+
+  it('refuses a partial same-name schema before creating or dropping tables', async () => {
+    const query = sequelize.getQueryInterface();
+    await query.createTable('guard_roles', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+      name: { type: DataTypes.STRING },
+    });
+    await query.bulkInsert('guard_roles', [
+      { id: 41, name: 'application data' },
+    ]);
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await guard.ready;
+    await expect(guard.getRole('reader')).rejects.toThrow(
+      'Incomplete legacy Guard schema',
+    );
+    const drop = vi.spyOn(query, 'dropTable');
+    const sync = vi.spyOn(guard.models().GuardResource, 'sync');
+    await expect(guard.sync({ force: true })).rejects.toThrow(
+      'Incomplete legacy Guard schema',
+    );
+    expect(drop).not.toHaveBeenCalled();
+    expect(sync).not.toHaveBeenCalled();
+    expect(await query.showAllTables()).toEqual(['guard_roles']);
+    expect(await query.select(null, 'guard_roles')).toEqual([
+      { id: 41, name: 'application data' },
+    ]);
+  });
+
+  it('refuses coincidentally named unrelated tables before destructive sync', async () => {
+    const query = sequelize.getQueryInterface();
+    for (const name of [
+      'guard_resources',
+      'guard_permissions',
+      'guard_roles',
+      'guard_users',
+      'guard_role_permission',
+      'guard_role_user',
+    ]) {
+      await query.createTable(name, {
+        id: { type: DataTypes.INTEGER, primaryKey: true },
+        payload: { type: DataTypes.STRING },
+      });
+    }
+    await query.bulkInsert('guard_roles', [{ id: 41, payload: 'keep' }]);
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    const drop = vi.spyOn(query, 'dropTable');
+    await expect(guard.sync({ force: true })).rejects.toThrow(
+      'Incompatible legacy Guard table',
+    );
+    expect(drop).not.toHaveBeenCalled();
+    expect(await query.select(null, 'guard_roles')).toEqual([
+      { id: 41, payload: 'keep' },
+    ]);
+  });
+
+  it('refuses rollback of a partial legacy schema without dropping its tables', async () => {
+    const query = sequelize.getQueryInterface();
+    await query.createTable('guard_roles', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+      payload: DataTypes.STRING,
+    });
+    await query.bulkInsert('guard_roles', [{ id: 41, payload: 'keep' }]);
+    const drop = vi.spyOn(query, 'dropTable');
+    await expect(migration.down(query, sequelize)).rejects.toThrow(
+      'Incomplete legacy Guard schema',
+    );
+    expect(drop).not.toHaveBeenCalled();
+    expect(await query.select(null, 'guard_roles')).toEqual([
+      { id: 41, payload: 'keep' },
+    ]);
+  });
+
+  it('refuses migration creation around an existing same-name table', async () => {
+    const query = sequelize.getQueryInterface();
+    await query.createTable('guard_roles', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+      payload: DataTypes.STRING,
+    });
+    const create = vi.spyOn(query, 'createTable');
+    await expect(migration.up(query, sequelize)).rejects.toThrow(
+      'Guard migration target table already exists',
+    );
+    expect(create).not.toHaveBeenCalled();
+    expect(await query.showAllTables()).toEqual(['guard_roles']);
   });
 
   it('awaits all guard models and forwards sync options without syncing unrelated models', async () => {
