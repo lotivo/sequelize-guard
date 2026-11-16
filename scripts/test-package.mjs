@@ -31,7 +31,7 @@ delete env.NODE_OPTIONS;
 after(() => rmSync(consumer, { recursive: true, force: true }));
 
 function packForConsumer() {
-  const [packed] = JSON.parse(
+  const [packed] = Object.values(JSON.parse(
     execFileSync(
       'npm',
       [
@@ -44,7 +44,7 @@ function packForConsumer() {
       ],
       { encoding: 'utf8', cwd: consumer, env },
     ),
-  );
+  ));
   return path.join(consumer, packed.filename);
 }
 
@@ -111,7 +111,12 @@ test('installs the exact packed files with fresh dependencies', () => {
 
   writeFileSync(
     path.join(consumer, 'package.json'),
-    JSON.stringify({ name: 'sequelize-guard-consumer', private: true }),
+    JSON.stringify({
+      name: 'sequelize-guard-consumer',
+      private: true,
+      // npm 12 requires approval for this native test driver's install script.
+      allowScripts: { 'sqlite3@6.0.1': true },
+    }),
   );
   execFileSync(
     'npm',
