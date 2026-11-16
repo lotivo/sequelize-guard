@@ -161,6 +161,7 @@ it('denies stale instances after a user or ancestor is soft-deleted through anot
   await expect(guard.userCan(user, 'read article')).resolves.toBe(false);
   await expect(guard.userIsA(user, 'child')).resolves.toBe(false);
   await expect(guard.getUserRoles(user)).resolves.toEqual([]);
+  await expect(user.roles()).resolves.toEqual([]);
   await expect(guard.assignRole(user, 'parent')).rejects.toThrow(
     'no longer exists',
   );

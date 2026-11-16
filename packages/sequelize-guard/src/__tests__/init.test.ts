@@ -208,6 +208,13 @@ describe('Guard ownership and options', () => {
     { tables: { roles: '' } },
     { tables: { roles: null as unknown as string } },
     { UserModel: {} as GuardOptions['UserModel'] },
+    { roleHolders: [] as unknown as GuardOptions['roleHolders'] },
+    {
+      roleHolders: {
+        team: undefined,
+      } as unknown as GuardOptions['roleHolders'],
+    },
+    { tables: { role_hierarchy: 'renamed' } } as GuardOptions,
     { typo: true } as GuardOptions,
   ])(
     'rejects invalid configuration before registering models (%j)',
@@ -219,6 +226,32 @@ describe('Guard ownership and options', () => {
       expect(sequelize).not.toHaveProperty('guard');
     },
   );
+
+  it('validates options consistently across migration entry points before querying', async () => {
+    const query = sequelize.getQueryInterface();
+    const execute = vi.spyOn(sequelize, 'query');
+    const options = { primaryKey: 'uuid' as GuardOptions['primaryKey'] };
+    await expect(migration.up(query, sequelize, options)).rejects.toThrow(
+      'primaryKey',
+    );
+    await expect(migration.down(query, sequelize, options)).rejects.toThrow(
+      'primaryKey',
+    );
+    await expect(
+      migration.upgrade(query, sequelize, { from: {}, to: options }),
+    ).rejects.toThrow('primaryKey');
+    await expect(
+      migration.addRoleHolders(query, sequelize, options),
+    ).rejects.toThrow('primaryKey');
+    await expect(
+      migration.upgrade(query, sequelize, {
+        from: {},
+        to: { prefix: 'next_' },
+        inheritExistingParents: 'false' as unknown as boolean,
+      }),
+    ).rejects.toThrow('inheritExistingParents');
+    expect(execute).not.toHaveBeenCalled();
+  });
 
   it('rejects another guard without replacing the original owner', async () => {
     const guard = new SequelizeGuard(sequelize);
@@ -377,8 +410,13 @@ describe('Guard-owned resources', () => {
           userCache.on('expired', expired);
           userCache.set('user', ['reader']);
           expect(userCache.get('user')).toEqual(['reader']);
-          vi.advanceTimersByTime(601_000);
+          vi.advanceTimersByTime(2001);
+          expect(userCache.has('user')).toBe(false);
           expect(expired).toHaveBeenCalledWith('user', ['reader']);
+
+          userCache.set('untouched', ['editor']);
+          vi.advanceTimersByTime(600_000);
+          expect(expired).toHaveBeenCalledWith('untouched', ['editor']);
           expect(userCache.keys()).toEqual([]);
         } finally {
           userCache.close();

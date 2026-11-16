@@ -1,6 +1,7 @@
 import type { Model, ModelStatic } from 'sequelize';
 import type { GuardUserMethods } from '../sequelize-models';
 import type { SequelizeGuardInstance } from '../SequelizeGuard';
+import { readUserRoles } from './Users';
 
 export function guardUserMethods(guard: SequelizeGuardInstance) {
   return {
@@ -8,7 +9,7 @@ export function guardUserMethods(guard: SequelizeGuardInstance) {
       return guard.assignRole(this, role);
     },
     roles(this: Model & GuardUserMethods) {
-      return this.getRoles({ useMaster: true, transaction: null });
+      return readUserRoles(guard, this);
     },
     assignRoles(this: Model & GuardUserMethods, roles: string[]) {
       return guard.assignRoles(this, roles);

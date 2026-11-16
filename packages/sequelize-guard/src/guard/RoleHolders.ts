@@ -4,6 +4,7 @@ import {
   readMemberPermissions,
   readMemberRoles,
 } from '../authorize/roleMembershipQuery';
+import type { GuardRoleData } from '../sequelize-models';
 import type {
   SequelizeGuardInstance,
   SequelizeGuardType,
@@ -42,7 +43,12 @@ export function extendWithRoleHolders(
   };
 
   SequelizeGuard.prototype.getHolderRoles = async function (holder: Model) {
-    return readMemberRoles(this, holderMemberships(this, holder), holder);
+    const roles = await readMemberRoles(
+      this,
+      holderMemberships(this, holder),
+      holder,
+    );
+    return roles.map((role) => role.toJSON<GuardRoleData>());
   };
 
   SequelizeGuard.prototype.holderCan = async function (
