@@ -376,3 +376,59 @@ it.runIf(new URL(url).protocol === 'mysql:')(
     ]);
   },
 );
+
+it.runIf(new URL(url).protocol === 'mysql:')(
+  'preserves every Guard table when another database references a rollback target',
+  async () => {
+    const queryInterface = sequelize.getQueryInterface();
+    const options = { prefix, sync: false };
+    const applicationDatabase = prefix + 'app';
+    const referenced = [sequelize.getDatabaseName(), prefix + 'users']
+      .map((identifier) => queryInterface.quoteIdentifier(identifier))
+      .join('.');
+    const application = [applicationDatabase, prefix + 'role_user']
+      .map((identifier) => queryInterface.quoteIdentifier(identifier))
+      .join('.');
+
+    const quotedDatabase = queryInterface.quoteIdentifier(applicationDatabase);
+    await sequelize.query(`CREATE DATABASE ${quotedDatabase}`);
+    onTestFinished(async () => {
+      await sequelize.query(`DROP DATABASE ${quotedDatabase}`);
+      await migration.down(queryInterface, sequelize, options);
+    });
+    await migration.up(queryInterface, sequelize, options);
+    const guard = new SequelizeGuard(sequelize, options);
+    const user = await guard.makeUser();
+    await guard.allow('reader', 'read', 'article');
+    await guard.assignRole(user, 'reader');
+    await sequelize.query(
+      `CREATE TABLE ${application} (
+        id INT PRIMARY KEY,
+        guard_user_id INT NOT NULL,
+        FOREIGN KEY (guard_user_id) REFERENCES ${referenced}(id)
+      ) ENGINE=InnoDB`,
+    );
+    await sequelize.query(
+      `INSERT INTO ${application} (id, guard_user_id) VALUES ($1, $2)`,
+      {
+        bind: [41, user.id],
+      },
+    );
+
+    const guardTables = async () =>
+      (await queryInterface.showAllTables())
+        .filter((name) => name.startsWith(prefix))
+        .sort();
+    const before = await guardTables();
+    const rollback = migration.down(queryInterface, sequelize, options);
+    await expect(rollback).rejects.toThrow();
+    expect(await guardTables()).toEqual(before);
+    expect(await guard.userCan(user, 'read article')).toBe(true);
+    expect(
+      await sequelize.query(`SELECT id, guard_user_id FROM ${application}`, {
+        type: QueryTypes.SELECT,
+      }),
+    ).toEqual([{ id: 41, guard_user_id: user.id }]);
+    await expect(rollback).rejects.toThrow(applicationDatabase);
+  },
+);

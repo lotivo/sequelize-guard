@@ -130,3 +130,40 @@ export async function migrationForeignKeys(
       )) as ForeignKey[];
   }
 }
+
+interface MySqlReference {
+  sourceSchema: string;
+  sourceTable: string;
+  targetSchema: string;
+  targetTable: string;
+  lowerCaseTableNames: number;
+}
+
+export async function findExternalMySqlReference(
+  sequelize: QueryInterface['sequelize'],
+  tables: TableName[],
+  options: QueryOptions,
+): Promise<MySqlReference | undefined> {
+  const database = sequelize.getDatabaseName();
+  const names = tables.map((table) => tableAddress(table, database)[1]);
+  const parameters = names.map((_, index) => '$' + (index + 2)).join(', ');
+  const references = await sequelize.query<MySqlReference>(
+    `SELECT DISTINCT TABLE_SCHEMA AS sourceSchema, TABLE_NAME AS sourceTable,
+        REFERENCED_TABLE_SCHEMA AS targetSchema, REFERENCED_TABLE_NAME AS targetTable,
+        @@lower_case_table_names AS lowerCaseTableNames
+      FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+      WHERE REFERENCED_TABLE_SCHEMA = $1 AND REFERENCED_TABLE_NAME IN (${parameters})`,
+    { ...options, type: QueryTypes.SELECT, bind: [database, ...names] },
+  );
+  return references.find((reference) => {
+    const normalize = (name: string) =>
+      reference.lowerCaseTableNames === 0 ? name : name.toLowerCase();
+    const owned = (schema: string, table: string) =>
+      normalize(schema) === normalize(database) &&
+      names.some((name) => normalize(name) === normalize(table));
+    return (
+      owned(reference.targetSchema, reference.targetTable) &&
+      !owned(reference.sourceSchema, reference.sourceTable)
+    );
+  });
+}
