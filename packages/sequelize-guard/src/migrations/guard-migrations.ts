@@ -455,7 +455,12 @@ async function upgrade(
   );
 }
 
-/** Provision only newly registered holder junctions for a current Guard schema. */
+/**
+ * Provision only newly registered holder junctions for a current Guard schema.
+ * Pass only new types in options.roleHolders; existing types are rejected.
+ * Keep other schema options matched to the existing installation. After this
+ * migration, construction, down, and upgrade require the complete registration set.
+ */
 async function addRoleHolders(
   queryInterface: QueryInterface,
   _Sequelize: Sequelize | typeof Sequelize,
