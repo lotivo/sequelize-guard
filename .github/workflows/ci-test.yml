@@ -18,7 +18,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22.17.1, 24.x]
+        node-version: [22.17.1, 24.15.0]
 
     steps:
       - name: Checkout code
@@ -66,7 +66,7 @@ jobs:
         run: yarn typecheck
 
       - name: Upload coverage to Coveralls
-        if: steps.affected.outputs.library == 'true' && matrix.node-version == '24.x'
+        if: steps.affected.outputs.library == 'true' && matrix.node-version == '24.15.0'
         uses: coverallsapp/github-action@v2
         with:
           base-path: packages/sequelize-guard
