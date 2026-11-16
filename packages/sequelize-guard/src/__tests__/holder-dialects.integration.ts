@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { DataTypes, Sequelize, Transaction } from 'sequelize';
+import type { Model } from 'sequelize';
 import { expect, it, onTestFinished } from 'vitest';
 import { migration, SequelizeGuard } from '../index';
 
@@ -21,7 +22,7 @@ it('serializes bulk assignment and hierarchy edits across connections and suppor
   onTestFinished(async () => {
     await Promise.all([sequelize.close(), second.close()]);
   });
-  const defineRoom = (connection: Sequelize) =>
+  const defineRoom = (connection: Sequelize, schema?: string) =>
     connection.define(
       'Room',
       {
@@ -31,33 +32,60 @@ it('serializes bulk assignment and hierarchy edits across connections and suppor
           field: 'room_code',
         },
       },
-      { tableName: prefix + 'rooms', paranoid: true },
+      { tableName: prefix + 'rooms', paranoid: true, schema },
     );
+  const defineAccount = (connection: Sequelize, schema?: string) =>
+    connection.define<Model<{ accountId: number }, { accountId?: number }>>(
+      'Account',
+      {
+        accountId: {
+          type: DataTypes.INTEGER,
+          primaryKey: true,
+          autoIncrement: true,
+          field: 'account_id',
+        },
+      },
+      { tableName: prefix + 'accounts', schema },
+    );
+  const explicitSchema =
+    sequelize.getDialect() === 'postgres' ? 'public' : undefined;
   const Room = defineRoom(sequelize);
-  const OtherRoom = defineRoom(second);
-  await Room.sync();
-  onTestFinished(() => Room.drop());
+  const OtherRoom = defineRoom(second, explicitSchema);
+  const UserModel = defineAccount(sequelize);
+  const OtherUser = defineAccount(second, explicitSchema);
+  await Promise.all([Room.sync(), UserModel.sync()]);
+  onTestFinished(async () => {
+    await Promise.all([Room.drop(), UserModel.drop()]);
+  });
 
   const options = {
     prefix,
     sync: false,
     timestamps: true,
     paranoid: true,
+    UserModel,
     roleHolders: { room: Room },
   };
   const query = sequelize.getQueryInterface();
-  await migration.up(query, sequelize, options);
-  onTestFinished(() => migration.down(query, sequelize, options));
+  const baseOptions = { ...options, roleHolders: {} };
+  let owned = baseOptions;
+  await migration.up(query, sequelize, baseOptions);
+  onTestFinished(() => migration.down(query, sequelize, owned));
+  await migration.addRoleHolders(query, sequelize, options);
+  owned = options;
   const guard = new SequelizeGuard(sequelize, options);
   const other = new SequelizeGuard(second, {
     ...options,
+    UserModel: OtherUser,
     roleHolders: { room: OtherRoom },
   });
   const room = await Room.create({ code: "room-'1" });
   const user = await guard.makeUser();
   const twin = await other
     .models()
-    .GuardUser.findByPk(user.id, { rejectOnEmpty: true });
+    .GuardUser.findByPk(user.getDataValue('accountId'), {
+      rejectOnEmpty: true,
+    });
 
   await guard.makeRoles(['parent', 'child', 'third']);
   await guard.allow('parent', 'read', 'article');
@@ -68,6 +96,7 @@ it('serializes bulk assignment and hierarchy edits across connections and suppor
   ]);
   expect(assigned.map(({ assigned }) => assigned).sort()).toEqual([1, 2]);
   expect(await guard.userCan(user, 'read article')).toBe(true);
+  expect(await other.userCan(twin, 'read article')).toBe(true);
   expect(await guard.userIsA(user, 'parent')).toBe(false);
 
   await guard.assignRolesToHolder(room, ['child']);

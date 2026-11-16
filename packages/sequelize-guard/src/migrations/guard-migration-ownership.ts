@@ -5,7 +5,7 @@ import {
   type QueryOptions,
   type TableName,
 } from 'sequelize';
-import { physicalTableKey } from '../sequelize-models/guard-tables';
+import { storageTableKey } from '../sequelize-models/guard-tables';
 import { normalizeMigrationColumn } from './guard-table-ddl';
 import {
   findExternalMySqlReference,
@@ -100,14 +100,14 @@ async function hasGuardSchema(
       if (!reference || typeof reference !== 'object') return false;
       const { model } = reference;
       if (!model || typeof model === 'function') return false;
-      const key = physicalTableKey(sequelize, model);
+      const key = storageTableKey(sequelize, model);
       return actualReferences.some(
         (actual) =>
           actual.columnName === name &&
           actual.referencedColumnName === reference.key &&
           (!['mysql', 'mariadb'].includes(dialect) ||
             actual.referencedTableSchema === sequelize.getDatabaseName()) &&
-          physicalTableKey(
+          storageTableKey(
             sequelize,
             dialect === 'postgres'
               ? {
@@ -158,12 +158,12 @@ export async function verifyMigrationTables(
       { ...options, type: QueryTypes.SELECT },
     );
     const owned = new Set(
-      existing.map((table) => physicalTableKey(sequelize, table)),
+      existing.map((table) => storageTableKey(sequelize, table)),
     );
     const dependency = references.find(
       ({ source, target }) =>
-        !owned.has(physicalTableKey(sequelize, source)) &&
-        owned.has(physicalTableKey(sequelize, target)),
+        !owned.has(storageTableKey(sequelize, source)) &&
+        owned.has(storageTableKey(sequelize, target)),
     );
     if (dependency) {
       throw new Error(
