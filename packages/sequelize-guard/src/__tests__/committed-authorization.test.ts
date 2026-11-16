@@ -1,6 +1,6 @@
 import { Sequelize, Transaction } from 'sequelize';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SequelizeGuard } from '../index';
+import { SequelizeGuard, migration } from '../index';
 
 describe('committed authorization on in-memory SQLite', () => {
   const connections: Sequelize[] = [];
@@ -106,12 +106,10 @@ describe('committed authorization on in-memory SQLite', () => {
   });
   it('rejects malformed requests and grants', async () => {
     const { guard, user, role, permission } = await fixture();
-    await guard
-      .models()
-      .RolePermission.create({
-        role_id: role.id,
-        permission_id: permission.id,
-      });
+    await guard.models().RolePermission.create({
+      role_id: role.id,
+      permission_id: permission.id,
+    });
     expect(await user.can!('read document')).toBe(true);
     for (const request of [
       'read  document',
@@ -130,11 +128,132 @@ describe('committed authorization on in-memory SQLite', () => {
   it('observes direct Transaction preparation through Sequelize SQL', async () => {
     const { sequelize, user } = await fixture();
     const transaction = new Transaction(sequelize, {});
-    await (transaction as Transaction & {
-      prepareEnvironment: () => Promise<void>;
-    }).prepareEnvironment();
+    await (
+      transaction as Transaction & {
+        prepareEnvironment: () => Promise<void>;
+      }
+    ).prepareEnvironment();
     await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
     await transaction.rollback();
+    expect(await user.isA!('reader')).toBe(true);
+  });
+
+  it('rejects pending membership and grants when constructed inside an older transaction', async () => {
+    const sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+    });
+    connections.push(sequelize);
+    await migration.up(sequelize.getQueryInterface(), sequelize);
+    await sequelize.query('INSERT INTO guard_users DEFAULT VALUES');
+    await sequelize.query("INSERT INTO guard_roles (name) VALUES ('reader')");
+    await sequelize.query(
+      "INSERT INTO guard_permissions (name, action, resource) VALUES ('read document', '[\"read\"]', 'document')",
+    );
+    const transaction = await sequelize.transaction();
+    await sequelize.query(
+      'INSERT INTO guard_role_user (role_id, user_id) VALUES (1, 1)',
+      { transaction },
+    );
+    await sequelize.query(
+      'INSERT INTO guard_role_permission (role_id, permission_id) VALUES (1, 1)',
+      { transaction },
+    );
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await guard.ready;
+    const user = guard
+      .models()
+      .GuardUser.build({ id: 1 }, { isNewRecord: false });
+    await expect(user.can!('read document')).rejects.toThrow(
+      /SQLite transaction/,
+    );
+    await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
+    await transaction.rollback();
+    expect(await user.can!('read document')).toBe(false);
+    expect(await user.isA!('reader')).toBe(false);
+  });
+
+  it('authorizes persisted legacy single-token grants containing slashes', async () => {
+    const { guard, user, role } = await fixture();
+    const [permission] = await guard.createPerms('posts/42', 'read/item');
+    await guard.models().RolePermission.create({
+      role_id: role.id,
+      permission_id: permission.id,
+    });
+    expect(await user.can!('read/item posts/42')).toBe(true);
+  });
+
+  it('tracks captured raw SQL with comments, savepoints, partial rollback and END', async () => {
+    const sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+    });
+    connections.push(sequelize);
+    const rawQuery = sequelize.query.bind(sequelize);
+    await migration.up(sequelize.getQueryInterface(), sequelize);
+    await rawQuery('INSERT INTO guard_users DEFAULT VALUES');
+    await rawQuery("INSERT INTO guard_roles (name) VALUES ('reader')");
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    const user = guard
+      .models()
+      .GuardUser.build({ id: 1 }, { isNewRecord: false });
+    expect(await user.isA!('reader')).toBe(false);
+
+    await rawQuery('/* pending grant */ SAVEPOINT outer_policy');
+    await rawQuery(
+      'INSERT INTO guard_role_user (role_id, user_id) VALUES (1, 1)',
+    );
+    await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
+    await rawQuery('ROLLBACK TRANSACTION TO SAVEPOINT outer_policy');
+    await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
+    await rawQuery('RELEASE SAVEPOINT outer_policy');
+    expect(await user.isA!('reader')).toBe(false);
+
+    await rawQuery('BEGIN');
+    await rawQuery(
+      'INSERT INTO guard_role_user (role_id, user_id) VALUES (1, 1)',
+    );
+    await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
+    await rawQuery('END');
+    expect(await user.isA!('reader')).toBe(true);
+  });
+
+  it('does not roll back a standalone write arriving during the first-read probe', async () => {
+    const sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+    });
+    connections.push(sequelize);
+    await migration.up(sequelize.getQueryInterface(), sequelize);
+    await sequelize.query('INSERT INTO guard_users DEFAULT VALUES');
+    await sequelize.query("INSERT INTO guard_roles (name) VALUES ('reader')");
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    const user = guard
+      .models()
+      .GuardUser.build({ id: 1 }, { isNewRecord: false });
+    const probeStarted = Promise.withResolvers<void>();
+    const releaseProbe = Promise.withResolvers<void>();
+    sequelize.addHook('afterQuery', async (_options, query) => {
+      if (
+        (query as typeof query & { sql?: string }).sql?.startsWith(
+          'BEGIN DEFERRED',
+        )
+      ) {
+        probeStarted.resolve();
+        await releaseProbe.promise;
+      }
+    });
+    const check = user.isA!('reader');
+    await probeStarted.promise;
+    const write = sequelize.query(
+      'INSERT INTO guard_role_user (role_id, user_id) VALUES (1, 1)',
+    );
+    releaseProbe.resolve();
+    await check;
+    await write;
     expect(await user.isA!('reader')).toBe(true);
   });
 });

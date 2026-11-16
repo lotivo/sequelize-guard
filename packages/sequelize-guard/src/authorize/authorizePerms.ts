@@ -84,10 +84,7 @@ export function extendWithAuthorizePerms(
 }
 
 function validToken(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    (value === '*' || /^[A-Za-z0-9][A-Za-z0-9_:.-]*$/.test(value))
-  );
+  return typeof value === 'string' && value.length > 0 && !/\s/.test(value);
 }
 
 function parseRequest(
