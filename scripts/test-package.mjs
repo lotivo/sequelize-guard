@@ -31,20 +31,15 @@ delete env.NODE_OPTIONS;
 after(() => rmSync(consumer, { recursive: true, force: true }));
 
 function packForConsumer() {
-  const [packed] = Object.values(JSON.parse(
-    execFileSync(
-      'npm',
-      [
-        'pack',
-        build,
-        '--json',
-        '--ignore-scripts',
-        '--pack-destination',
-        consumer,
-      ],
-      { encoding: 'utf8', cwd: consumer, env },
-    ),
-  ));
+  const packOutput = execFileSync(
+    'npm',
+    ['pack', build, '--json', '--ignore-scripts', '--pack-destination', consumer],
+    { encoding: 'utf8', cwd: consumer, env },
+  );
+  // npm 12 keys pack results by package name. Earlier versions use an array.
+  const packages = Object.values(JSON.parse(packOutput));
+  assert.equal(packages.length, 1, 'Expected npm pack to create one tarball');
+  const [packed] = packages;
   return path.join(consumer, packed.filename);
 }
 
