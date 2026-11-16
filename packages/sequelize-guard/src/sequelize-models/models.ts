@@ -1,4 +1,5 @@
-import type { SequelizeGuard } from '../SequelizeGuard';
+import type { Model } from 'sequelize';
+import type { SequelizeGuardInstance } from '../SequelizeGuard';
 import {
   guardTable,
   physicalTableKey,
@@ -15,7 +16,11 @@ import {
   initGuardRolePermission,
 } from './GuardRolePermission';
 import { GuardRoleUserModelStatic, initGuardRoleUser } from './GuardRoleUser';
-import { GuardUserModelStatic, initOrSetupGuardUser } from './GuardUser';
+import {
+  GuardUserModel,
+  GuardUserModelStatic,
+  initOrSetupGuardUser,
+} from './GuardUser';
 import {
   BaseModelType,
   ModelClassNameMap,
@@ -27,7 +32,9 @@ import { guardUserKey } from './user-key';
  * Initialize and return all Guard models
  * @param guard
  */
-export function initGuardModels(guard: SequelizeGuard): GuardModels {
+export function initGuardModels(
+  guard: SequelizeGuardInstance,
+): GuardModels<Model> {
   const userKey = guardUserKey(guard.sequelize, guard.options);
   validateGuardTables(guard.sequelize, guard.options);
   assertModelNamesAvailable(guard);
@@ -65,7 +72,7 @@ export function initGuardModels(guard: SequelizeGuard): GuardModels {
 function assertModelNamesAvailable({
   sequelize,
   options,
-}: SequelizeGuard): void {
+}: SequelizeGuardInstance): void {
   const owned = (Object.keys(ModelClassNameMap) as ModelType[]).filter(
     (type) => type !== BaseModelType.Users || !options.UserModel,
   );
@@ -95,12 +102,12 @@ function assertModelNamesAvailable({
 /**
  * Collection of all Guard models
  */
-export interface GuardModels {
+export interface GuardModels<TUser extends Model = GuardUserModel> {
   GuardResource: GuardResourceModelStatic;
   GuardRole: GuardRoleModelStatic;
   GuardPermission: GuardPermissionModelStatic;
   RolePermission: GuardRolePermissionModelStatic;
-  GuardUser: GuardUserModelStatic;
+  GuardUser: GuardUserModelStatic<TUser>;
   RoleUser: GuardRoleUserModelStatic;
 }
 

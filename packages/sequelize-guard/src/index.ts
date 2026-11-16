@@ -10,7 +10,7 @@ import { extendWithPermissions } from './guard/Permissions';
 import { extendWithRoleHolders } from './guard/RoleHolders';
 import { extendWithRoles } from './guard/Roles';
 import { extendWithUsers } from './guard/Users';
-import { SequelizeGuard } from './SequelizeGuard';
+import { SequelizeGuard, type SequelizeGuardType } from './SequelizeGuard';
 import { extendWithCache } from './utils/cache';
 import { extendWithUserCache } from './utils/userCache';
 
@@ -27,13 +27,20 @@ const extensions = [
   extendWithAuthorizeRoles,
 ];
 
-extensions.forEach((extension) => extension(SequelizeGuard));
+extensions.forEach((extension) =>
+  extension(SequelizeGuard as SequelizeGuardType),
+);
 
 // Export the fully extended SequelizeGuard
 export { SequelizeGuard };
 
 // Export types
 export * from './types';
+export type {
+  GuardPermissionData,
+  GuardRoleData,
+  GuardUserMethods,
+} from './sequelize-models';
 
 // Export migration and seeder
 export { default as migration } from './migrations/guard-migrations';

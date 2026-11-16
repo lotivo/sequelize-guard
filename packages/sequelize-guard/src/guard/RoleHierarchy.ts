@@ -1,9 +1,9 @@
 import { literal } from 'sequelize';
 import type { Transaction } from 'sequelize';
-import type { SequelizeGuard } from '../SequelizeGuard';
+import type { SequelizeGuardInstance } from '../SequelizeGuard';
 
 export async function lockRoleHierarchy(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   transaction: Transaction,
 ): Promise<void> {
   // A write makes PostgreSQL reject stale repeatable-read snapshots.
@@ -15,7 +15,7 @@ export async function lockRoleHierarchy(
 }
 
 export async function assertRoleParent(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   roleId: number | undefined,
   parentId: number,
   transaction: Transaction,

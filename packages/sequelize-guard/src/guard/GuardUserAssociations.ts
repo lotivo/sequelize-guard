@@ -1,37 +1,37 @@
 import type { Model, ModelStatic } from 'sequelize';
-import type { GuardUserModel } from '../sequelize-models';
-import type { SequelizeGuard } from '../SequelizeGuard';
+import type { GuardUserMethods } from '../sequelize-models';
+import type { SequelizeGuardInstance } from '../SequelizeGuard';
 
-export function guardUserMethods(guard: SequelizeGuard) {
+export function guardUserMethods(guard: SequelizeGuardInstance) {
   return {
-    assignRole(this: GuardUserModel, role: string) {
+    assignRole(this: Model & GuardUserMethods, role: string) {
       return guard.assignRole(this, role);
     },
-    roles(this: GuardUserModel) {
-      return this.getRoles!({ useMaster: true, transaction: null });
+    roles(this: Model & GuardUserMethods) {
+      return this.getRoles({ useMaster: true, transaction: null });
     },
-    assignRoles(this: GuardUserModel, roles: string[]) {
+    assignRoles(this: Model & GuardUserMethods, roles: string[]) {
       return guard.assignRoles(this, roles);
     },
-    rmAssignedRoles(this: GuardUserModel, roles: string[]) {
+    rmAssignedRoles(this: Model & GuardUserMethods, roles: string[]) {
       return guard.rmAssignedRoles(this, roles);
     },
-    isAllOf(this: GuardUserModel, roles: string[]) {
+    isAllOf(this: Model & GuardUserMethods, roles: string[]) {
       return guard.userHasAllRoles(this, roles);
     },
-    isAnyOf(this: GuardUserModel, roles: string[]) {
+    isAnyOf(this: Model & GuardUserMethods, roles: string[]) {
       return guard.userHasRoles(this, roles);
     },
-    isA(this: GuardUserModel, role: string) {
+    isA(this: Model & GuardUserMethods, role: string) {
       return guard.userIsA(this, role);
     },
-    isAn(this: GuardUserModel, role: string) {
+    isAn(this: Model & GuardUserMethods, role: string) {
       return guard.userIsA(this, role);
     },
-    can(this: GuardUserModel, permission: string) {
+    can(this: Model & GuardUserMethods, permission: string) {
       return guard.userCan(this, permission);
     },
-    cant(this: GuardUserModel, permission: string) {
+    cant(this: Model & GuardUserMethods, permission: string) {
       return guard.userCant(this, permission);
     },
   };

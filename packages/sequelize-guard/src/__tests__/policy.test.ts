@@ -42,8 +42,8 @@ describe('Policy mutations', () => {
     expect(shared.permissions[0].id).toBe(original.permissions[0].id);
     const reader = await guard.makeUser();
     const other = await guard.makeUser();
-    await reader.assignRole!('Reader');
-    await other.assignRole!('other');
+    await reader.assignRole('Reader');
+    await other.assignRole('other');
 
     const result = await guard.rmPermsFromRole(
       ' READER ',
@@ -56,9 +56,9 @@ describe('Policy mutations', () => {
     expect(result.permissions.map((permission) => permission.action)).toEqual([
       '["read"]',
     ]);
-    expect(await reader.can!('read document')).toBe(true);
-    expect(await reader.can!('edit document')).toBe(false);
-    expect(await other.can!('edit document')).toBe(true);
+    expect(await reader.can('read document')).toBe(true);
+    expect(await reader.can('edit document')).toBe(false);
+    expect(await other.can('edit document')).toBe(true);
     expect(
       (await guard.rmPermsFromRole('reader', 'edit', 'document')).permsRemoved,
     ).toEqual([]);
@@ -69,36 +69,36 @@ describe('Policy mutations', () => {
     await guard.allow('reader', ['*', 'read'], 'document');
     await guard.allow('reader', 'edit', '*');
     const reader = await guard.makeUser();
-    await reader.assignRole!('reader');
+    await reader.assignRole('reader');
 
     expect(
       (await guard.rmPermsFromRole('reader', 'edit', 'document')).permsRemoved,
     ).toEqual([]);
-    expect(await reader.can!('edit document')).toBe(true);
+    expect(await reader.can('edit document')).toBe(true);
     expect(
       (await guard.rmPermsFromRole('reader', '*', 'document')).permsRemoved,
     ).toHaveLength(1);
-    expect(await reader.can!('read document')).toBe(true);
-    expect(await reader.can!('write document')).toBe(false);
+    expect(await reader.can('read document')).toBe(true);
+    expect(await reader.can('write document')).toBe(false);
     expect(
       (await guard.rmPermsFromRole('reader', 'edit', '*')).permsRemoved,
     ).toHaveLength(1);
-    expect(await reader.can!('edit document')).toBe(false);
+    expect(await reader.can('edit document')).toBe(false);
   });
 
   it('uses the same validated token grammar in creation and authorization', async () => {
     const { guard } = context;
     await guard.allow('reader', 'réviser', 'Dossier[archive]');
     const reader = await guard.makeUser();
-    await reader.assignRole!('reader');
+    await reader.assignRole('reader');
 
-    expect(await reader.can!('  réviser\t Dossier[archive]  ')).toBe(true);
-    expect(await reader.can!('réviser dossier[archive]')).toBe(false);
-    expect(await reader.can!('réviser Dossier[archive] something-else')).toBe(
+    expect(await reader.can('  réviser\t Dossier[archive]  ')).toBe(true);
+    expect(await reader.can('réviser dossier[archive]')).toBe(false);
+    expect(await reader.can('réviser Dossier[archive] something-else')).toBe(
       false,
     );
-    expect(await reader.can!('réviser')).toBe(false);
-    expect(await reader.can!('')).toBe(false);
+    expect(await reader.can('réviser')).toBe(false);
+    expect(await reader.can('')).toBe(false);
 
     await expect(guard.createPerms('document', [''])).rejects.toThrow(
       TypeError,
@@ -130,20 +130,20 @@ describe('Policy mutations', () => {
     const { guard } = context;
     const { permissions } = await guard.allow('reader', 'read', 'document');
     const reader = await guard.makeUser();
-    await reader.assignRole!('reader');
+    await reader.assignRole('reader');
     const [permission] = permissions;
     await permission.update({ action });
 
-    expect(await reader.can!('read document')).toBe(false);
+    expect(await reader.can('read document')).toBe(false);
   });
 
   it('ignores the deprecated allow column', async () => {
     const { guard } = context;
     const { permissions } = await guard.allow('reader', 'read', 'document');
     const reader = await guard.makeUser();
-    await reader.assignRole!('reader');
+    await reader.assignRole('reader');
     await permissions[0].update({ allow: 0 });
-    expect(await reader.can!('read document')).toBe(true);
+    expect(await reader.can('read document')).toBe(true);
   });
 
   it('reuses legacy generated names and rejects incompatible explicit names atomically', async () => {
@@ -205,7 +205,7 @@ describe('Policy mutations', () => {
     );
 
     expect(created.action).toBe(JSON.stringify([...actions].sort()));
-    expect(created.name.length).toBeLessThanOrEqual(255);
+    expect(created.name).toMatch(/^permission-sha256:[a-f0-9]{64}$/);
     expect(reused.id).toBe(created.id);
   });
 
@@ -244,7 +244,7 @@ describe('Policy mutations', () => {
       parent_id: role.id,
     });
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
+    await user.assignRole('reader');
     await guard.makeRole('unassociated');
     const onDeleted = vi.fn();
     guard.onRolesDeleted(onDeleted);
@@ -253,7 +253,7 @@ describe('Policy mutations', () => {
       /associated/i,
     );
     expect(await guard.getRole('unassociated')).not.toBeNull();
-    expect(await user.can!('read document')).toBe(true);
+    expect(await user.can('read document')).toBe(true);
     expect(onDeleted).not.toHaveBeenCalled();
     expect(await guard.deleteRoles('unassociated')).toBe(1);
 
@@ -270,7 +270,7 @@ describe('Policy mutations', () => {
     expect((await guard.getRole('child'))?.parent_id).toBeNull();
     expect(await guard.getRole(child.name)).not.toBeNull();
     expect(await guard.findPerms({ resource: 'document' })).toHaveLength(1);
-    expect(await user.can!('read document')).toBe(false);
+    expect(await user.can('read document')).toBe(false);
   });
   it('unlinks policy from a soft-deleted role without deleting its user or permission', async () => {
     otherConnection = new Sequelize({
@@ -287,7 +287,7 @@ describe('Policy mutations', () => {
     await guard.ready;
     const { role } = await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
+    await user.assignRole('reader');
 
     await expect(guard.deleteRoles('reader')).resolves.toBe(1);
 
@@ -301,7 +301,7 @@ describe('Policy mutations', () => {
       0,
     );
     expect(await guard.models().RoleUser.count({ paranoid: false })).toBe(0);
-    expect(await user.can!('read document')).toBe(false);
+    expect(await user.can('read document')).toBe(false);
     expect(await guard.findPerms()).toHaveLength(1);
     expect(await guard.models().GuardUser.count()).toBe(1);
   });
@@ -320,10 +320,10 @@ describe('Policy mutations', () => {
       guard.allow('reader', 'read', 'document'),
       guard.allow('reader', 'edit', 'document'),
     ]);
-    await reader.assignRole!('reader');
+    await reader.assignRole('reader');
     expect(write.permissions).toHaveLength(2);
-    expect(await reader.can!('read document')).toBe(true);
-    expect(await reader.can!('edit document')).toBe(true);
+    expect(await reader.can('read document')).toBe(true);
+    expect(await reader.can('edit document')).toBe(true);
   });
 
   it('deduplicates concurrent role creation and serializes overlapping grant and removal operations', async () => {
@@ -345,7 +345,7 @@ describe('Policy mutations', () => {
       other.allow('reader', ['edit', 'read'], 'document'),
     ]);
     const reader = await guard.makeUser();
-    await reader.assignRole!('reader');
+    await reader.assignRole('reader');
     expect(await guard.models().RolePermission.count()).toBe(1);
 
     const [edit, read] = await Promise.all([
@@ -354,8 +354,8 @@ describe('Policy mutations', () => {
     ]);
     expect(edit.permsRemoved).toHaveLength(1);
     expect(read.permsRemoved).toHaveLength(1);
-    expect(await reader.can!('edit document')).toBe(false);
-    expect(await reader.can!('read document')).toBe(false);
+    expect(await reader.can('edit document')).toBe(false);
+    expect(await reader.can('read document')).toBe(false);
   });
 
   it('serializes deletion after an in-progress grant and protects the committed link', async () => {

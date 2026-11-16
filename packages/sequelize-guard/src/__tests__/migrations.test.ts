@@ -116,7 +116,7 @@ describe('Guard schema migrations on SQLite', () => {
   );
 
   it('uses resolved names for unique indexes, foreign keys and referential actions', async () => {
-    const options: GuardOptions = {
+    const options = {
       prefix: 'auth_',
       tables: {
         roles: 'profiles',
@@ -127,7 +127,7 @@ describe('Guard schema migrations on SQLite', () => {
         resources: 'objects',
       },
       sync: false,
-    };
+    } satisfies GuardOptions;
     const queryInterface = sequelize.getQueryInterface();
     await migration.up(queryInterface, sequelize, options);
     const guard = new SequelizeGuard(sequelize, options);

@@ -11,7 +11,7 @@ import type {
   ModelStatic,
   Sequelize,
 } from 'sequelize';
-import type { SequelizeGuard } from '../SequelizeGuard';
+import type { SequelizeGuardInstance } from '../SequelizeGuard';
 import type { PolicyMutationOptions } from '../types';
 
 export interface PolicyMutation {
@@ -25,7 +25,7 @@ const activeCallerTransactions = new WeakSet<Transaction>();
 const sqliteTransactions = new WeakMap<Sequelize, Promise<unknown>>();
 
 export async function mutatePolicy<T>(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   options: PolicyMutationOptions,
   mutate: (mutation: PolicyMutation) => Promise<T>,
 ): Promise<T> {
@@ -72,7 +72,7 @@ export async function mutatePolicy<T>(
 }
 
 async function runPolicyMutation<T>(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   { transaction }: PolicyMutationOptions,
   mutate: (mutation: PolicyMutation) => Promise<T>,
 ): Promise<T> {

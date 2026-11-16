@@ -39,8 +39,8 @@ describe('Users', () => {
           rejectOnEmpty: true,
         });
         // execute
-        await user.assignRole!('admin');
-        const roles = await user.getRoles!();
+        await user.assignRole('admin');
+        const roles = await user.getRoles();
         // assert
         expect(roles?.length).toBe(1);
       });
@@ -51,8 +51,8 @@ describe('Users', () => {
           rejectOnEmpty: true,
         });
         // execute
-        await user.assignRoles!(['admin', 'superadmin', 'moderator']);
-        const roles = await user.getRoles!();
+        await user.assignRoles(['admin', 'superadmin', 'moderator']);
+        const roles = await user.getRoles();
         // assert
         expect(roles?.length).toBe(3);
       });
@@ -65,8 +65,8 @@ describe('Users', () => {
           rejectOnEmpty: true,
         });
         // execute
-        await user.rmAssignedRoles!(['admin']);
-        const roles = await user.getRoles!();
+        await user.rmAssignedRoles(['admin']);
+        const roles = await user.getRoles();
         // assert
         expect(roles?.length).toBe(2);
       });
@@ -77,8 +77,8 @@ describe('Users', () => {
           rejectOnEmpty: true,
         });
         // execute
-        await user.rmAssignedRoles!(['superadmin', 'moderator', 'toddle']);
-        const roles = await user.getRoles!();
+        await user.rmAssignedRoles(['superadmin', 'moderator', 'toddle']);
+        const roles = await user.getRoles();
         // assert
         expect(roles?.length).toBe(0);
       });

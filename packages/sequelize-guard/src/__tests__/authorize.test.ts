@@ -18,7 +18,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(1, { rejectOnEmpty: true });
 
-      const roles = await user.getRoles!();
+      const roles = await user.getRoles();
 
       expect(roles.length).toBe(1);
     });
@@ -28,7 +28,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(2, { rejectOnEmpty: true });
 
-      const roles = await user.getRoles!();
+      const roles = await user.getRoles();
 
       expect(roles.length).toBe(2);
     });
@@ -38,7 +38,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(1, { rejectOnEmpty: true });
 
-      const result = await user.isAnyOf!(['superadmin', 'admin']);
+      const result = await user.isAnyOf(['superadmin', 'admin']);
 
       expect(result).toBe(true);
     });
@@ -48,7 +48,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(2, { rejectOnEmpty: true });
 
-      const result = await user.isAnyOf!(['user', 'admin']);
+      const result = await user.isAnyOf(['user', 'admin']);
 
       expect(result).toBe(true);
     });
@@ -58,7 +58,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(2, { rejectOnEmpty: true });
 
-      const result = await user.isAllOf!(['user', 'admin']);
+      const result = await user.isAllOf(['user', 'admin']);
 
       expect(result).toBe(true);
     });
@@ -68,7 +68,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(1, { rejectOnEmpty: true });
 
-      const result = await user.isAllOf!(['admin', 'superadmin']);
+      const result = await user.isAllOf(['admin', 'superadmin']);
 
       expect(result).toBe(false);
     });
@@ -78,7 +78,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(2, { rejectOnEmpty: true });
 
-      const result = await user.isAllOf!(['user', 'admin', 'superadmin']);
+      const result = await user.isAllOf(['user', 'admin', 'superadmin']);
 
       expect(result).toBe(false);
     });
@@ -88,7 +88,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(2, { rejectOnEmpty: true });
 
-      const result = await user.isA!('user');
+      const result = await user.isA('user');
 
       expect(result).toBe(true);
     });
@@ -98,7 +98,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(2, { rejectOnEmpty: true });
 
-      const result = await user.isAn!('admin');
+      const result = await user.isAn('admin');
 
       expect(result).toBe(true);
     });
@@ -108,7 +108,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(2, { rejectOnEmpty: true });
 
-      const result = await user.isA!('superadmin');
+      const result = await user.isA('superadmin');
 
       expect(result).toBe(false);
     });
@@ -120,7 +120,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(1, { rejectOnEmpty: true });
 
-      const result = await user.can!('*');
+      const result = await user.can('*');
 
       expect(result).toBe(true);
     });
@@ -130,7 +130,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(2, { rejectOnEmpty: true });
 
-      const result = await user.can!('*');
+      const result = await user.can('*');
 
       expect(result).toBe(false);
     });
@@ -140,7 +140,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(4, { rejectOnEmpty: true });
 
-      const result = await user.can!('edit blog');
+      const result = await user.can('edit blog');
 
       expect(result).toBe(false);
     });
@@ -150,7 +150,7 @@ describe('Authorization', () => {
         .models()
         .GuardUser.findByPk(4, { rejectOnEmpty: true });
 
-      const result = await user.cant!('edit blog');
+      const result = await user.cant('edit blog');
 
       expect(result).toBe(true);
     });
@@ -162,7 +162,7 @@ describe('Authorization', () => {
         rejectOnEmpty: true,
       });
 
-      const result = await user.can!('view blog');
+      const result = await user.can('view blog');
 
       expect(result).toBe(true);
     });
@@ -172,7 +172,7 @@ describe('Authorization', () => {
         rejectOnEmpty: true,
       });
 
-      const result = await user.can!('* blog');
+      const result = await user.can('* blog');
 
       expect(result).toBe(true);
     });
@@ -182,7 +182,7 @@ describe('Authorization', () => {
         rejectOnEmpty: true,
       });
 
-      const result = await user.can!('view *');
+      const result = await user.can('view *');
 
       expect(result).toBe(true);
     });
@@ -192,7 +192,7 @@ describe('Authorization', () => {
         rejectOnEmpty: true,
       });
 
-      const result = await user.can!('edit blog');
+      const result = await user.can('edit blog');
 
       expect(result).toBe(false);
     });

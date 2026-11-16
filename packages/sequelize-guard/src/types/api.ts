@@ -72,6 +72,22 @@ export interface CreateRolesOptions extends PolicyMutationOptions {
   all?: boolean;
 }
 
+type CreatedRows<TJson, TModel, TData> = TJson extends true
+  ? TData[]
+  : TModel[];
+
+/** Result for literal or dynamic JSON options, including the omitted-option default. */
+export type GuardCreationResult<
+  TOptions,
+  TModel,
+  TData,
+  TDefault = TModel,
+> = TOptions extends undefined
+  ? TDefault[]
+  : 'json' extends keyof TOptions
+    ? CreatedRows<TOptions['json'], TModel, TData>
+    : TModel[];
+
 /**
  * Arguments for finding roles
  */
@@ -115,7 +131,7 @@ export interface PermissionData {
  */
 export interface RoleData {
   name: string;
-  description?: string;
+  description?: string | null;
   parent_id?: number | null;
 }
 

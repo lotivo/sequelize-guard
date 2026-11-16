@@ -5,13 +5,20 @@ import {
   isPermissionToken,
   readPermissionActions,
 } from '../authorize/permissionGrammar';
-import type { GuardPermissionModel } from '../sequelize-models';
-import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
+import type {
+  GuardPermissionData,
+  GuardPermissionModel,
+} from '../sequelize-models';
+import type {
+  SequelizeGuardInstance,
+  SequelizeGuardType,
+} from '../SequelizeGuard';
 import type {
   CreatePermsOptions,
   FindPermsArgs,
   BulkPermissionInput,
   PermissionData,
+  GuardCreationResult,
   GuardEventCallback,
   UnsubscribeFn,
 } from '../types';
@@ -35,15 +42,17 @@ export function extendWithPermissions(
    * @param actions
    * @param options
    */
-  SequelizeGuard.prototype.createPerms = async function (
+  SequelizeGuard.prototype.createPerms = async function <
+    TOptions extends [options?: CreatePermsOptions],
+  >(
     resources: string | string[],
     actions: string | string[],
-    options: CreatePermsOptions = {},
-  ): Promise<GuardPermissionModel[]> {
+    ...[options]: TOptions
+  ): Promise<
+    GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
+  > {
     const permissions = permissionInputs(resources, actions, options);
-    return mutatePolicy(this, options, (mutation) =>
-      createPermissions(this, permissions, mutation, options),
-    );
+    return createPermissionResult<TOptions[0]>(this, permissions, options);
   };
 
   /**
@@ -51,22 +60,23 @@ export function extendWithPermissions(
    * @param permissions
    * @param options
    */
-  SequelizeGuard.prototype.createPermsBulk = async function (
+  SequelizeGuard.prototype.createPermsBulk = async function <
+    TOptions extends [options?: CreatePermsOptions],
+  >(
     permissions: BulkPermissionInput[],
-    options: CreatePermsOptions = {},
-  ): Promise<GuardPermissionModel[]> {
-    validateNames(permissions.length, options);
+    ...[options]: TOptions
+  ): Promise<
+    GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
+  > {
+    validateNames(permissions.length, options ?? {});
     const sanitized = Array.from(permissions, (permission, index) =>
       makePermission(
         permission.resource,
         canonicalPermissionActions(permission.actions),
-        permission.name ?? options.name ?? options.names?.[index],
+        permission.name ?? options?.name ?? options?.names?.[index],
       ),
     );
-    if (!sanitized.length) return [];
-    return mutatePolicy(this, options, (mutation) =>
-      createPermissions(this, sanitized, mutation, options),
-    );
+    return createPermissionResult<TOptions[0]>(this, sanitized, options);
   };
 
   /**
@@ -238,11 +248,40 @@ function hasDefinition(
   );
 }
 
+async function createPermissionResult<
+  TOptions extends CreatePermsOptions | undefined,
+>(
+  guard: SequelizeGuardInstance,
+  permissions: PermissionDefinition[],
+  options: TOptions,
+): Promise<
+  GuardCreationResult<TOptions, GuardPermissionModel, GuardPermissionData>
+> {
+  const result = permissions.length
+    ? await mutatePolicy(guard, options ?? {}, async (mutation) => {
+        const models = await createPermissions(
+          guard,
+          permissions,
+          mutation,
+          options,
+        );
+        return options?.json
+          ? models.map((permission) => permission.toJSON<GuardPermissionData>())
+          : models;
+      })
+    : [];
+  return result as GuardCreationResult<
+    TOptions,
+    GuardPermissionModel,
+    GuardPermissionData
+  >;
+}
+
 export async function createPermissions(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   permissions: PermissionDefinition[],
   { transaction, emitAfterCommit }: PolicyMutation,
-  options: CreatePermsOptions = {},
+  options: Pick<CreatePermsOptions, 'all'> = {},
 ): Promise<GuardPermissionModel[]> {
   const definitions = new Map<string, PermissionDefinition>();
   for (const permission of permissions) {
@@ -333,9 +372,7 @@ export async function createPermissions(
   ];
   if (createdPermissions.length)
     emitAfterCommit('onPermsCreated', createdPermissions);
-  return options.json
-    ? result.map((permission) => permission.toJSON())
-    : result;
+  return result;
 }
 
 function permissionNameConflict(name: string): Error {

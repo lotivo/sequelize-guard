@@ -14,19 +14,25 @@ import {
 import { GuardModelInitParams, SequelizeModelClass } from './types/types';
 import { modelOptions } from './utils';
 
+export interface GuardPermissionData {
+  id: CreationOptional<number>;
+  name: string | null;
+  description?: string | null;
+  resource: string;
+  action: string; // JSON stringified array
+  /** @deprecated Reserved for compatibility. Guard permissions only grant access. */
+  allow?: number | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+}
+
 /**
  * GuardPermission Model - Represents permissions (e.g., view blog, edit post)
  */
 export interface GuardPermissionModel
-  extends SequelizeModelClass<GuardPermissionModel> {
-  id: CreationOptional<number>;
-  name: string;
-  description?: string;
-  resource: string;
-  action: string; // JSON stringified array
-  /** @deprecated Reserved for compatibility. Guard permissions only grant access. */
-  allow: CreationOptional<number>;
-
+  extends SequelizeModelClass<GuardPermissionModel>,
+    GuardPermissionData {
   // Associations
   Roles?: NonAttribute<GuardRoleModel[]>;
 }

@@ -1,7 +1,10 @@
 import type { Model } from 'sequelize';
 import { readMemberRoles } from '../authorize/roleMembershipQuery';
-import type { GuardRoleData, GuardUserModel } from '../sequelize-models';
-import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
+import type { GuardRoleData, GuardUserMethods } from '../sequelize-models';
+import type {
+  SequelizeGuardInstance,
+  SequelizeGuardType,
+} from '../SequelizeGuard';
 import type { PolicyMutationOptions, UserRoleAssignment } from '../types';
 import { mutatePolicy } from './policyMutation';
 import { assignMemberships, removeMemberships } from './RoleMemberships';
@@ -101,16 +104,16 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
 }
 
 export function getPolicyUser(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   user: Model,
-): GuardUserModel {
+): Model & GuardUserMethods {
   if (!(user instanceof guard._models.GuardUser) || user.isNewRecord) {
     throw new TypeError('Expected a persisted user from the guard user model');
   }
-  return user as GuardUserModel;
+  return user as Model & GuardUserMethods;
 }
 
-export function userMemberships(guard: SequelizeGuard) {
+export function userMemberships(guard: SequelizeGuardInstance) {
   const { GuardUser, RoleUser } = guard._models;
   return { members: GuardUser, links: RoleUser };
 }

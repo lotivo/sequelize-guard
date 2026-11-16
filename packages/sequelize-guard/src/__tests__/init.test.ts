@@ -202,7 +202,7 @@ describe('Guard ownership and options', () => {
     { userCache: 'true' as unknown as boolean },
     { userCacheTtl: -1 },
     { userCacheTtl: Infinity },
-    { primaryKey: 'uuid' },
+    { primaryKey: 'uuid' as GuardOptions['primaryKey'] },
     { userPk: '' },
     { prefix: 17 as unknown as string },
     { tables: { roles: '' } },
@@ -234,7 +234,9 @@ describe('Guard ownership and options', () => {
 
   it('preserves a separately registered application User', async () => {
     const User = sequelize.define('User', {});
-    const Account = sequelize.define('Account', {});
+    const Account = sequelize.define('Account', {
+      accountKey: { type: DataTypes.STRING, primaryKey: true },
+    });
     expect(() => new SequelizeGuard(sequelize, { sync: false })).toThrow(
       'User',
     );
@@ -243,9 +245,12 @@ describe('Guard ownership and options', () => {
     const guard = new SequelizeGuard(sequelize, { UserModel: Account });
     await guard.ready;
     expect(sequelize.models.User).toBe(User);
-    const account = await guard.makeUser();
-    await account.assignRole!('account-reader');
-    expect(await account.isA!('account-reader')).toBe(true);
+    const account = await guard
+      .models()
+      .GuardUser.create({ accountKey: 'alice' });
+    await account.assignRole('account-reader');
+    expect(await account.isA('account-reader')).toBe(true);
+    expect(account.get('id')).toBeUndefined();
   });
 
   it('rejects guard-owned model names and tables before registering other models', () => {

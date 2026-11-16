@@ -78,7 +78,7 @@ function validateTableSuffixes(
   }
   for (const [name, value] of Object.entries(tables)) {
     if (
-      name === BaseModelType.RoleHierarchy ||
+      name === tablesMap[BaseModelType.RoleHierarchy] ||
       (!Object.hasOwn(tablesMap, name) && name !== 'meta' && name !== 'parents')
     ) {
       throw new TypeError(`Unknown guard table suffix "${name}"`);
