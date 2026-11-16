@@ -1,4 +1,5 @@
 import type { Sequelize, SyncOptions } from 'sequelize';
+import { CommittedReadBarrier } from './authorize/committedRead';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
 import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
@@ -57,6 +58,9 @@ export class SequelizeGuard extends SequelizeGuardBase {
    */
   public _models!: GuardModels;
 
+  /** @internal */
+  public readonly committedReads: CommittedReadBarrier;
+
   /**
    * Automatic startup completion, including model sync and cache initialization.
    * With sync: false, resolves without database work; await sync() separately
@@ -81,6 +85,7 @@ export class SequelizeGuard extends SequelizeGuardBase {
     super(options);
 
     this.sequelize = sequelize as SequelizeWithGuard;
+    this.committedReads = new CommittedReadBarrier(sequelize);
 
     // Initialize models
     this._models = initGuardModels(this);

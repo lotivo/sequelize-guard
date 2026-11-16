@@ -35,10 +35,14 @@ export class GuardCache extends NodeCache {
       return this.getRoles();
     }
 
-    const roles = await guard.models().GuardRole.findAll({
-      where: { id: r2Fetch },
-      include: 'Permissions',
-    });
+    const roles = await guard.committedReads.read(() =>
+      guard.models().GuardRole.findAll({
+        where: { id: r2Fetch },
+        include: 'Permissions',
+        useMaster: true,
+        transaction: null,
+      }),
+    );
 
     const mappedRoles = mappedRolesToIds(roles);
     const roles2Save = {
@@ -125,17 +129,23 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
     if (!this._cacheReady) {
       const initialization = Promise.resolve()
         .then(async () => {
-          const roles = await this.models().GuardRole.findAll({
-            include: 'Permissions',
-            useMaster: true,
-          });
-
-          const mappedRoles = mappedRolesToIds(roles);
-
-          const perms = await this.models().GuardPermission.findAll({
-            useMaster: true,
-          });
-          const mappedPerms = mappedPermsToIds(perms);
+          const { mappedRoles, mappedPerms } = await this.committedReads.read(
+            async () => {
+              const roles = await this.models().GuardRole.findAll({
+                include: 'Permissions',
+                useMaster: true,
+                transaction: null,
+              });
+              const perms = await this.models().GuardPermission.findAll({
+                useMaster: true,
+                transaction: null,
+              });
+              return {
+                mappedRoles: mappedRolesToIds(roles),
+                mappedPerms: mappedPermsToIds(perms),
+              };
+            },
+          );
 
           // A reset supersedes an in-flight snapshot.
           if (this._cacheReady !== initialization) return this.getCache();

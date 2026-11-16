@@ -36,15 +36,8 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     if (!role) throw new Error('Role must be string with length not zero');
 
     const roleData = makeRoleData(role);
-    const cache = await this.getCache();
-    const roles = Object.values(cache.getRoles());
-    const existingRole = lodash.find<GuardRoleModel>(roles, roleData);
-
-    if (existingRole) {
-      return { role: existingRole, created: false };
-    }
-
     const [createdRole, created] = await this._models.GuardRole.findOrCreate({
+      useMaster: true,
       where: {
         name: roleData.name,
       },
@@ -70,8 +63,9 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     const sanitizedRoles = sanitizeRolesInput(roles);
     let roles2insert = [...sanitizedRoles];
 
-    const cache = await this.getCache();
-    const existRoles = Object.values(cache.getRoles());
+    const existRoles = await this._models.GuardRole.findAll({
+      useMaster: true,
+    });
     const rNames = existRoles.map((d) => d.name);
     const toRemove = roles2insert.filter((r) => rNames.indexOf(r.name) >= 0);
     roles2insert = roles2insert.filter((r) => rNames.indexOf(r.name) < 0);
@@ -130,8 +124,9 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.allRoles = async function (): Promise<
     GuardRoleModel[]
   > {
-    const cache = await this.getCache();
-    return Object.values(cache.getRoles());
+    return this.committedReads.read(() =>
+      this._models.GuardRole.findAll({ useMaster: true, transaction: null }),
+    );
   };
 
   /**
@@ -141,11 +136,13 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.getRole = async function (
     role: string,
   ): Promise<GuardRoleModel | null> {
-    const cache = await this.getCache();
-    const roles = Object.values(cache.getRoles()).filter(
-      (r) => r.name === role.toLowerCase(),
+    return this.committedReads.read(() =>
+      this._models.GuardRole.findOne({
+        where: { name: role.toLowerCase() },
+        useMaster: true,
+        transaction: null,
+      }),
     );
-    return roles.length ? roles[0] : null;
   };
 
   /**
@@ -180,7 +177,13 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
       cond.include = 'Parent';
     }
 
-    const roles = await this._models.GuardRole.findAll(cond);
+    const roles = await this.committedReads.read(() =>
+      this._models.GuardRole.findAll({
+        ...cond,
+        useMaster: true,
+        transaction: null,
+      }),
+    );
     return roles;
   };
 
