@@ -142,3 +142,6 @@ vitest.config.*.timestamp*
 .env*.local
 .vercel
 next-env.d.ts
+
+# Local AI review notes and progress
+/docs/ai/feedback/

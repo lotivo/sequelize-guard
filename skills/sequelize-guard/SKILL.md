@@ -1,15 +1,14 @@
 ---
 name: sequelize-guard
 description: Use when integrating Sequelize Guard into an existing application, adding role or permission checks, configuring custom user models or migrations, or diagnosing revoked access.
-compatibility: Sequelize Guard 6.1.x, Sequelize ^6.37.8, Node 22.17.1 or Node 24; ESM, CommonJS and strict TypeScript. Requires access to the application's installed dependencies and test commands.
+compatibility: Sequelize ^6.37.8, Node 22.17.1 or Node 24; ESM, CommonJS and strict TypeScript. Requires access to the application's installed dependencies and test commands.
 metadata:
   package: sequelize-guard
-  package-version: "6.1.0"
 ---
 
 # Integrate Sequelize Guard
 
-Preserve the application's verified identity and database ownership while adding executable authorization checks. This skill describes 6.1.x; inspect installed declarations and version before applying it to another release.
+Preserve the application's verified identity and database ownership while adding executable authorization checks. Inspect the installed declarations and package version before applying these recipes.
 
 ## Inspect the application first
 
@@ -43,7 +42,7 @@ A false result is a denial (usually HTTP 403 after verified authentication). Mis
 
 ## Preserve schema and consistency boundaries
 
-Run `migration.up(queryInterface, sequelize, matchingOptions)` from the existing deployment migration runner before workers start. The migrations recipe includes `down` only to test disposable-fixture cleanup; production rollback requires a reviewed backup/recovery plan. Never recommend force-sync, alter-sync, dropping tables or rewriting ownership receipts for production. Explicit `guard.sync({ force: true })` also affects a supplied UserModel. Registered application holders remain application-owned. For upgrades from 6.0.2 use the documented offline distinct-prefix upgrade and validate/backup legacy data; do not assume starting 6.1 will migrate old tables.
+Run `migration.up(queryInterface, sequelize, matchingOptions)` from the existing deployment migration runner before workers start. The migrations recipe includes `down` only to test disposable-fixture cleanup; production rollback requires a reviewed backup/recovery plan. Never recommend force-sync, alter-sync, dropping tables or rewriting ownership receipts for production. Explicit `guard.sync({ force: true })` also affects a supplied UserModel. Registered application holders remain application-owned. For upgrades from 6.0.2 use the documented offline distinct-prefix upgrade and validate/backup legacy data; do not assume starting the new package will migrate old tables.
 
 Authorization reads current writer state, not local policy cache. After a committed revocation, a new check must deny. An older transaction/in-flight check can retain its snapshot, and a check is not atomic with a later business write. Investigate transaction boundaries, wrong identity/connection/schema, inherited or wildcard grants and actual commit status when diagnosing retained access. Do not clear caches as an access-control repair. Child roles inherit parent permissions; direct role checks remain direct membership. Caller-owned transactions suppress built-in events; events are not a durable audit log.
 

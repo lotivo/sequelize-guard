@@ -13,16 +13,12 @@ import { join, dirname, basename, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const manifest = JSON.parse(
-  readFileSync(join(root, 'packages/sequelize-guard/package.json'), 'utf8'),
-);
 const revision =
   process.env.DOCS_SOURCE_REVISION ||
   execFileSync('git', ['rev-parse', 'HEAD'], {
     cwd: root,
     encoding: 'utf8',
   }).trim();
-// Never read the monorepo 0.0.0 or infer a later master/latest-tag version.
 const output = join(root, 'apps/sequelize-guard-docs/content/docs/api');
 const checkedOutRevision = execFileSync('git', ['rev-parse', 'HEAD'], {
   cwd: root,
@@ -46,7 +42,7 @@ try {
       '--out',
       temporary,
       '--name',
-      `sequelize-guard v${manifest.version}`,
+      'sequelize-guard',
       '--includeVersion',
       'false',
       '--gitRevision',
@@ -94,7 +90,7 @@ try {
       const frontmatter = `---\ntitle: ${JSON.stringify(title)}\n---\n\n`;
       const provenance =
         name === 'README'
-          ? `Package **${manifest.version}**, source revision [${revision}](https://github.com/lotivo/sequelize-guard/tree/${revision}). Generated from this checkout; local uncommitted changes, if any, are included.\n\n`
+          ? `Source revision [${revision}](https://github.com/lotivo/sequelize-guard/tree/${revision}). Generated from this checkout; local uncommitted changes, if any, are included.\n\n`
           : '';
       writeFileSync(
         join(dirname(path), name === 'README' ? 'index.mdx' : `${name}.mdx`),
@@ -109,7 +105,7 @@ try {
   mkdirSync(dirname(output), { recursive: true });
   renameSync(temporary, output);
   console.log(
-    `Generated sequelize-guard ${manifest.version} API docs from ${revision}`,
+    `Generated sequelize-guard API docs from ${revision}`,
   );
 } finally {
   rmSync(temporary, { recursive: true, force: true });

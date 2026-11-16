@@ -1,6 +1,6 @@
 # API documentation automation
 
-Run `yarn docs:generate` using the pinned Yarn 1.22.22 and Node 22/24 after a frozen install. The generator reads `packages/sequelize-guard/package.json` (never root version 0.0.0), generates from the current checkout/revision, converts TypeDoc Markdown to MDX and replaces the complete API tree so deleted exports do not survive. `DOCS_SOURCE_REVISION` may specify the exact checked-out release revision; it does not fetch or switch source. Uncommitted edits are included in local previews and must not be mistaken for immutable release evidence.
+Run `yarn docs:generate` using the pinned Yarn 1.22.22 and Node 22/24 after a frozen install. The generator uses the current checkout/revision, converts TypeDoc Markdown to MDX and replaces the complete API tree so deleted exports do not survive. `DOCS_SOURCE_REVISION` may specify the exact checked-out release revision; it does not fetch or switch source. Uncommitted edits are included in local previews and must not be mistaken for immutable release evidence.
 
 The stable docs workflow checks out the validated exact release tag, enables the pinned package manager, generates API docs from that source, detects added/modified/deleted files and opens a generated docs change. It does not regenerate from an arbitrary later master or latest tag. Prereleases retain reference docs in their tagged source; stable public docs follow the approved stable release. Manual recovery uses that same exact stable tag; inspect/reconcile conflicts before retrying. Nothing here authorizes npm publication.
 

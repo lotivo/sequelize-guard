@@ -1,32 +1,259 @@
+<div align="center">
+
 # Sequelize Guard
 
-Role-based authorization for Sequelize 6: allow-only grants, single-parent role inheritance, registered application role holders, native ESM/CommonJS and TypeScript declarations.
+**A powerful, type-safe authorization library for Sequelize.js**
 
-**6.1.0 candidate — release approval is pending.** Install an approved published version; do not assume this branch is on npm.
+<p align="center">
+  <a href="https://github.com/lotivo/sequelize-guard/actions/workflows/ci-test.yml">
+    <img src="https://github.com/lotivo/sequelize-guard/actions/workflows/ci-test.yml/badge.svg" alt="CI">
+  </a>
+  <a href="https://coveralls.io/github/lotivo/sequelize-guard">
+    <img src="https://coveralls.io/repos/github/lotivo/sequelize-guard/badge.svg" alt="Coverage">
+  </a>
+  <a href="https://www.npmjs.com/package/sequelize-guard">
+    <img src="https://badge.fury.io/js/sequelize-guard.svg" alt="npm version">
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  </a>
+</p>
 
-```sh
-npm install sequelize-guard sequelize@^6.37.8
-# Also install your dialect driver (for example sqlite3, pg or mysql2).
+<p align="center">
+  <a href="https://sequelize-guard.js.org"><strong>📖 Documentation</strong></a> •
+  <a href="https://www.npmjs.com/package/sequelize-guard"><strong>NPM Package</strong></a> •
+  <a href="https://github.com/lotivo/sequelize-guard/issues"><strong>Report Bug</strong></a> •
+  <a href="https://github.com/lotivo/sequelize-guard/issues"><strong>Request Feature</strong></a>
+</p>
+
+</div>
+
+---
+
+## About
+
+SequelizeGuard is a comprehensive authorization library for Sequelize.js that provides a robust, performant, and easy-to-use role-based access control (RBAC) system. Built with TypeScript and modern tooling, it enables you to manage complex permission structures with a clean, fluent API.
+
+## ✨ Highlights
+
+Sequelize Guard provides:
+
+- 🎯 **Full TypeScript Support** - Complete rewrite in TypeScript with full type definitions
+- � **Sequelize 6 Compatible** - Updated to work with Sequelize v6.x
+- � **ESM & CommonJS** - Dual package support for modern and legacy projects
+- 🏗️ **Modern Tooling** - Built with Vite, tested with Vitest
+- � **Better Type Safety** - Enhanced IntelliSense and compile-time checking
+- 📚 **Upgrade Guidance** - Review the migration guide before upgrading an existing application
+
+> **Upgrading an existing application?** Check out the [Migration Guide](https://sequelize-guard.js.org/docs/migration) for a smooth transition.
+
+## Features
+
+- 🚀 **Current Authorization** - Database-backed permission checks observe committed revocations
+- 🎯 **Intuitive API** - Fluent, semantic API that reads like natural language
+- 🔐 **Flexible RBAC** - Assign multiple roles and permissions to users
+- 📊 **Event-Driven** - Listen for policy mutation events; applications own durable auditing
+- 💾 **Cache Compatibility** - Existing cache APIs remain available; authorization reads the database
+- 🛡️ **Safe Operations** - Built-in safeguards for role and permission deletions
+
+## Installation
+
+```bash
+# npm
+npm install sequelize-guard "sequelize@^6.37.8"
+
+# yarn
+yarn add sequelize-guard "sequelize@^6.37.8"
+
+# pnpm
+pnpm add sequelize-guard "sequelize@^6.37.8"
 ```
 
-The 6.1.0 candidate targets Node 22 (minimum 22.17.1) and 24, Sequelize `^6.37.8`, SQLite, PostgreSQL 17 and MySQL 8.4. Install the dialect driver your application needs. Sequelize 7 and other dialects are outside this tested contract. Native ESM and CommonJS are shipped, with strict TypeScript 5.9 consumer coverage for NodeNext import/require and Bundler resolution.
+Also install the [driver for your database](https://sequelize-guard.js.org/docs/guide/installation).
 
-6.1.0 deliberately keeps the package major aligned with Sequelize 6. It changes policy, schema and lifecycle contracts: its minor version is **not a drop-in compatibility promise**. Published 6.0.2 is immutable; candidate fixes are not a published security release. See [upgrade instructions](https://sequelize-guard.js.org/docs/migration/upgrade-to-v6).
+**Requirements:**
 
-Start with the [ESM recipe](examples/basic.mjs), [CommonJS manual setup](examples/basic.cjs), [custom user TypeScript recipe](examples/custom-user.ts), [production migration recipe](examples/migrations.mjs) and [verified identity HTTP integration](examples/authorization.mjs). These are shared executable fixtures checked against the exact npm tarball.
+- Node.js ≥ 22.17.1
+- Sequelize ≥ 6.37.8 and < 7
 
-`new SequelizeGuard(sequelize)` starts automatic initialization; await `guard.ready` before work and stop startup if it rejects. For a new disposable database, [basic.mjs](examples/basic.mjs) demonstrates that path.
+## Quick Start
 
-For explicit setup, construct with `{ sync:false }`, await `ready` (this performs **zero database work**), then await `guard.sync()`. `sync()` initializes/provisions; it is not an upgrade strategy. Retrying initialization is explicit through `sync()`. Never use `force` or `alter` as a production migration substitute. Explicit `guard.sync({ force, alter })` also passes these options to a supplied `UserModel`; it can change application user data. Registered holder models are never synced or dropped by Guard.
+```typescript
+import { Sequelize } from 'sequelize';
+import SequelizeGuard from 'sequelize-guard';
 
-Production deployment runs application migrations first, then the matching static `migration.up(queryInterface, sequelize, options)` once, and only then starts workers with the same options and `sync:false`. Await `ready`; reject startup or requests on database failures. Static migrations do not own a supplied user table. [migrations.mjs](examples/migrations.mjs) is the canonical runnable recipe.
+const sequelize = new Sequelize(/* config */);
+const guard = new SequelizeGuard(sequelize);
+await guard.ready;
 
-`guard.init()` is a fluent **policy builder**, not database initialization: `await guard.init().allow('reader').to('read').on('article').commit()`. An incomplete statement remains editable after rejection. A completed statement is consumed before persistence, including on failure; rebuild it before retrying.
+// Assign roles and permissions
+const user = await guard.makeUser();
+await user.assignRole('admin');
+await guard.allow('admin', ['view', 'edit'], 'blog');
 
-Read the [guide](https://sequelize-guard.js.org/docs/guide), [upgrade/rollback guide](https://sequelize-guard.js.org/docs/migration/upgrade-to-v6), [API reference](https://sequelize-guard.js.org/docs/api), [security contract](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/SECURITY.md), and [6.1.0 changelog](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/CHANGELOG.md). Authorization always reads the writer; manual caches are not authorization authority. Authentication, tenant/object checks, durable audits and expiry enforcement belong to the application.
+// Check permissions
+const canEdit = await user.can('edit blog');
+const isAdmin = await user.isA('admin');
+```
 
-Development: Node 22/24 and Yarn 1.22.22; run `yarn install --frozen-lockfile`, `yarn lint`, `yarn typecheck`, `yarn test`, `yarn build`, `yarn test:package`, `yarn docs:generate`, and `node scripts/check-docs.mjs`. See [script guidance](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/scripts/README.md) for exact-archive checks.
+> **Note:** Works with both TypeScript and JavaScript (ESM/CommonJS). See [documentation](https://sequelize-guard.js.org/docs/guide/getting-started) for JavaScript examples.
 
-[Report a vulnerability privately](https://github.com/lotivo/sequelize-guard/security/advisories/new). MIT licensed; see [LICENSE](LICENSE).
+To control when tables are synchronized and pass Sequelize sync options:
 
-For coding assistants, consult the portable [integration skill](skills/sequelize-guard/SKILL.md), [AI integration guide](https://sequelize-guard.js.org/docs/ai-integration), and [discovery index](https://sequelize-guard.js.org/llms.txt). Discovery behavior depends on the agent tool; installing the package does not automatically enable every assistant.
+```typescript
+const guard = new SequelizeGuard(sequelize, { sync: false });
+await guard.sync({ logging: false });
+```
+
+`sync()` resolves to the guard after its models and role/permission cache are ready, and rejects on failure. Calls are serialized with automatic startup. With `sync: false`, construction and `ready` do no database work; either await `sync()` or prepare tables with your migrations before using the guard. `init()` builds fluent permission statements and does not initialize the database.
+
+Synchronization includes a supplied `UserModel`, but excludes unrelated Sequelize models. `force` drops tables and `alter` can remove data; use migrations for production schema changes. Run synchronization before serving requests, not alongside authorization or policy writes.
+
+The `schema` option must match the schema already bound to every guard model, including a supplied `UserModel`; mismatches reject before database work. Per-call `searchPath` is rejected because later authorization queries would not share that override. Configure schema routing on Sequelize before constructing the guard, for example with `define.schema`, rather than moving tables through `sync()`.
+
+## Documentation
+
+For comprehensive guides, API reference, and examples, visit our documentation:
+
+**📖 [https://sequelize-guard.js.org](https://sequelize-guard.js.org)**
+
+### Key Topics
+
+- **[Getting Started](https://sequelize-guard.js.org/docs/guide/getting-started)** - Installation and basic setup
+- **[API Reference](https://sequelize-guard.js.org/docs/api)** - Complete API documentation
+- **[TypeScript Support](https://sequelize-guard.js.org/docs/guide/users)** - Using with TypeScript
+- **[Examples](https://sequelize-guard.js.org/docs/examples)** - Real-world usage examples
+- **[Blog](https://sequelize-guard.js.org/blogs)** - Articles and insights about the project
+
+### Migration
+
+- **[Migration Guide](https://sequelize-guard.js.org/docs/migration)** - Guides for upgrading existing installations
+
+### Core Concepts
+
+#### Permission Checks
+
+```typescript
+// Check specific permission
+await user.can('edit blog');
+
+// Check wildcard permissions
+await user.can('* blog'); // All actions on blog
+await user.can('view *'); // View all resources
+await user.can('*'); // Superadmin - all actions on all resources
+```
+
+#### Role Checks
+
+```typescript
+// Check single role
+await user.isA('admin');
+await user.isAn('editor');
+
+// Check multiple roles
+await user.isAnyOf(['admin', 'moderator']); // Has any of these roles
+await user.isAllOf(['user', 'verified']); // Has all of these roles
+```
+
+#### Assigning Permissions
+
+```typescript
+// Fluent API
+await guard
+  .init()
+  .allow('admin')
+  .to(['view', 'edit', 'delete'])
+  .on('blog')
+  .commit();
+
+// One-liner
+await guard.allow('admin', ['view', 'edit'], 'blog');
+```
+
+For more details, visit the [full documentation](https://sequelize-guard.js.org/docs).
+
+For coding assistants, see the [integration skill](skills/sequelize-guard/SKILL.md) and [AI integration guide](https://sequelize-guard.js.org/docs/ai-integration).
+
+## Contributing
+
+We love contributions! SequelizeGuard is open source and we welcome contributions of all kinds:
+
+- 🐛 Bug fixes
+- ✨ New features
+- 📝 Documentation improvements
+- ✅ Test coverage improvements
+- 💡 Ideas and suggestions
+
+```bash
+# Clone the repository
+git clone https://github.com/lotivo/sequelize-guard.git
+cd sequelize-guard
+
+# Install dependencies
+yarn install
+
+# Run tests
+yarn test
+
+# Build
+yarn build
+
+# Verify ESM, CommonJS and TypeScript consumers of the packed build
+yarn test:package
+```
+
+### Documentation
+
+#### Generating API Documentation
+
+API documentation is automatically generated from TypeScript source code:
+
+```bash
+# Generate API docs manually
+yarn docs:generate
+```
+
+The API documentation is automatically updated after each release via GitHub Actions. See [scripts/README.md](https://github.com/lotivo/sequelize-guard/blob/master/scripts/README.md) for details.
+
+### Reporting Issues
+
+Found a bug or have a feature request? [Open an issue](https://github.com/lotivo/sequelize-guard/issues) with:
+
+- Clear description
+- Steps to reproduce (for bugs)
+- Your environment (Node, Sequelize, sequelize-guard versions)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+### Influences
+
+- [**Spatie's Laravel-permission**](https://github.com/spatie/laravel-permission) - Authorization library for Laravel
+- [**Node-ACL**](https://github.com/OptimalBits/node_acl) - Access Control List for Node.js
+
+### Alternatives
+
+- [**Node-ACL**](https://github.com/OptimalBits/node_acl) - A versatile library with support for most ORMs
+- [**AccessControl**](https://github.com/onury/accesscontrol) - Role and attribute-based access control
+- [**CASL**](https://casl.js.org/) - Isomorphic authorization library
+
+## Support
+
+Need help? Here's how to get support:
+
+- 📖 **Documentation:** [https://sequelize-guard.js.org](https://sequelize-guard.js.org) (fallback: [https://sequelize-guard.vercel.app](https://sequelize-guard.vercel.app))
+- 🐛 **Bug Reports:** [GitHub Issues](https://github.com/lotivo/sequelize-guard/issues)
+- 💬 **Questions:** [GitHub Discussions](https://github.com/lotivo/sequelize-guard/discussions)
+
+---
+
+<div align="center">
+
+Created by [Pankaj Vaghela](https://github.com/pankajvaghela) for Open Source Community.
+
+If you find this project helpful, please consider giving it a ⭐️!
+
+</div>

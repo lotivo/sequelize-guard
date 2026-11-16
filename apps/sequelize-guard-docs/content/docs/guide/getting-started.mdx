@@ -1,13 +1,137 @@
 ---
-title: Initialization and startup
+title: Getting Started
+description: Learn how to set up Sequelize Guard in your project.
+icon: BookOpen
 ---
 
-`new SequelizeGuard(sequelize)` starts automatic initialization; await `guard.ready` before work and stop startup if it rejects. For a new disposable database, [basic.mjs](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/basic.mjs) demonstrates that path.
+## Basic Setup
 
-For explicit setup, construct with `{ sync:false }`, await `ready` (this performs **zero database work**), then await `guard.sync()`. `sync()` initializes/provisions; it is not an upgrade strategy. Retrying initialization is explicit through `sync()`. Never use `force` or `alter` as a production migration substitute. Explicit `guard.sync({ force, alter })` also passes these options to a supplied `UserModel`; it can change application user data. Registered holder models are never synced or dropped by Guard.
+### 1. Initialize Sequelize
 
-Production deployment runs application migrations first, then the matching static `migration.up(queryInterface, sequelize, options)` once, and only then starts workers with the same options and `sync:false`. Await `ready`; reject startup or requests on database failures. Static migrations do not own a supplied user table. [migrations.mjs](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/migrations.mjs) is the canonical runnable recipe.
+First, set up your Sequelize instance and define any application models you plan to register with Guard.
 
-`guard.init()` is a fluent **policy builder**, not database initialization: `await guard.init().allow('reader').to('read').on('article').commit()`. An incomplete statement remains editable after rejection. A completed statement is consumed before persistence, including on failure; rebuild it before retrying.
+```typescript filename="database.ts"
+import { Sequelize } from 'sequelize';
 
-Canonical recipes live in [examples/](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/). The exact packed package consumer checks run these files; copy the complete file rather than combining snippets from different versions.
+export const sequelize = new Sequelize({
+  dialect: 'postgres',
+  host: 'localhost',
+  database: 'myapp',
+  username: 'user',
+  password: 'pass',
+  logging: false,
+});
+```
+
+### 2. Initialize Sequelize Guard
+
+For a new development database, use automatic synchronization. Await `ready` before creating roles, assigning permissions or checking access. If startup rejects, stop and correct the error before serving requests.
+
+```typescript filename="guard.ts"
+import { SequelizeGuard } from 'sequelize-guard';
+import { sequelize } from './database.js';
+
+export const guard = new SequelizeGuard(sequelize, { prefix: 'app_' });
+await guard.ready;
+```
+
+### 3. Control synchronization explicitly
+
+To defer all database work and pass Sequelize sync options, disable automatic synchronization:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, { sync: false });
+await guard.ready;
+await guard.sync({ logging: false });
+```
+
+`sync()` resolves to the guard after model synchronization and cache loading finish. It rejects on database errors; correct the underlying problem before retrying. Calls run sequentially, including automatic startup. `ready` represents only the constructor's startup, so with `sync: false` it resolves without database work. Await each explicit `sync()` call itself.
+
+Explicit synchronization includes the configured `UserModel`, if supplied, and excludes unrelated Sequelize models and registered holder application models. `force: true` drops tables and `alter` can remove data, including from a supplied user table. For production, run application migrations first, then [Guard migrations](/docs/guide/db-migrations). Start application workers with the same schema options and `sync: false`, and await `ready`.
+
+Use `guard.init()` to build a fluent permission statement, for example `await guard.init().allow('reader').to('read').on('article').commit()`.
+
+Configure schema routing on Sequelize before constructing the guard. An explicit `sync({ schema })` must match every Guard-managed model's existing schema, including a supplied `UserModel`. Guard rejects per-call `searchPath` overrides before database work because later cache and authorization queries would use the existing routing.
+
+Create one Guard per Sequelize instance. Your application owns the connection and closes it at shutdown.
+
+## Core Concepts
+
+### Roles
+
+Roles define a set of permissions that can be assigned to users:
+
+```typescript
+// Create roles
+await guard.makeRole({ name: 'admin', description: 'Administrator' });
+await guard.makeRole({ name: 'editor', description: 'Content Editor' });
+
+// Get a role
+const role = await guard.getRole('admin');
+
+// List all roles
+const allRoles = await guard.allRoles();
+
+// Delete an unused role
+await guard.deleteRoles('admin');
+```
+
+### Permissions
+
+Permissions define what actions can be performed on specific resources:
+
+```typescript
+// Grant the editor role permission to create and update posts
+await guard.allow('editor', ['create', 'update'], 'posts');
+```
+
+### Users
+
+Create and manage users with role assignments:
+
+```typescript
+// Create a user
+const user = await guard.makeUser();
+
+// Assign role to user
+await guard.assignRole(user, 'editor');
+
+// List the user's direct roles
+console.log(await guard.getUserRoles(user));
+```
+
+Create records through your configured model when your [custom user](/docs/guide/users) requires application fields.
+
+## Authorization
+
+Check if a user has permission to perform an action. In an application, get the acting user through your verified identity flow. Permission checks return `false` on denial and reject on database errors. See the [authorization guide](/docs/guide/authorization) for request handling.
+
+```typescript
+// Check if user can create posts
+const canCreatePost = await user.can('create posts');
+
+if (canCreatePost) {
+  // User can create posts
+  console.log('User authorized to create posts');
+} else {
+  // User cannot create posts
+  console.log('User not authorized');
+}
+
+// Check if user has a specific role
+const isEditor = await user.isA('editor');
+
+// Remove the user's direct role assignment
+await guard.rmAssignedRoles(user, ['editor']);
+```
+
+## Complete Example
+
+The [complete SQLite example](https://github.com/lotivo/sequelize-guard/blob/master/examples/basic.mjs) starts Guard, grants and revokes access, then closes the connection. Install the [SQLite dependencies](/docs/guide/installation), save the example as `basic.mjs` and run `node basic.mjs`.
+
+## Next Steps
+
+- [Configuration Options](/docs/guide/configuration)
+- [Working with Roles](/docs/guide/roles)
+- [Managing Permissions](/docs/guide/permissions)
+- [Authorization Strategies](/docs/guide/authorization)

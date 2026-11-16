@@ -1,13 +1,10 @@
 ---
 title: Guide
+description: Learn how to set up Sequelize Guard in your project.
+icon: BookOpen
 ---
 
-`new SequelizeGuard(sequelize)` starts automatic initialization; await `guard.ready` before work and stop startup if it rejects. For a new disposable database, [basic.mjs](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/basic.mjs) demonstrates that path.
 
-For explicit setup, construct with `{ sync:false }`, await `ready` (this performs **zero database work**), then await `guard.sync()`. `sync()` initializes/provisions; it is not an upgrade strategy. Retrying initialization is explicit through `sync()`. Never use `force` or `alter` as a production migration substitute. Explicit `guard.sync({ force, alter })` also passes these options to a supplied `UserModel`; it can change application user data. Registered holder models are never synced or dropped by Guard.
+Start with the [Installation guide](/docs/guide/installation), then follow [Getting Started](/docs/guide/getting-started) to assign roles and check permissions.
 
-Production deployment runs application migrations first, then the matching static `migration.up(queryInterface, sequelize, options)` once, and only then starts workers with the same options and `sync:false`. Await `ready`; reject startup or requests on database failures. Static migrations do not own a supplied user table. [migrations.mjs](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/migrations.mjs) is the canonical runnable recipe.
-
-`guard.init()` is a fluent **policy builder**, not database initialization: `await guard.init().allow('reader').to('read').on('article').commit()`. An incomplete statement remains editable after rejection. A completed statement is consumed before persistence, including on failure; rebuild it before retrying.
-
-Canonical recipes live in [examples/](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/). The exact packed package consumer checks run these files; copy the complete file rather than combining snippets from different versions.
+Use the [migration guide](/docs/guide/db-migrations) to set up production databases.

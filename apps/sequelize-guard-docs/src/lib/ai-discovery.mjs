@@ -4,21 +4,21 @@ export const discoveryPaths = [
   '/docs/guide/getting-started',
   '/docs/api',
   '/docs/guide/db-migrations',
-  '/docs/migration/upgrade-to-v6',
+  '/docs/migration/upgrade-to-v6-1',
   '/docs/guide/caching',
   '/docs/guide/authorization',
 ];
 
 /**
- * @param {{version: string, pages: Array<{url: string, data: {title: string}}>}} input
+ * @param {{pages: Array<{url: string, data: {title: string}}>}} input
  */
-export function getDiscoveryText({ version, pages }) {
+export function getDiscoveryText({ pages }) {
   const links = discoveryPaths.map((url) => {
     const page = pages.find((candidate) => candidate.url === url);
     if (!page) throw new Error(`Missing AI discovery page: ${url}`);
     return `- [${page.data.title}](${page.url})`;
   });
-  return `# Sequelize Guard ${version}
+  return `# Sequelize Guard
 
 > Authorization for Sequelize 6. Inspect the installed package version before adapting examples.
 

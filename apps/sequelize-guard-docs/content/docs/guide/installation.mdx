@@ -1,9 +1,131 @@
 ---
 title: Installation
+description: Learn how to install and set up Sequelize Guard in your project.
+icon: BookOpen
 ---
 
-Install `sequelize-guard`, `sequelize@^6.37.8` and your dialect driver with your package manager. Candidate publication is pending.
+## Prerequisites
 
-The 6.1.0 candidate targets Node 22 (minimum 22.17.1) and 24, Sequelize `^6.37.8`, SQLite, PostgreSQL 17 and MySQL 8.4. Install the dialect driver your application needs. Sequelize 7 and other dialects are outside this tested contract. Native ESM and CommonJS are shipped, with strict TypeScript 5.9 consumer coverage for NodeNext import/require and Bundler resolution.
+Before installing Sequelize Guard, make sure you have:
 
-6.1.0 deliberately keeps the package major aligned with Sequelize 6. It changes policy, schema and lifecycle contracts: its minor version is **not a drop-in compatibility promise**. Published 6.0.2 is immutable; candidate fixes are not a published security release. See [upgrade instructions](/docs/migration/upgrade-to-v6).
+- Node.js 22.17.1 or later. CI tests Node.js 22 and 24.
+- Sequelize `^6.37.8`
+- A database with its Sequelize driver. The test suite covers SQLite, PostgreSQL 17 and MySQL 8.4.
+
+## Package Installation
+
+Install Sequelize Guard using your preferred package manager:
+
+```bash tab="npm"
+npm install sequelize-guard
+```
+
+```bash tab="pnpm"
+pnpm add sequelize-guard
+```
+
+```bash tab="yarn"
+yarn add sequelize-guard
+```
+
+```bash tab="bun"
+bun add sequelize-guard
+```
+
+
+## Peer Dependencies
+
+Sequelize Guard requires Sequelize as a peer dependency. If you haven't installed it yet:
+
+```bash npm2yarn
+npm install "sequelize@^6.37.8"
+```
+
+You'll also need to install the database driver for your database:
+
+#### PostgreSQL
+
+```bash tab="npm"
+npm install pg pg-hstore
+```
+
+```bash tab="pnpm"
+pnpm add pg pg-hstore
+```
+
+```bash tab="yarn"
+yarn add pg pg-hstore
+```
+
+```bash tab="bun"
+bun add pg pg-hstore
+```
+
+#### MySQL
+
+```bash tab="npm"
+npm install mysql2
+```
+```bash tab="pnpm"
+pnpm add mysql2
+```
+```bash tab="yarn"
+yarn add mysql2
+```
+```bash tab="bun"
+bun add mysql2
+```
+
+#### SQLite
+
+```bash tab="npm"
+npm install sqlite3
+```
+
+```bash tab="pnpm"
+pnpm add sqlite3
+```
+
+```bash tab="yarn"
+yarn add sqlite3
+```
+
+```bash tab="bun"
+bun add sqlite3
+```
+
+## Verify Installation
+
+With the SQLite driver installed, save this example as `test-guard.mjs`. It initializes Guard in a disposable in-memory database.
+
+```javascript filename="test-guard.mjs"
+import { SequelizeGuard } from 'sequelize-guard';
+import { Sequelize } from 'sequelize';
+
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: ':memory:',
+  logging: false,
+});
+try {
+  const guard = new SequelizeGuard(sequelize);
+  await guard.ready;
+  console.log('Sequelize Guard installed successfully!');
+} finally {
+  await sequelize.close();
+}
+```
+
+Run the test:
+
+```bash
+node test-guard.mjs
+```
+
+If you see the success message, you're ready to start using Sequelize Guard!
+
+## Next Steps
+
+- [Getting Started Guide](/docs/guide/getting-started) - Learn the basics
+- [Configuration](/docs/guide/configuration) - Configure Sequelize Guard
+- [API Reference](/docs/api) - Explore the full API

@@ -1,15 +1,126 @@
 ---
 title: Configuration
+description: Learn how to configure Sequelize Guard to fit your application's needs.
+icon: Cog
 ---
 
-Pass one options object to construction and the same schema options to migrations. Supported schema settings are `prefix`, `tables` suffixes, `primaryKey:'id'`, `timestamps`, `paranoid`, `UserModel`, `userPk` and `roleHolders`. Prefix applies to configured suffixes; a supplied UserModel controls its own table. Timestamps default false; paranoid requires timestamps. Guard policy keys remain id; custom user identities use userPk. Unknown options and unsafe schema/search-path overrides fail before DDL. Do not change schema bindings/defaults after construction.
+## Constructor Options
 
-Runtime settings include `sync` (default true), `debug` (default false), `safeGuardDeletes` (default true), and `userCacheTtl` (manual cache seconds, default 60). `tables.meta`, `tables.parents` and `userCache` are deprecated compatibility settings without policy effect. The hierarchy suffix is reserved. See [GuardOptions](/docs/api/interfaces/GuardOptions).
+When creating a new `SequelizeGuard` instance, you can pass configuration options:
 
-`new SequelizeGuard(sequelize)` starts automatic initialization; await `guard.ready` before work and stop startup if it rejects. For a new disposable database, [basic.mjs](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/basic.mjs) demonstrates that path.
+```typescript
+import { SequelizeGuard } from 'sequelize-guard';
 
-For explicit setup, construct with `{ sync:false }`, await `ready` (this performs **zero database work**), then await `guard.sync()`. `sync()` initializes/provisions; it is not an upgrade strategy. Retrying initialization is explicit through `sync()`. Never use `force` or `alter` as a production migration substitute. Explicit `guard.sync({ force, alter })` also passes these options to a supplied `UserModel`; it can change application user data. Registered holder models are never synced or dropped by Guard.
+const guard = new SequelizeGuard(sequelize, {
+  prefix: 'app_',
+  timestamps: true,
+  paranoid: true,
+  sync: false,
+});
+await guard.ready;
+```
 
-Production deployment runs application migrations first, then the matching static `migration.up(queryInterface, sequelize, options)` once, and only then starts workers with the same options and `sync:false`. Await `ready`; reject startup or requests on database failures. Static migrations do not own a supplied user table. [migrations.mjs](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/migrations.mjs) is the canonical runnable recipe.
+Timestamps and soft deletes default to `false`. Soft deletes require timestamps. Guard policy tables use `primaryKey: 'id'`. To configure a custom user or registered role holders, see the [Users guide](/docs/guide/users) and [GuardOptions](/docs/api/interfaces/GuardOptions). Use one guard per Sequelize connection. Finalize the application models and schema routing before constructing it. Unknown options and unsafe schema or search-path overrides are rejected before schema changes.
 
-`guard.init()` is a fluent **policy builder**, not database initialization: `await guard.init().allow('reader').to('read').on('article').commit()`. An incomplete statement remains editable after rejection. A completed statement is consumed before persistence, including on failure; rebuild it before retrying.
+## Configuration Options
+
+### Table Prefix
+
+Add a prefix to all Guard-related table names:
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  prefix: 'app_', // Tables will be app_users, app_roles, and so on.
+  sync: false,
+});
+```
+
+### Custom Table Names
+
+Use `tables` to override individual table suffixes. The prefix still applies. A supplied `UserModel` determines its own table name.
+
+```typescript
+const guard = new SequelizeGuard(sequelize, {
+  prefix: 'app_',
+  sync: false,
+  tables: {
+    roles: 'access_roles',
+    permissions: 'access_permissions',
+  },
+});
+```
+
+The hierarchy table suffix is reserved. `tables.meta` and `tables.parents` are deprecated compatibility options.
+
+### Cache Configuration
+
+Authorization reads the database. The deprecated `userCache` option is accepted for compatibility. `userCacheTtl` controls the lifetime of entries manually placed in `guard.getUserCache()` and defaults to 60 seconds. See [Caching and Revocation](/docs/guide/caching).
+
+## Environment-Based Configuration
+
+Use database credentials from your environment and keep the same schema options in application startup and the matching migrations.
+
+```typescript filename="config/guard.ts"
+import { Sequelize } from 'sequelize';
+import { SequelizeGuard, type GuardOptions } from 'sequelize-guard';
+
+const sequelize = new Sequelize(process.env.DATABASE_URL!, {
+  dialect: 'postgres',
+  logging: false,
+});
+
+export const guardOptions: GuardOptions = {
+  prefix: process.env.GUARD_TABLE_PREFIX ?? 'app_',
+  sync: false,
+};
+
+export const guard = new SequelizeGuard(sequelize, guardOptions);
+await guard.ready;
+```
+
+## Advanced Configuration
+
+### Custom Sequelize Options
+
+Configure the connection before passing it to Sequelize Guard:
+
+```typescript
+const sequelize = new Sequelize(process.env.DATABASE_URL!, {
+  dialect: 'postgres',
+  pool: {
+    max: 10,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+  logging: false,
+});
+```
+
+### Transaction Support
+
+Pass the caller transaction to supported policy mutations. Await each operation in order. Guard uses a savepoint per operation and suppresses its events for operations on supplied transactions.
+
+```typescript
+await sequelize.transaction(async (transaction) => {
+  await guard.allow('reader', ['read', 'list'], 'posts', { transaction });
+  await guard.assignRole(user, 'reader', { transaction });
+});
+```
+
+## Database Initialization
+
+Automatic initialization is enabled by default and is useful for new disposable databases. Await `guard.ready` before doing work and stop startup if it rejects. See the [basic example](https://github.com/lotivo/sequelize-guard/blob/master/examples/basic.mjs).
+
+With `sync: false`, construction and `ready` do no database work. For explicit setup on a disposable database, call `await guard.sync()`. Retrying initialization requires an explicit `sync()` call. An explicit `guard.sync({ force, alter })` passes these options to a supplied user model and can change application user data. Registered holder models are never synced or dropped by Guard.
+
+In production, first run application migrations, then run `migration.up(queryInterface, sequelize, options)` as a deployment migration. Start workers with `sync: false` and the same schema options. Static migrations do not own supplied user tables. See the [migration guide](/docs/guide/db-migrations) and its [executable recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/migrations.mjs).
+
+Use `guard.init()` to start a fluent policy statement. An incomplete statement remains editable after rejection. A completed statement is consumed before persistence. Rebuild it before retrying a failed operation.
+
+## Best Practices
+
+- Keep database credentials in environment configuration.
+- Use consistent prefixes between the migrations and worker configuration.
+- Leave `debug` off unless troubleshooting. It defaults to `false`.
+- Keep `safeGuardDeletes` enabled to protect associated roles and permissions. It defaults to `true`.

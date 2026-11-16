@@ -1,5 +1,8 @@
 {
   "root": false,
   "defaultOpen": true,
-  "pages": ["upgrade-to-v6"]
+  "pages": [
+    "upgrade-to-v6-1",
+    "upgrade-to-v6"
+  ]
 }

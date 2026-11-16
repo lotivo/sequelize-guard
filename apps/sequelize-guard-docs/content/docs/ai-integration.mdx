@@ -3,7 +3,7 @@ title: AI integration
 description: Portable agent guidance and executable recipes for the installed Sequelize Guard package.
 ---
 
-The 6.1.0 npm package ships one portable integration skill at `skills/sequelize-guard/SKILL.md` and the same [executable recipes](/docs/examples) used by our packed-consumer checks. Contributor instructions in the repository's `AGENTS.md` apply to this monorepo, not to consuming applications.
+The npm package ships one portable integration skill at `skills/sequelize-guard/SKILL.md` and the same [executable recipes](/docs/examples) used by our packed-consumer checks. Contributor instructions in the repository's `AGENTS.md` apply to this monorepo, not to consuming applications.
 
 ## Load the installed skill explicitly
 
@@ -26,10 +26,10 @@ node node_modules/sequelize-guard/skills/sequelize-guard/references/installed-pa
 
 The skill starts with existing models, migrations, verified identity and application tests. It teaches the actual exports, readiness, grant/assignment/check/revocation, custom user keys, and denial versus database failures. Applications authenticate users and protect policy administration themselves; a user ID in a request header is not authentication. Existing databases use explicit deployment migrations with `sync:false`, not force-sync.
 
-Installed `examples/` covers ESM, CommonJS, custom users, migration ownership, verified-session HTTP administration, inheritance/holders/transactions and the offline 6.0.2 upgrade. These run against disposable databases; inspect each fixture before adapting its setup or rollback to your application. Follow [schema setup](/docs/guide/db-migrations), [upgrade guidance](/docs/migration/upgrade-to-v6) and [authorization boundaries](/docs/guide/authorization).
+Installed `examples/` covers ESM, CommonJS, custom users, migration ownership, verified-session HTTP administration, inheritance/holders/transactions and the offline 6.0.2 upgrade. These run against disposable databases; inspect each fixture before adapting its setup or rollback to your application. Follow [schema setup](/docs/guide/db-migrations), [upgrade guidance](/docs/migration) and [authorization boundaries](/docs/guide/authorization).
 
 ## Documentation discovery
 
-[/llms.txt](/llms.txt) is a short versioned index built from the documentation source. [/llms-full.txt](/llms-full.txt) includes this page and the processed documentation, including generated public API pages. The installed package version takes precedence over a newer website when working with an older application.
+[/llms.txt](/llms.txt) is a short documentation index built from the documentation source. [/llms-full.txt](/llms-full.txt) includes this page and the processed documentation, including generated public API pages. The installed package version takes precedence over a newer website when working with an older application.
 
 Metadata, references, packaged files and executable recipes are checked automatically. Independent agent integration evaluations are a separate release gate; static Markdown checks alone do not establish agent-code quality.

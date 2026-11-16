@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,8 +16,7 @@ const skill = read(skillPath);
 const docsRoot = 'apps/sequelize-guard-docs';
 
 test('portable skill metadata, local references and canonical recipe paths match the package', () => {
-  assert.match(skill, /^---\nname: sequelize-guard\ndescription: Use when [^\n]+\ncompatibility: [^\n]+\nmetadata:\n  package: sequelize-guard\n  package-version: "([^"]+)"\n---/);
-  assert.equal(skill.match(/package-version: "([^"]+)"/)[1], manifest.version);
+  assert.match(skill, /^---\nname: sequelize-guard\ndescription: Use when [^\n]+\ncompatibility: [^\n]+\nmetadata:\n  package: sequelize-guard\n---/);
   assert.equal(JSON.parse(read(`${docsRoot}/package.json`)).version, manifest.version);
   assert.ok(manifest.files.includes(skillPath));
   for (const [, relative] of skill.matchAll(/\]\(([^)]+)\)/g)) {
@@ -37,7 +36,7 @@ test('portable skill metadata, local references and canonical recipe paths match
 });
 
 test('copied version detector resolves the consuming app without a package.json export', () => {
-  const scratch = mkdtempSync(path.join(tmpdir(), 'guard-skill-portable-'));
+  const scratch = realpathSync(mkdtempSync(path.join(tmpdir(), 'guard-skill-portable-')));
   try {
     const app = path.join(scratch, 'application');
     const installed = path.join(app, 'node_modules/sequelize-guard');
@@ -59,7 +58,7 @@ test('copied version detector resolves the consuming app without a package.json 
   }
 });
 
-test('discovery resolves real docs routes and includes version and full-text endpoint', () => {
+test('discovery resolves real docs routes and includes current guides and full-text endpoint', () => {
   const pages = discoveryPaths.map((url) => {
     const route = url.slice('/docs/'.length);
     let mdx;
@@ -72,15 +71,15 @@ test('discovery resolves real docs routes and includes version and full-text end
     assert.ok(title, `Missing title at ${url}`);
     return { url, data: { title } };
   });
-  const index = getDiscoveryText({ version: manifest.version, pages });
-  assert.match(index, new RegExp(`^# Sequelize Guard ${manifest.version.replaceAll('.', '\\.')}\n`));
+  const index = getDiscoveryText({ pages });
+  assert.ok(index.startsWith('# Sequelize Guard\n'));
   for (const page of pages) assert.ok(index.includes(`](${page.url})`));
   assert.ok(index.includes('](/llms-full.txt)'));
-  assert.throws(() => getDiscoveryText({ version: manifest.version, pages: [] }), /Missing AI discovery page/);
+  assert.throws(() => getDiscoveryText({ pages: [] }), /Missing AI discovery page/);
   assert.ok(JSON.parse(read(`${docsRoot}/content/docs/meta.json`)).pages.includes('ai-integration'));
   assert.match(read(`${docsRoot}/source.config.ts`), /includeProcessedMarkdown: true/);
-  assert.match(read(`${docsRoot}/src/app/llms-full.txt/route.ts`), /source\.getPages\(\)\.map\(getLLMText\)/);
-  assert.match(read(`${docsRoot}/src/app/llms.txt/route.ts`), /getDiscoveryText\(\{ version, pages: source\.getPages\(\) \}\)/);
+  assert.match(read(`${docsRoot}/src/app/llms-full.txt/route.ts`), /\.map\(getLLMText\)/);
+  assert.match(read(`${docsRoot}/src/app/llms.txt/route.ts`), /getDiscoveryText\(\{ pages: source\.getPages\(\) \}\)/);
 });
 
 test('served discovery and processed full-text routes include AI guidance', { skip: !process.env.DOCS_BASE_URL }, async () => {
@@ -109,12 +108,13 @@ test('served discovery and processed full-text routes include AI guidance', { sk
     assert.equal(response.status, 200);
     assert.match(response.headers.get('content-type'), /text\/plain/);
     const body = await response.text();
-    assert.ok(body.startsWith(`# Sequelize Guard ${manifest.version}\n`));
+    assert.ok(body.startsWith('# Sequelize Guard\n'));
     assert.ok(body.includes('skills/sequelize-guard/SKILL.md'));
     if (route === '/llms-full.txt') {
       assert.ok(body.includes('# AI integration'));
       assert.ok(body.includes('Load the installed skill explicitly'));
       assert.ok(body.includes('Migration') || body.includes('migration'));
+      assert.ok(!body.includes('Historical migration guide.'), 'Historical migration claims must not enter current AI guidance');
     } else {
       for (const url of discoveryPaths) assert.ok(body.includes(`](${url})`));
     }

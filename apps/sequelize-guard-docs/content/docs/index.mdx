@@ -1,9 +1,98 @@
 ---
-title: Sequelize Guard
+title: "Quick Start"
+icon: Album
 ---
 
-Candidate 6.1.0 documentation. Start with [installation](/docs/guide/installation), [initialization](/docs/guide/getting-started), [security](/docs/guide/authorization), [upgrade](/docs/migration/upgrade-to-v6) and [API reference](/docs/api).
+<div className="mt-12 mb-12 text-center">
+  <h1 className="text-5xl font-bold tracking-tight">
+    🛡️ Sequelize Guard
+  </h1>
+  <div className="mt-6 text-2xl text-gray-600 dark:text-gray-400">
+    Role-based access control for Sequelize
+  </div>
+  <div className="mt-4 text-lg text-gray-500">
+    An elegant Authorization Library for Node.js with Sequelize ORM
+  </div>
+</div>
 
-The 6.1.0 candidate targets Node 22 (minimum 22.17.1) and 24, Sequelize `^6.37.8`, SQLite, PostgreSQL 17 and MySQL 8.4. Install the dialect driver your application needs. Sequelize 7 and other dialects are outside this tested contract. Native ESM and CommonJS are shipped, with strict TypeScript 5.9 consumer coverage for NodeNext import/require and Bundler resolution.
+<div className="mt-16 mb-10">
+  <Cards>
+    <Card title="🚀 Quick Start" href="/docs/guide/installation"  />
+    <Card title="📖 Guide" href="/docs/guide/getting-started"  />
+    <Card title="🔧 API Reference" href="/docs/api"  />
+    <Card title="💡 Examples" href="/docs/examples"  />
+  </Cards>
+</div>
 
-6.1.0 deliberately keeps the package major aligned with Sequelize 6. It changes policy, schema and lifecycle contracts: its minor version is **not a drop-in compatibility promise**. Published 6.0.2 is immutable; candidate fixes are not a published security release. See [upgrade instructions](/docs/migration/upgrade-to-v6).
+## Features
+
+- **🔐 Role-Based Access Control** - Define roles and permissions for your application
+- **🎯 Resource-Level Permissions** - Control access to specific resources
+- **👥 User Management** - Built-in user-role associations
+- **⚡ Current Authorization** - Check roles and permissions against the writer database
+- **🔄 Migration Support** - Easy database schema setup
+- **📦 TypeScript Support** - Full type definitions included
+- **🧪 Well Tested** - Comprehensive test coverage
+- **🎨 Flexible API** - Simple and intuitive API design
+
+## Installation
+
+
+```bash tab="npm"
+npm install sequelize-guard
+```
+
+```bash tab="pnpm"
+pnpm add sequelize-guard
+```
+
+```bash tab="yarn"
+yarn add sequelize-guard
+```
+
+```bash tab="bun"
+bun add sequelize-guard
+```
+## Quick Example
+
+This example uses SQLite in memory. Install Sequelize and `sqlite3` using the [installation guide](/docs/guide/installation).
+
+```typescript
+import { SequelizeGuard } from 'sequelize-guard';
+import { Sequelize } from 'sequelize';
+
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: ':memory:',
+  logging: false,
+});
+try {
+  const guard = new SequelizeGuard(sequelize);
+  await guard.ready;
+
+  const user = await guard.makeUser();
+  await guard.allow('admin', 'create', 'users');
+  await guard.assignRole(user, 'admin');
+  console.log(await user.can('create users')); // true
+} finally {
+  await sequelize.close();
+}
+```
+
+## Why Sequelize Guard?
+
+Sequelize Guard adds role-based access control to your Node.js applications:
+
+- **Easy Integration** - Works seamlessly with existing Sequelize projects
+- **Production Setup** - Prepare Guard tables with [explicit migrations](/docs/guide/db-migrations)
+- **MIT Licensed** - Free for commercial and personal use
+
+## Community
+
+- [GitHub Issues](https://github.com/lotivo/sequelize-guard/issues) - Report bugs and request features
+- [GitHub Discussions](https://github.com/lotivo/sequelize-guard/discussions) - Ask questions and share ideas
+- [NPM Package](https://www.npmjs.com/package/sequelize-guard) - View package details
+
+## License
+
+MIT© [Lotivo](https://github.com/lotivo)

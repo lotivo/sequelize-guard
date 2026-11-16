@@ -22,10 +22,10 @@ const routes = new Set(
   ),
 );
 routes.add('/docs');
+// Historical posts and migration records are not current API tutorials.
 const pages = [
-  ...content,
-  ...files(join(root, 'docs')).filter((file) => file.endsWith('.md') && !file.includes('/docs/ai/')),
-  ...files(join(root, 'apps/sequelize-guard-docs/content/blogs')),
+  ...content.filter((file) => !file.endsWith('/migration/upgrade-to-v6.mdx')),
+  ...files(join(root, 'docs')).filter((file) => file.endsWith('.md') && !file.includes('/docs/ai/') && !file.includes('/docs/migration/')),
   join(root, 'README.md'),
   join(root, 'SECURITY.md'),
   join(root, 'CHANGELOG.md'),
@@ -39,7 +39,7 @@ for (const file of pages) {
   const text = readFileSync(file, 'utf8');
   assert.doesNotMatch(
     text,
-    /guard\.(?:users|roles|permissions|authorization|cache)\./,
+    /guard\.(?:users|roles|permissions|authorize|authorization|cache)\./,
     `invented nested API in ${file}`,
   );
   if (file.includes('/content/docs/api/')) assert.doesNotMatch(text, /\]\((?!https?:)[^)]*\.mdx(?:#|\))/, `API link must use a rendered docs route in ${file}`);
@@ -63,19 +63,6 @@ for (const file of pages) {
       );
   }
 }
-const manifest = JSON.parse(
-  readFileSync(join(root, 'packages/sequelize-guard/package.json'), 'utf8'),
-);
-const reference = readFileSync(join(docs, 'api/index.mdx'), 'utf8');
-assert.ok(
-  reference.includes(manifest.version),
-  'API version must match package manifest',
-);
-assert.doesNotMatch(
-  reference,
-  /\b0\.0\.0\b/,
-  'monorepo version leaked into API reference',
-);
 for (const file of files(docs).filter((file) =>
   /(?:^|\/)meta\.json$/.test(file),
 )) {
