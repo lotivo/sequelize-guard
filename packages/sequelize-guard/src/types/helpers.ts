@@ -1,23 +1,14 @@
-import { Sequelize } from 'sequelize';
-import { GuardModels } from '../sequelize-models';
-import { GuardOptions } from './options';
+import type { Model, ModelStatic, Sequelize } from 'sequelize';
+import type { GuardModels, GuardUserModel } from '../sequelize-models';
+import type { SequelizeGuard } from '../SequelizeGuard';
 
-type Prettify<T> = {
-  [K in keyof T]: T[K];
-} & {};
-
-export type SequelizeWithGuard<
-  S extends Sequelize = Sequelize,
-  O extends GuardOptions = GuardOptions,
-> = S & {
-  guard: import('../SequelizeGuard').SequelizeGuard;
-  models: Prettify<
-    S['models'] & {
-      GuardModels: GuardModels;
-    } & (O extends { UserModel: infer U }
-        ? { User: U }
-        : {
-            User: GuardModels['GuardUser'];
-          })
-  >;
-};
+export type SequelizeWithGuard<TUser extends Model = GuardUserModel> =
+  Sequelize & {
+    guard: SequelizeGuard<TUser>;
+    models: Sequelize['models'] & {
+      GuardModels: GuardModels<TUser>;
+      User: TUser extends GuardUserModel
+        ? GuardModels['GuardUser']
+        : ModelStatic<Model>;
+    };
+  };

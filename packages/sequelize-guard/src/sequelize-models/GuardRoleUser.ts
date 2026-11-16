@@ -4,6 +4,7 @@ import {
   DataTypes,
   ForeignKey,
   ModelAttributeColumnReferencesOptions,
+  Model,
   ModelAttributes,
   ModelStatic,
 } from 'sequelize';
@@ -34,7 +35,7 @@ export const initGuardRoleUser = (
   params: GuardModelInitParams,
   models: {
     GuardRole: GuardRoleModelStatic;
-    GuardUser: GuardUserModelStatic;
+    GuardUser: GuardUserModelStatic<Model>;
   },
   userKey: UserKey,
 ): GuardRoleUserModelStatic => {

@@ -2,9 +2,16 @@ import lodash from 'lodash';
 import { Op } from 'sequelize';
 import type { FindOptions, InferAttributes, Transaction } from 'sequelize';
 import { readPermissionActions } from '../authorize/permissionGrammar';
-import type { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
+import type {
+  GuardPermissionModel,
+  GuardRoleData,
+  GuardRoleModel,
+} from '../sequelize-models';
 import { assertCompleteRoleHolderConfiguration } from '../sequelize-models/guard-role-holders';
-import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
+import type {
+  SequelizeGuardInstance,
+  SequelizeGuardType,
+} from '../SequelizeGuard';
 import type {
   RoleCreationResult,
   FindRolesArgs,
@@ -13,6 +20,7 @@ import type {
   AddPermsToRoleResult,
   RemovePermsFromRoleResult,
   UnsubscribeFn,
+  GuardCreationResult,
   GuardEventCallback,
   RoleCreationParam,
   PolicyMutationOptions,
@@ -59,16 +67,35 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
    * @param roles
    * @param options
    */
-  SequelizeGuard.prototype.makeRoles = async function (
+  SequelizeGuard.prototype.makeRoles = async function <
+    TOptions extends [options?: CreateRolesOptions],
+  >(
     roles: RoleCreationParam[],
-    options: CreateRolesOptions = { json: true },
-  ): Promise<GuardRoleModel[]> {
+    ...[options]: TOptions
+  ): Promise<
+    GuardCreationResult<
+      TOptions[0],
+      GuardRoleModel,
+      GuardRoleData,
+      GuardRoleData
+    >
+  > {
     const roleData = roleInputs(roles);
-    if (!roleData.length) return [];
-    return mutatePolicy(this, options, async (mutation) => {
-      await lockRoleHierarchy(this, mutation.transaction);
-      return createRoles(this, roleData, mutation, options);
-    });
+    const result = roleData.length
+      ? await mutatePolicy(this, options ?? {}, async (mutation) => {
+          await lockRoleHierarchy(this, mutation.transaction);
+          const models = await createRoles(this, roleData, mutation, options);
+          return options === undefined || options.json
+            ? models.map((role) => role.toJSON<GuardRoleData>())
+            : models;
+        })
+      : [];
+    return result as GuardCreationResult<
+      TOptions[0],
+      GuardRoleModel,
+      GuardRoleData,
+      GuardRoleData
+    >;
   };
 
   /**
@@ -421,7 +448,7 @@ export function roleInputs(roles: string | RoleCreationParam[]): RoleData[] {
 }
 
 export async function createRole(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   roleData: RoleData,
   transaction: Transaction,
 ): Promise<RoleCreationResult> {
@@ -454,10 +481,10 @@ export async function createRole(
 }
 
 export async function createRoles(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   roles: RoleData[],
   { transaction, emitAfterCommit }: PolicyMutation,
-  options: CreateRolesOptions = {},
+  options: Pick<CreateRolesOptions, 'all'> = {},
 ): Promise<GuardRoleModel[]> {
   if (!roles.length) return [];
   const results = new Map<string, RoleCreationResult>();
@@ -494,12 +521,11 @@ export async function createRoles(
     .filter((result) => result.created)
     .map(({ role }) => role);
   if (created.length) emitAfterCommit('onRolesCreated', created);
-  const result = options.all ? matches.map(({ role }) => role) : created;
-  return options.json ? result.map((role) => role.toJSON()) : result;
+  return options.all ? matches.map(({ role }) => role) : created;
 }
 
 export async function lockRoles(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   names: string[],
   transaction: Transaction,
 ): Promise<GuardRoleModel[]> {
@@ -515,7 +541,7 @@ export async function lockRoles(
 }
 
 async function lockRoleInstance(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   role: GuardRoleModel,
   transaction: Transaction,
 ): Promise<GuardRoleModel> {
@@ -534,7 +560,7 @@ async function lockRoleInstance(
 }
 
 async function loadRolePermissions(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   role: GuardRoleModel,
   transaction: Transaction,
 ): Promise<GuardPermissionModel[]> {
@@ -554,7 +580,7 @@ async function loadRolePermissions(
 }
 
 async function linkPermissions(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   role: GuardRoleModel,
   permissions: GuardPermissionModel[],
   transaction: Transaction,

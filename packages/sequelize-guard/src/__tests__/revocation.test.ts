@@ -23,20 +23,20 @@ describe('Authorization after revocation', () => {
     guard.options.userCacheTtl = 0;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
+    await user.assignRole('reader');
     expect(await guard.getUserRoles(user)).toHaveLength(1);
-    expect(await user.can!('read document')).toBe(true);
-    expect(await user.isA!('reader')).toBe(true);
+    expect(await user.can('read document')).toBe(true);
+    expect(await user.isA('reader')).toBe(true);
 
-    await user.rmAssignedRoles!(['reader']);
+    await user.rmAssignedRoles(['reader']);
 
-    expect(await user.getRoles!()).toEqual([]);
-    expect(await user.can!('read document')).toBe(false);
-    expect(await user.cant!('read document')).toBe(true);
-    expect(await user.isA!('reader')).toBe(false);
-    expect(await user.isAn!('reader')).toBe(false);
-    expect(await user.isAnyOf!(['reader'])).toBe(false);
-    expect(await user.isAllOf!(['reader'])).toBe(false);
+    expect(await user.getRoles()).toEqual([]);
+    expect(await user.can('read document')).toBe(false);
+    expect(await user.cant('read document')).toBe(true);
+    expect(await user.isA('reader')).toBe(false);
+    expect(await user.isAn('reader')).toBe(false);
+    expect(await user.isAnyOf(['reader'])).toBe(false);
+    expect(await user.isAllOf(['reader'])).toBe(false);
     expect(await guard.getUserRoles(user)).toEqual([]);
   });
 
@@ -44,32 +44,32 @@ describe('Authorization after revocation', () => {
     const { guard } = context;
     const user = await guard.makeUser();
     expect(await guard.getUserRoles(user)).toEqual([]);
-    expect(await user.isA!('reader')).toBe(false);
-    await user.assignRole!('reader');
-    expect(await user.isA!('reader')).toBe(true);
-    await user.rmAssignedRoles!(['reader']);
+    expect(await user.isA('reader')).toBe(false);
+    await user.assignRole('reader');
+    expect(await user.isA('reader')).toBe(true);
+    await user.rmAssignedRoles(['reader']);
     expect(await guard.getUserRoles(user)).toEqual([]);
-    await user.assignRoles!(['reader', 'editor']);
-    expect(await user.isAllOf!(['reader', 'editor'])).toBe(true);
-    expect(await user.isAllOf!(['reader'])).toBe(true);
-    expect(await user.isAllOf!(['reader', 'missing'])).toBe(false);
-    expect(await user.isAnyOf!([])).toBe(false);
-    expect(await user.isAllOf!([])).toBe(true);
+    await user.assignRoles(['reader', 'editor']);
+    expect(await user.isAllOf(['reader', 'editor'])).toBe(true);
+    expect(await user.isAllOf(['reader'])).toBe(true);
+    expect(await user.isAllOf(['reader', 'missing'])).toBe(false);
+    expect(await user.isAnyOf([])).toBe(false);
+    expect(await user.isAllOf([])).toBe(true);
   });
 
   it('denies a deleted role without throwing on its missing cached permissions', async () => {
     const { guard } = context;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
-    expect(await user.can!('read document')).toBe(true);
-    expect(await user.isA!('reader')).toBe(true);
+    await user.assignRole('reader');
+    expect(await user.can('read document')).toBe(true);
+    expect(await user.isA('reader')).toBe(true);
 
     guard.options.safeGuardDeletes = false;
     expect(await guard.deleteRoles('reader')).toBe(1);
 
-    await expect(user.can!('read document')).resolves.toBe(false);
-    expect(await user.isA!('reader')).toBe(false);
+    await expect(user.can('read document')).resolves.toBe(false);
+    expect(await user.isA('reader')).toBe(false);
   });
 
   it.each([true, false])(
@@ -79,7 +79,7 @@ describe('Authorization after revocation', () => {
       await guard.allow('reader', 'read', 'document');
       await guard.allow('reader', 'list', 'document');
       const user = await guard.makeUser();
-      await user.assignRole!('reader');
+      await user.assignRole('reader');
 
       otherConnection = new Sequelize({
         dialect: 'sqlite',
@@ -96,18 +96,18 @@ describe('Authorization after revocation', () => {
       const otherUser = await other
         .models()
         .GuardUser.findByPk(user.id, { rejectOnEmpty: true });
-      expect(await otherUser.can!('read document')).toBe(true);
-      expect(await otherUser.isA!('reader')).toBe(true);
+      expect(await otherUser.can('read document')).toBe(true);
+      expect(await otherUser.isA('reader')).toBe(true);
 
       const removal = await guard.rmPermsFromRole('reader', 'read', 'document');
       expect(removal.permsRemoved).toHaveLength(1);
-      expect(await user.can!('read document')).toBe(false);
-      expect(await otherUser.can!('read document')).toBe(false);
-      expect(await otherUser.can!('list document')).toBe(true);
+      expect(await user.can('read document')).toBe(false);
+      expect(await otherUser.can('read document')).toBe(false);
+      expect(await otherUser.can('list document')).toBe(true);
 
-      await user.rmAssignedRoles!(['reader']);
-      expect(await otherUser.isA!('reader')).toBe(false);
-      expect(await otherUser.can!('list document')).toBe(false);
+      await user.rmAssignedRoles(['reader']);
+      expect(await otherUser.isA('reader')).toBe(false);
+      expect(await otherUser.can('list document')).toBe(false);
     },
   );
 
@@ -125,36 +125,36 @@ describe('Authorization after revocation', () => {
     await other.ready;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
-    expect(await user.can!('read document')).toBe(true);
+    await user.assignRole('reader');
+    expect(await user.can('read document')).toBe(true);
 
     other.options.safeGuardDeletes = false;
     expect(await other.deleteRoles('reader')).toBe(1);
-    expect(await user.can!('read document')).toBe(false);
-    expect(await user.isA!('reader')).toBe(false);
+    expect(await user.can('read document')).toBe(false);
+    expect(await user.isA('reader')).toBe(false);
   });
 
   it('observes policy and membership writes made directly through Sequelize', async () => {
     const { guard } = context;
     const { role } = await guard.allow('reader', '*', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
-    expect(await user.can!('edit document')).toBe(true);
-    expect(await user.isA!('reader')).toBe(true);
+    await user.assignRole('reader');
+    expect(await user.can('edit document')).toBe(true);
+    expect(await user.isA('reader')).toBe(true);
 
     await guard
       .models()
       .RolePermission.destroy({ where: { role_id: role.id } });
-    expect(await user.can!('edit document')).toBe(false);
+    expect(await user.can('edit document')).toBe(false);
     await guard.models().RoleUser.destroy({ where: { user_id: user.id } });
-    expect(await user.isA!('reader')).toBe(false);
+    expect(await user.isA('reader')).toBe(false);
   });
 
   it('does not reuse a membership read that finishes after revocation', async () => {
     const { guard } = context;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
+    await user.assignRole('reader');
     const readStarted = Promise.withResolvers<void>();
     const releaseRead = Promise.withResolvers<void>();
     const query = guard.sequelize.query.bind(guard.sequelize);
@@ -170,38 +170,38 @@ describe('Authorization after revocation', () => {
     const earlierRead = guard.getUserRoles(user);
     await readStarted.promise;
     try {
-      await user.rmAssignedRoles!(['reader']);
-      expect(await user.can!('read document')).toBe(false);
+      await user.rmAssignedRoles(['reader']);
+      expect(await user.can('read document')).toBe(false);
     } finally {
       releaseRead.resolve();
       await earlierRead;
     }
 
-    expect(await user.can!('read document')).toBe(false);
-    expect(await user.isA!('reader')).toBe(false);
+    expect(await user.can('read document')).toBe(false);
+    expect(await user.isA('reader')).toBe(false);
   });
 
   it('rejects database failures instead of falling back to a warmed permission', async () => {
     const { guard } = context;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
-    expect(await user.can!('read document')).toBe(true);
-    expect(await user.isA!('reader')).toBe(true);
+    await user.assignRole('reader');
+    expect(await user.can('read document')).toBe(true);
+    expect(await user.isA('reader')).toBe(true);
     const error = new Error('authorization database unavailable');
     vi.spyOn(guard.sequelize, 'query').mockRejectedValue(error);
 
-    await expect(user.can!('read document')).rejects.toThrow(error);
-    await expect(user.cant!('read document')).rejects.toThrow(error);
-    await expect(user.isA!('reader')).rejects.toThrow(error);
+    await expect(user.can('read document')).rejects.toThrow(error);
+    await expect(user.cant('read document')).rejects.toThrow(error);
+    await expect(user.isA('reader')).rejects.toThrow(error);
   });
 
   it('preserves a revocation racing an earlier grant on another connection', async () => {
     const { guard } = context;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
-    expect(await user.can!('read document')).toBe(true);
+    await user.assignRole('reader');
+    expect(await user.can('read document')).toBe(true);
     const grantStarted = Promise.withResolvers<void>();
     const releaseGrant = Promise.withResolvers<void>();
     guard.models().RolePermission.beforeBulkCreate(async () => {
@@ -237,23 +237,23 @@ describe('Authorization after revocation', () => {
     const removal = await pendingRemoval;
     expect(removal.permsRemoved).toHaveLength(1);
     await earlierGrant;
-    expect(await user.can!('read document')).toBe(false);
-    expect(await user.can!('edit document')).toBe(true);
+    expect(await user.can('read document')).toBe(false);
+    expect(await user.can('edit document')).toBe(true);
   });
 
   it('routes authorization reads to the writer to avoid replica lag', async () => {
     const { guard } = context;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
+    await user.assignRole('reader');
     const query = vi.spyOn(guard.sequelize, 'query');
 
-    expect(await user.can!('read document')).toBe(true);
+    expect(await user.can('read document')).toBe(true);
     expect(query).toHaveBeenLastCalledWith(
       expect.stringContaining('WITH RECURSIVE'),
       expect.objectContaining({ useMaster: true, transaction: null }),
     );
-    expect(await user.isA!('reader')).toBe(true);
+    expect(await user.isA('reader')).toBe(true);
     expect(query).toHaveBeenLastCalledWith(
       expect.stringContaining('SELECT policy_role.*'),
       expect.objectContaining({ useMaster: true, transaction: null }),
@@ -264,23 +264,23 @@ describe('Authorization after revocation', () => {
     const { guard } = context;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
+    await user.assignRole('reader');
     const model = guard.models().GuardRole;
     const findAll = model.findAll.bind(model);
     vi.spyOn(model, 'findAll').mockImplementation((options) =>
       options?.useMaster ? findAll(options) : Promise.resolve([]),
     );
 
-    await user.rmAssignedRoles!(['reader']);
-    expect(await user.isA!('reader')).toBe(false);
-    expect(await user.can!('read document')).toBe(false);
+    await user.rmAssignedRoles(['reader']);
+    expect(await user.isA('reader')).toBe(false);
+    expect(await user.can('read document')).toBe(false);
   });
 
   it('reads permission revocation targets from the writer', async () => {
     const { guard } = context;
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
-    await user.assignRole!('reader');
+    await user.assignRole('reader');
     const { GuardRole, GuardPermission } = guard.models();
     const findRoles = GuardRole.findAll.bind(GuardRole);
     const findPermissions = GuardPermission.findAll.bind(GuardPermission);
@@ -293,6 +293,6 @@ describe('Authorization after revocation', () => {
 
     const removed = await guard.rmPermsFromRole('reader', 'read', 'document');
     expect(removed.permsRemoved).toHaveLength(1);
-    expect(await user.can!('read document')).toBe(false);
+    expect(await user.can('read document')).toBe(false);
   });
 });

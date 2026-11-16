@@ -166,7 +166,7 @@ describe('Control and Guard Setup', () => {
     it('should assign role to user', async () => {
       const user = await context.guard.makeUser();
       const updatedUser = await context.guard.assignRole(user, 'superadmin');
-      expect((await updatedUser.getRoles!()).map((role) => role.name)).toEqual([
+      expect((await updatedUser.getRoles()).map((role) => role.name)).toEqual([
         'superadmin',
       ]);
     });
@@ -174,7 +174,7 @@ describe('Control and Guard Setup', () => {
     it('should assign multiple roles to user', async () => {
       const user = await context.guard.makeUser();
       await context.guard.assignRoles(user, ['superadmin', 'admin', 'user']);
-      expect(await user.getRoles!()).toHaveLength(3);
+      expect(await user.getRoles()).toHaveLength(3);
     });
 
     it('should assign roles to multiple users', async () => {
@@ -182,17 +182,17 @@ describe('Control and Guard Setup', () => {
       const reader = await context.guard.makeUser();
       await context.guard.assignRole(analyst, 'analyst');
       await context.guard.assignRole(reader, 'user');
-      expect(await analyst.isA!('analyst')).toBe(true);
-      expect(await reader.isA!('user')).toBe(true);
+      expect(await analyst.isA('analyst')).toBe(true);
+      expect(await reader.isA('user')).toBe(true);
     });
 
     it('should remove assigned roles from user', async () => {
       const user = await context.guard.makeUser();
       await context.guard.assignRoles(user, ['superadmin', 'admin', 'user']);
-      expect(await user.isA!('superadmin')).toBe(true);
+      expect(await user.isA('superadmin')).toBe(true);
       await context.guard.rmAssignedRoles(user, ['superadmin']);
-      expect(await user.getRoles!()).toHaveLength(2);
-      expect(await user.isA!('superadmin')).toBe(false);
+      expect(await user.getRoles()).toHaveLength(2);
+      expect(await user.isA('superadmin')).toBe(false);
     });
   });
 });

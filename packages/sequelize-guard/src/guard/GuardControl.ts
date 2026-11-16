@@ -1,4 +1,4 @@
-import type { SequelizeGuard } from '../SequelizeGuard';
+import type { SequelizeGuardInstance } from '../SequelizeGuard';
 import type { AddPermsToRoleResult, PolicyMutationOptions } from '../types';
 import { canonicalPermissionActions, permissionResources } from './Permissions';
 import { normalizeRoleName } from './Roles';
@@ -15,12 +15,12 @@ import { normalizeRoleName } from './Roles';
  * ```
  */
 export class GuardControl {
-  private guard: SequelizeGuard;
+  private guard: SequelizeGuardInstance;
   _roles: string;
   _actions: string[];
   _resources: string[];
 
-  constructor(guard: SequelizeGuard) {
+  constructor(guard: SequelizeGuardInstance) {
     this.guard = guard;
     this._roles = '';
     this._actions = [];

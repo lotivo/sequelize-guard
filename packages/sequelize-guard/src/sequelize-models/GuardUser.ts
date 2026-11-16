@@ -1,7 +1,11 @@
 import {
+  BelongsToManyAddAssociationMixin,
+  BelongsToManyAddAssociationsMixin,
   BelongsToManyGetAssociationsMixin,
+  BelongsToManyRemoveAssociationsMixin,
   CreationOptional,
   DataTypes,
+  Model,
   ModelAttributes,
   ModelStatic,
   NonAttribute,
@@ -15,60 +19,36 @@ import {
 import { GuardModelInitParams, SequelizeModelClass } from './types/types';
 import { modelOptions } from './utils';
 
-/**
- * GuardUser Model - Can be custom or default
- */
-export interface GuardUserModel extends SequelizeModelClass<GuardUserModel> {
-  id: CreationOptional<number>;
-
-  // Associations
-  Roles?: NonAttribute<GuardRoleModel[]>;
-
-  // Methods added by associations and guard extensions
-  getRoles?: BelongsToManyGetAssociationsMixin<GuardRoleModel>;
-  addRole?: (roleId: number) => Promise<void>;
-  addRoles?: (roleIds: number[]) => Promise<void>;
-  removeRoles?: (roles: GuardRoleModel[]) => Promise<void>;
-
-  // Guard authorization methods (added by extensions)
-  can?: (permission: string) => Promise<boolean>;
-  cant?: (permission: string) => Promise<boolean>;
-  isA?: (role: string) => Promise<boolean>;
-  isAn?: (role: string) => Promise<boolean>;
-  isAllOf?: (roles: string[]) => Promise<boolean>;
-  isAnyOf?: (roles: string[]) => Promise<boolean>;
-
-  /**
-   * Assign single role to user
-   * @param {{string}} role
-   * @returns GuardUserModel
-   */
-  assignRole?: (role: string) => Promise<GuardUserModel>;
-
-  /**
-   * @deprecated Use `getRoles` association method instead
-   */
-  roles?: () => Promise<GuardRoleModel[]>;
-
-  /**
-   * Assign multiple roles to user
-   * @param roles
-   * @returns void
-   */
-  assignRoles?: (roles: string[]) => Promise<void>;
-  /**
-   * Remove assigned roles from user
-   * @param roles
-   * @returns void
-   */
-  rmAssignedRoles?: (roles: string[]) => Promise<void>;
+export interface GuardUserMethods {
+  getRoles: BelongsToManyGetAssociationsMixin<GuardRoleModel>;
+  addRole: BelongsToManyAddAssociationMixin<GuardRoleModel, number>;
+  addRoles: BelongsToManyAddAssociationsMixin<GuardRoleModel, number>;
+  removeRoles: BelongsToManyRemoveAssociationsMixin<GuardRoleModel, number>;
+  can(permission: string): Promise<boolean>;
+  cant(permission: string): Promise<boolean>;
+  isA(role: string): Promise<boolean>;
+  isAn(role: string): Promise<boolean>;
+  isAllOf(roles: string[]): Promise<boolean>;
+  isAnyOf(roles: string[]): Promise<boolean>;
+  assignRole(role: string): Promise<this>;
+  roles(): Promise<GuardRoleModel[]>;
+  assignRoles(roles: string[]): Promise<void>;
+  rmAssignedRoles(roles: string[]): Promise<void>;
 }
 
-export type GuardUserModelStatic = ModelStatic<GuardUserModel>;
+export interface GuardUserModel
+  extends SequelizeModelClass<GuardUserModel>,
+    GuardUserMethods {
+  id: CreationOptional<number>;
+  Roles?: NonAttribute<GuardRoleModel[]>;
+}
+
+export type GuardUserModelStatic<TUser extends Model = GuardUserModel> =
+  ModelStatic<TUser & GuardUserMethods>;
 
 export const initOrSetupGuardUser = (
   params: GuardModelInitParams,
-): GuardUserModelStatic => {
+): GuardUserModelStatic<Model> => {
   const { sequelize, options } = params;
 
   const modelType = BaseModelType.Users;
@@ -78,7 +58,7 @@ export const initOrSetupGuardUser = (
 
   // Handle User Model - use custom or create default
   if (options.UserModel) {
-    return options.UserModel as GuardUserModelStatic;
+    return options.UserModel as GuardUserModelStatic<Model>;
   }
 
   const GuardUser = sequelize.define<GuardUserModel>(

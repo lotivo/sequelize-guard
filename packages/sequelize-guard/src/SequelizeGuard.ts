@@ -1,4 +1,4 @@
-import type { Model, Sequelize, SyncOptions } from 'sequelize';
+import type { Model, ModelStatic, Sequelize, SyncOptions } from 'sequelize';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
 import {
@@ -8,9 +8,11 @@ import {
 import migration from './migrations/guard-migrations';
 import type {
   GuardModel,
+  GuardPermissionData,
   GuardPermissionModel,
   GuardRoleData,
   GuardRoleModel,
+  GuardUserMethods,
   GuardUserModel,
 } from './sequelize-models';
 import { GuardModels, initGuardModels } from './sequelize-models';
@@ -35,6 +37,7 @@ import type {
   CreateRolesOptions,
   FindPermsArgs,
   FindRolesArgs,
+  GuardCreationResult,
   GuardEventCallback,
   PermissionData,
   PolicyMutationOptions,
@@ -66,15 +69,17 @@ import type { GuardUserCache } from './utils/userCache';
  * const canEdit = await user.can('edit blog');
  * ```
  */
-export class SequelizeGuard extends SequelizeGuardBase {
+export class SequelizeGuard<
+  TUser extends Model = GuardUserModel,
+> extends SequelizeGuardBase {
   /** Sequelize instance */
-  public readonly sequelize: SequelizeWithGuard;
+  public readonly sequelize: SequelizeWithGuard<TUser>;
 
   /**
    * @internal
    * Guard models - internal use only
    */
-  public _models!: GuardModels;
+  public _models!: GuardModels<Model>;
 
   /** @internal Transaction lock for hierarchy changes. */
   readonly _roleHierarchy: ReturnType<typeof initRoleHierarchy>;
@@ -102,13 +107,19 @@ export class SequelizeGuard extends SequelizeGuardBase {
    * @param sequelize - A Sequelize instance
    * @param options - Custom configuration options
    */
-  constructor(sequelize: Sequelize, options: GuardOptions = {}) {
+  constructor(
+    sequelize: Sequelize,
+    ...[options]: [options?: GuardOptions<TUser>] &
+      (GuardUserModel extends TUser
+        ? unknown
+        : [options: { UserModel: ModelStatic<TUser> }])
+  ) {
     super(options);
 
     if ('guard' in sequelize) {
       throw new Error('This Sequelize instance already has a guard');
     }
-    this.sequelize = sequelize as SequelizeWithGuard;
+    this.sequelize = sequelize as SequelizeWithGuard<TUser>;
     if ('GuardModels' in sequelize.models) {
       throw new Error('Sequelize model registry already defines "GuardModels"');
     }
@@ -133,8 +144,8 @@ export class SequelizeGuard extends SequelizeGuardBase {
     Object.assign(this._models.GuardUser.prototype, userMethods);
 
     this.sequelize.guard = this;
-    this.sequelize.models.GuardModels = this._models;
-    this.sequelize.models.User ??= this._models.GuardUser;
+    this.sequelize.models.GuardModels = this.models();
+    sequelize.models.User ??= this._models.GuardUser;
 
     this.ready = this.options.sync
       ? this.sync().then(() => undefined)
@@ -230,8 +241,9 @@ export class SequelizeGuard extends SequelizeGuardBase {
    * ```
    * @returns Array of models used in authorization
    */
-  models(): GuardModels {
-    return this._models;
+  models(): GuardModels<TUser> {
+    // The constructor registers the exact supplied model before adding guard methods.
+    return this._models as GuardModels<TUser>;
   }
 
   /**
@@ -250,15 +262,19 @@ export class SequelizeGuard extends SequelizeGuardBase {
   ) => Promise<AddPermsToRoleResult>;
 
   // Permission guard methods
-  declare createPerms: (
+  declare createPerms: <TOptions extends [options?: CreatePermsOptions]>(
     resources: string | string[],
     actions: string | string[],
-    options?: CreatePermsOptions,
-  ) => Promise<GuardPermissionModel[]>;
-  declare createPermsBulk: (
+    ...options: TOptions
+  ) => Promise<
+    GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
+  >;
+  declare createPermsBulk: <TOptions extends [options?: CreatePermsOptions]>(
     permissions: BulkPermissionInput[],
-    options?: CreatePermsOptions,
-  ) => Promise<GuardPermissionModel[]>;
+    ...options: TOptions
+  ) => Promise<
+    GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
+  >;
   declare findPerms: (args?: FindPermsArgs) => Promise<GuardPermissionModel[]>;
   declare onPermsCreated: (
     cb: GuardEventCallback<GuardPermissionModel[]>,
@@ -280,10 +296,17 @@ export class SequelizeGuard extends SequelizeGuardBase {
     role: RoleCreationParam,
     options?: PolicyMutationOptions,
   ) => Promise<RoleCreationResult>;
-  declare makeRoles: (
+  declare makeRoles: <TOptions extends [options?: CreateRolesOptions]>(
     roles: RoleCreationParam[],
-    options?: CreateRolesOptions,
-  ) => Promise<GuardRoleModel[]>;
+    ...options: TOptions
+  ) => Promise<
+    GuardCreationResult<
+      TOptions[0],
+      GuardRoleModel,
+      GuardRoleData,
+      GuardRoleData
+    >
+  >;
   declare deleteRoles: (
     roles: string | RoleCreationParam[] | GuardRoleModel[],
     options?: PolicyMutationOptions,
@@ -318,7 +341,7 @@ export class SequelizeGuard extends SequelizeGuardBase {
   // User guard methods
   declare makeUser: (
     options?: PolicyMutationOptions,
-  ) => Promise<GuardUserModel>;
+  ) => Promise<TUser & GuardUserMethods>;
   declare assignRole: <TUser extends Model>(
     user: TUser,
     role: string,
@@ -380,4 +403,6 @@ export class SequelizeGuard extends SequelizeGuardBase {
   declare getUserCache: () => GuardUserCache;
 }
 
-export type SequelizeGuardType = typeof SequelizeGuard;
+export type SequelizeGuardType = { prototype: SequelizeGuardInstance };
+
+export type SequelizeGuardInstance = SequelizeGuard<Model>;

@@ -4,7 +4,10 @@ import {
   readMemberPermissions,
   readMemberRoles,
 } from '../authorize/roleMembershipQuery';
-import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
+import type {
+  SequelizeGuardInstance,
+  SequelizeGuardType,
+} from '../SequelizeGuard';
 import type { PolicyMutationOptions } from '../types';
 import { assignMemberships, removeMemberships } from './RoleMemberships';
 
@@ -56,7 +59,7 @@ export function extendWithRoleHolders(
   };
 }
 
-function holderMemberships(guard: SequelizeGuard, holder: Model) {
+function holderMemberships(guard: SequelizeGuardInstance, holder: Model) {
   const membership = guard._roleHolders.get(holder?.constructor);
   if (!membership)
     throw new TypeError('Expected a registered role holder model');

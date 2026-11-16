@@ -1,8 +1,11 @@
 import {
+  BelongsToManyAddAssociationsMixin,
   BelongsToManyGetAssociationsMixin,
+  BelongsToManyRemoveAssociationsMixin,
   CreationOptional,
   DataTypes,
   ForeignKey,
+  Model,
   ModelAttributes,
   ModelAttributeColumnReferencesOptions,
   ModelStatic,
@@ -11,7 +14,7 @@ import {
 import { guardIndexes } from './guard-indexes';
 import { guardTable } from './guard-tables';
 import { GuardPermissionModel } from './GuardPermission';
-import { GuardUserModel } from './GuardUser';
+import type { GuardUserMethods } from './GuardUser';
 import {
   BaseModelType,
   getTableName,
@@ -23,8 +26,11 @@ import { modelOptions } from './utils';
 export type GuardRoleData = {
   id: CreationOptional<number>;
   name: string;
-  description?: string;
+  description?: string | null;
   parent_id?: ForeignKey<GuardRoleModel['id']> | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
 };
 
 /**
@@ -35,23 +41,19 @@ export interface GuardRoleModel
     GuardRoleData {
   // Associations
   Permissions?: NonAttribute<GuardPermissionModel[]>;
-  Users?: NonAttribute<GuardUserModel[]>;
+  Users?: NonAttribute<(Model & GuardUserMethods)[]>;
   ChildRoles?: NonAttribute<GuardRoleModel[]>;
-  Parent?: NonAttribute<GuardRoleModel>;
+  Parent?: NonAttribute<GuardRoleModel | null>;
 
-  // TODO: Cleanup the association types
-  // Methods added by associations
-  getPermissions?: BelongsToManyGetAssociationsMixin<GuardPermissionModel>;
-  addPermissions?: (
-    permissions: (GuardPermissionModel | number)[],
-  ) => Promise<void>;
-  removePermissions?: (
-    permissions: (GuardPermissionModel | number)[],
-  ) => Promise<void>;
-  getRoles?: () => Promise<GuardRoleModel[]>;
-  addRole?: (roleId: number) => Promise<void>;
-  addRoles?: (roleIds: number[]) => Promise<void>;
-  removeRoles?: (roles: GuardRoleModel[]) => Promise<void>;
+  getPermissions: BelongsToManyGetAssociationsMixin<GuardPermissionModel>;
+  addPermissions: BelongsToManyAddAssociationsMixin<
+    GuardPermissionModel,
+    number
+  >;
+  removePermissions: BelongsToManyRemoveAssociationsMixin<
+    GuardPermissionModel,
+    number
+  >;
 }
 
 export type GuardRoleModelStatic = ModelStatic<GuardRoleModel>;

@@ -3,7 +3,7 @@ import type { Model, ModelStatic } from 'sequelize';
 /**
  * Configuration options for SequelizeGuard
  */
-export interface GuardOptions {
+export interface GuardOptions<TUser extends Model = Model> {
   /**
    * Table suffixes. Each name is prefixed with `prefix`. A supplied UserModel
    * determines its own table.
@@ -31,7 +31,7 @@ export interface GuardOptions {
    * Primary key for guard tables
    * @default 'id'
    */
-  primaryKey?: string;
+  primaryKey?: 'id';
 
   /**
    * Add timestamps to tables
@@ -62,7 +62,7 @@ export interface GuardOptions {
    * Model used for User (pass model, not string name)
    * @default null
    */
-  UserModel?: ModelStatic<Model> | null;
+  UserModel?: ModelStatic<TUser> | null;
 
   /**
    * Application model classes keyed by a stable role holder type.

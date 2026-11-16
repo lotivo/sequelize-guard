@@ -89,9 +89,7 @@ it('reads authorization and revocation targets from the writer despite a stale p
       { timeout: 10_000 },
     )
     .toEqual([{ synced: true }]);
-  expect((await user.getRoles!()).map(({ name }) => name)).toEqual([
-    'mirrored',
-  ]);
+  expect((await user.getRoles()).map(({ name }) => name)).toEqual(['mirrored']);
 
   await standby.query('SELECT pg_wal_replay_pause()', read);
   onTestFinished(async () => {
@@ -106,9 +104,7 @@ it('reads authorization and revocation targets from the writer despite a stale p
     .toEqual([{ state: 'paused' }]);
 
   await grant('writer-only', 'edit');
-  expect((await user.getRoles!()).map(({ name }) => name)).toEqual([
-    'mirrored',
-  ]);
+  expect((await user.getRoles()).map(({ name }) => name)).toEqual(['mirrored']);
   expect(await guard.userCan(user, 'edit article')).toBe(true);
 
   const old = await sequelize.transaction({
@@ -125,7 +121,7 @@ it('reads authorization and revocation targets from the writer despite a stale p
     expect(
       await RoleUser.count({ useMaster: true, where: { user_id: user.id } }),
     ).toBe(0);
-    expect((await user.getRoles!()).map(({ name }) => name)).toEqual([
+    expect((await user.getRoles()).map(({ name }) => name)).toEqual([
       'mirrored',
     ]);
     expect(

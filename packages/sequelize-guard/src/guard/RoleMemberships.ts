@@ -1,7 +1,7 @@
 import { Op } from 'sequelize';
 import type { Model, ModelStatic, Transaction } from 'sequelize';
 import type { GuardRoleUserModelStatic } from '../sequelize-models';
-import type { SequelizeGuard } from '../SequelizeGuard';
+import type { SequelizeGuardInstance } from '../SequelizeGuard';
 import type { PolicyMutationOptions, RoleAssignmentResult } from '../types';
 import { mutatePolicy, policyBatchSize } from './policyMutation';
 import { lockRoleHierarchy } from './RoleHierarchy';
@@ -28,7 +28,7 @@ export function memberId(model: ModelStatic<Model>, member: Model): MemberId {
 }
 
 export async function assignMemberships(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   { members, links }: RoleMemberships,
   requests: readonly { member: Model; roles: readonly string[] }[],
   options: PolicyMutationOptions,
@@ -89,7 +89,7 @@ export async function assignMemberships(
 }
 
 export async function removeMemberships(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   { members, links }: RoleMemberships,
   member: Model,
   roles: readonly string[],

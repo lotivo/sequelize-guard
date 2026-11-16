@@ -5,7 +5,7 @@ import type { RoleMemberships } from '../guard/RoleMemberships';
 import { normalizeRoleName } from '../guard/Roles';
 import type { GuardRoleData } from '../sequelize-models';
 import { quoteGuardTable } from '../sequelize-models/guard-tables';
-import type { SequelizeGuard } from '../SequelizeGuard';
+import type { SequelizeGuardInstance } from '../SequelizeGuard';
 
 interface ActiveTable {
   table: string;
@@ -14,7 +14,7 @@ interface ActiveTable {
 }
 
 function activeTable(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   model: ModelStatic<Model>,
   alias: string,
 ): ActiveTable {
@@ -52,7 +52,7 @@ function activeTable(
 }
 
 function directMemberships(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   { members, links }: RoleMemberships,
   member: Model,
 ) {
@@ -73,7 +73,7 @@ function directMemberships(
 }
 
 export async function readMemberRoles(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   memberships: RoleMemberships,
   member: Model,
 ): Promise<GuardRoleData[]> {
@@ -93,7 +93,7 @@ export async function readMemberRoles(
 }
 
 export async function readMemberPermissions(
-  guard: SequelizeGuard,
+  guard: SequelizeGuardInstance,
   memberships: RoleMemberships,
   member: Model,
 ) {
