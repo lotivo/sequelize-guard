@@ -7,7 +7,11 @@ import {
 } from 'sequelize';
 import { physicalTableKey } from '../sequelize-models/guard-tables';
 import { normalizeMigrationColumn } from './guard-table-ddl';
-import { migrationForeignKeys, migrationIndexes } from './guard-table-metadata';
+import {
+  findExternalMySqlReference,
+  migrationForeignKeys,
+  migrationIndexes,
+} from './guard-table-metadata';
 
 interface GuardTableDefinition {
   table: TableName;
@@ -164,6 +168,18 @@ export async function verifyMigrationTables(
     if (dependency) {
       throw new Error(
         `Cannot roll back Guard while application table "${dependency.source}" references "${dependency.target}".`,
+      );
+    }
+  }
+  if (existing.length && (dialect === 'mysql' || dialect === 'mariadb')) {
+    const dependency = await findExternalMySqlReference(
+      sequelize,
+      existing,
+      options,
+    );
+    if (dependency) {
+      throw new Error(
+        `Cannot roll back Guard while application table "${dependency.sourceSchema}.${dependency.sourceTable}" references "${dependency.targetTable}".`,
       );
     }
   }
