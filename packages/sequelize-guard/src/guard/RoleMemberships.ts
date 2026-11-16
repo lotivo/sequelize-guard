@@ -3,7 +3,7 @@ import type { Model, ModelStatic, Transaction } from 'sequelize';
 import type { GuardRoleUserModelStatic } from '../sequelize-models';
 import type { SequelizeGuardInstance } from '../SequelizeGuard';
 import type { PolicyMutationOptions, RoleAssignmentResult } from '../types';
-import { mutatePolicy, policyBatchSize } from './policyMutation';
+import { canArchiveLinks, mutatePolicy, policyBatchSize } from './policyMutation';
 import { lockRoleHierarchy } from './RoleHierarchy';
 import { createRoles, lockRoles, normalizeRoleName } from './Roles';
 
@@ -73,6 +73,7 @@ export async function assignMemberships(
     for (const chunk of batches(requested)) {
       const previous = await links.findAll({
         where: { [Op.or]: chunk },
+        paranoid: false,
         transaction,
         lock: true,
         useMaster: true,
@@ -81,8 +82,15 @@ export async function assignMemberships(
       const missing = chunk.filter(
         (link) => !existing.has(membershipKey(link)),
       );
+      const archived =
+        canArchiveLinks(links)
+          ? previous.filter((link) => link.isSoftDeleted()).map(({ id }) => id)
+          : [];
+      if (archived.length) {
+        await links.restore({ where: { id: archived }, transaction });
+      }
       if (missing.length) await links.bulkCreate(missing, { transaction });
-      assigned += missing.length;
+      assigned += archived.length + missing.length;
     }
     return { assigned };
   });

@@ -32,6 +32,7 @@ import {
   permissionInputs,
 } from './Permissions';
 import {
+  canArchiveLinks,
   findOrInsertPolicyRecord,
   mutatePolicy,
   policyBatchSize,
@@ -280,7 +281,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     const roleData = makeRoleData(role);
     return mutatePolicy(this, options, async (mutation) => {
       const { transaction, emitAfterCommit } = mutation;
-      if (typeof role === 'string') await lockRoleHierarchy(this, transaction);
+      await lockRoleHierarchy(this, transaction);
       const { role: target, created } =
         typeof role === 'string'
           ? await createRole(this, roleData, transaction)
@@ -325,6 +326,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
 
     return mutatePolicy(this, options, async (mutation) => {
       const { transaction, emitAfterCommit } = mutation;
+      await lockRoleHierarchy(this, transaction);
       const [target] = await lockRoles(this, [name], transaction);
       if (!target) return { role: null, permissions: [], permsRemoved: [] };
 
@@ -585,12 +587,25 @@ async function linkPermissions(
   permissions: GuardPermissionModel[],
   transaction: Transaction,
 ): Promise<void> {
-  if (permissions.length) {
-    await guard._models.RolePermission.bulkCreate(
-      permissions.map((permission) => ({
-        role_id: role.id,
-        permission_id: permission.id,
-      })),
+  if (!permissions.length) return;
+  const links = guard._models.RolePermission;
+  let missing = permissions;
+  if (canArchiveLinks(links)) {
+    const previous = await links.findAll({
+      where: { role_id: role.id, permission_id: permissions.map(({ id }) => id) },
+      paranoid: false,
+      transaction,
+      useMaster: true,
+      lock: true,
+    });
+    const existing = new Set(previous.map(({ permission_id }) => permission_id));
+    missing = permissions.filter(({ id }) => !existing.has(id));
+    const archived = previous.filter((link) => link.isSoftDeleted()).map(({ id }) => id);
+    if (archived.length) await links.restore({ where: { id: archived }, transaction });
+  }
+  if (missing.length) {
+    await links.bulkCreate(
+      missing.map((permission) => ({ role_id: role.id, permission_id: permission.id })),
       { transaction },
     );
   }

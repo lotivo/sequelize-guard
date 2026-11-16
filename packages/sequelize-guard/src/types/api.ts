@@ -50,7 +50,7 @@ export interface UserRoleAssignment {
 }
 
 export interface RoleAssignmentResult {
-  /** Number of distinct assignments added by this operation. */
+  /** Number of distinct assignments added or reactivated by this operation. */
   assigned: number;
 }
 
