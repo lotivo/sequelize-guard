@@ -87,7 +87,10 @@ try {
               /\\([<>])/g,
               '$1',
             );
-      const frontmatter = `---\ntitle: ${JSON.stringify(title)}\n---\n\n`;
+      const metadata = name === 'README'
+        ? 'description: Complete API reference for sequelize-guard\nicon: ShieldCheck\n'
+        : '';
+      const frontmatter = `---\ntitle: ${JSON.stringify(title)}\n${metadata}---\n\n`;
       const provenance =
         name === 'README'
           ? `Source revision [${revision}](https://github.com/lotivo/sequelize-guard/tree/${revision}). Generated from this checkout; local uncommitted changes, if any, are included.\n\n`

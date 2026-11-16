@@ -1,5 +1,7 @@
 ---
 title: Users and registered holders
+description: Learn how to manage users in Sequelize Guard.
+icon: User
 ---
 
 Supply an initialized Sequelize model on the same connection using `UserModel`, with one supported primary key (integer, string or UUID). `userPk` names its primary-key attribute or physical column. Composite/unsupported identities are rejected before DDL. Constructor inference preserves mandatory application fields: use `guard.models().GuardUser.create(values)`; `makeUser()` supplies no required fields. See the [strict executable custom-user recipe](https://github.com/lotivo/sequelize-guard/blob/master/examples/custom-user.ts).

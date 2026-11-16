@@ -13,6 +13,8 @@ Run commands from the repository root. This is a Yarn 1.22.22/Nx monorepo; use N
 
 Keep public implementation, declarations, regression/packed-consumer checks, canonical examples and documentation aligned in the same change. Changes to shipped guidance/examples require deliberate archive-allowlist updates. Never hand-edit `build/`, coverage output, `.source/`, `.next/`, or generated API pages under `content/docs/api/`. Regenerate API docs with `corepack yarn docs:generate` from the intended release revision.
 
+Generated API pages are committed by the automated post-release documentation PR. CI regenerates them for validation; do not include that generated output in feature PRs.
+
 ## Authored content
 
 Preserve the README's human-facing structure, voice and attribution, and the homepage's design. Make only the factual or API corrections a change requires. Historical blog posts and migration reports are records, not current tutorials: do not rewrite them. Put new upgrade guidance on a separate page. Keep general documentation evergreen; release numbers belong in package metadata, changelogs and version-specific upgrade instructions.
@@ -21,6 +23,7 @@ Preserve the README's human-facing structure, voice and attribution, and the hom
 
 ```sh
 NODE_ENV=production NX_DAEMON=false NX_NO_CLOUD=true NX_ISOLATE_PLUGINS=false corepack yarn nx run-many -p sequelize-guard -t lint,typecheck,build,test:coverage,test:package --parallel=1 --skip-nx-cache --output-style=static
+corepack yarn docs:generate
 node --test scripts/test-ai-guidance.mjs scripts/release-metadata.test.mjs
 corepack yarn workspace sequelize-guard-docs lint
 corepack yarn workspace sequelize-guard-docs build

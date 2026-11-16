@@ -1,5 +1,7 @@
 ---
 title: Permissions
+description: Learn how to manage permissions in Sequelize Guard.
+icon: BadgeCheck
 ---
 
 Use exact action/resource tokens, for example `await user.can('read article')`. Checks accept exactly two whitespace-separated tokens (outer whitespace is trimmed), or `'*'` for `'* *'`. Tokens are case-sensitive, nonempty and contain no whitespace, NUL, lone surrogate or embedded `*`; wildcard `*` must be the entire token. Thus `read article extra`, `read:article` and `r* article` deny. Creation rejects malformed inputs; malformed stored grants are ignored. Equivalent action sets are deduplicated/canonicalized. Do not reuse a supplied permission name for an incompatible definition.

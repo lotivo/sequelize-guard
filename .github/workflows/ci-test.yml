@@ -43,6 +43,9 @@ jobs:
 
       - run: corepack yarn install --frozen-lockfile
 
+      - name: Generate API reference for validation
+        run: corepack yarn docs:generate
+
       - name: Check workflow metadata
         run: |
           node --test scripts/release-metadata.test.mjs scripts/test-ai-guidance.mjs

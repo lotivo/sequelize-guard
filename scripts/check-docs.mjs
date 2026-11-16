@@ -37,6 +37,12 @@ const pages = [
 ];
 for (const file of pages) {
   const text = readFileSync(file, 'utf8');
+  if (file.startsWith(join(docs, 'guide') + '/') || file === join(docs, 'api/index.mdx')) {
+    const frontmatter = text.split('---', 3)[1] || '';
+    for (const field of ['description', 'icon']) {
+      assert.match(frontmatter, new RegExp(`^${field}:\\s*\\S`, 'm'), `missing UI ${field} in ${file}`);
+    }
+  }
   assert.doesNotMatch(
     text,
     /guard\.(?:users|roles|permissions|authorize|authorization|cache)\./,

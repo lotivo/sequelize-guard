@@ -1,5 +1,7 @@
 ---
 title: Roles and inheritance
+description: Learn how to manage roles in Sequelize Guard.
+icon: ShieldUser
 ---
 
 Roles have one nullable parent. Create both roles first with `makeRole` or `makeRoles`; `setRoleParent` requires existing roles. `await guard.setRoleParent('editor', 'reader')` makes editor inherit reader permissions; detach with null. Children inherit ancestor grants; role checks and role-list methods report direct memberships only. Cycles, self-links, orphan graphs and invalid stored lineage are rejected/deny access. Hierarchy is allow-only, with no deny precedence. Guard serializes graph mutations; coordinate policy changes through its APIs.
