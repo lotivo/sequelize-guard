@@ -5,8 +5,8 @@ import { roleHolderTables } from '../sequelize-models/guard-role-holders';
 import {
   guardTable,
   ownedTypes,
-  physicalTableKey,
   quoteGuardTable,
+  storageTableKey,
 } from '../sequelize-models/guard-tables';
 import { getRoleHierarchySchema } from '../sequelize-models/GuardRoleHierarchy';
 import { BaseModelType } from '../sequelize-models/types/ModelType';
@@ -34,7 +34,7 @@ export function guardOwnership(
     .map(
       (type): TableEntry => [
         type,
-        physicalTableKey(sequelize, guardTable(sequelize, options, type)),
+        storageTableKey(sequelize, guardTable(sequelize, options, type)),
       ],
     )
     .sort(compareTypes);
@@ -44,7 +44,7 @@ export function guardOwnership(
     .update(
       JSON.stringify([
         base,
-        quoteGuardTable(sequelize.getQueryInterface(), user.table),
+        storageTableKey(sequelize, user.table),
         user.column,
         user.type.toString({}),
       ]),
@@ -54,7 +54,7 @@ export function guardOwnership(
     .map(
       ({ type, table }): TableEntry => [
         type,
-        physicalTableKey(sequelize, table),
+        storageTableKey(sequelize, table),
       ],
     )
     .sort(compareTypes);

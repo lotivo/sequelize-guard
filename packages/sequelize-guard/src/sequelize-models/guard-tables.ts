@@ -78,6 +78,19 @@ export function quoteGuardTable(
     : quote([table.schema, table.tableName].join(table.delimiter || '.'));
 }
 
+export function storageTableKey(
+  sequelize: Sequelize,
+  table: TableName,
+): string {
+  if (sequelize.getDialect() === 'postgres')
+    return physicalTableKey(sequelize, table);
+  const identifier = quoteGuardTable(sequelize.getQueryInterface(), table);
+  // SQLite folds ASCII only. MySQL can distinguish case variants.
+  return sequelize.getDialect() === 'sqlite'
+    ? identifier.replace(/[A-Z]/g, (letter) => letter.toLowerCase())
+    : identifier;
+}
+
 export function validateGuardTables(
   sequelize: Sequelize,
   options: GuardInternalOptions,

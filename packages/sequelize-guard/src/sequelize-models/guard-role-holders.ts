@@ -12,8 +12,8 @@ import { guardIndexes } from './guard-indexes';
 import {
   guardTable,
   physicalTableKey,
-  quoteGuardTable,
   scopedGuardTable,
+  storageTableKey,
   validateGuardTables,
 } from './guard-tables';
 import { getGuardRoleUserSchema } from './GuardRoleUser';
@@ -40,7 +40,7 @@ export function roleHolderTables(
       const key = modelKey(sequelize, model, `Role holder "${type}"`);
       // Reusing a registration name for another model must never expose the first model's grants.
       const binding = JSON.stringify([
-        quoteGuardTable(sequelize.getQueryInterface(), key.table),
+        storageTableKey(sequelize, key.table),
         key.column,
         key.type.toString({}),
       ]);
