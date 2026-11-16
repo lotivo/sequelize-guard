@@ -1,4 +1,3 @@
-import lodash from 'lodash';
 import type {
   ModelAttributes,
   QueryInterface,
@@ -6,7 +5,7 @@ import type {
   Sequelize,
   TableName,
 } from 'sequelize';
-import { defaultOptions } from '../constants';
+import { resolveGuardOptions } from '../core/guard-options';
 import {
   AssociationModelType,
   BaseModelType,
@@ -66,13 +65,6 @@ function migrationTables(
   return migrationOrder[order]
     .filter((type) => type !== BaseModelType.Users || !options.UserModel)
     .map((type) => ({ type, table: guardTable(sequelize, options, type) }));
-}
-
-function resolveOptions(options: GuardOptions): GuardInternalOptions {
-  return {
-    ...lodash.merge({}, defaultOptions, options),
-    roleHolders: { ...options.roleHolders },
-  };
 }
 
 function holderTables(sequelize: Sequelize, options: GuardInternalOptions) {
@@ -246,7 +238,7 @@ async function up(
   options: GuardOptions = {},
 ): Promise<void> {
   const { sequelize } = queryInterface;
-  const resolved = resolveOptions(options);
+  const resolved = resolveGuardOptions(options);
   await withMigration(sequelize, queryInterface, (queryOptions, created) =>
     createTables(queryInterface, sequelize, resolved, queryOptions, created),
   );
@@ -259,7 +251,7 @@ async function down(
   options: GuardOptions = {},
 ): Promise<void> {
   const { sequelize } = queryInterface;
-  const resolved = resolveOptions(options);
+  const resolved = resolveGuardOptions(options);
   const columns = guardColumns(sequelize, resolved);
   const tables = [
     ...holderTables(sequelize, resolved).map(
@@ -301,14 +293,22 @@ async function down(
 async function upgrade(
   queryInterface: QueryInterface,
   _Sequelize: Sequelize | typeof Sequelize,
-  { from, to, inheritExistingParents = false }: GuardUpgradeOptions,
+  { from, to, inheritExistingParents = false, ...unknown }: GuardUpgradeOptions,
 ): Promise<void> {
+  const unknownName = Object.keys(unknown)[0];
+  if (unknownName)
+    throw new TypeError(`Unknown guard upgrade option "${unknownName}"`);
+  if (typeof inheritExistingParents !== 'boolean') {
+    throw new TypeError(
+      'Guard upgrade inheritExistingParents must be a boolean',
+    );
+  }
   const { sequelize } = queryInterface;
   if (!['sqlite', 'postgres', 'mysql'].includes(sequelize.getDialect())) {
     throw new Error('Guard upgrade supports SQLite, PostgreSQL, and MySQL');
   }
-  const source = resolveOptions(from);
-  const target = resolveOptions(to);
+  const source = resolveGuardOptions(from);
+  const target = resolveGuardOptions(to);
   const sourceHolders = holderTables(sequelize, source);
   const targetHolders = holderTables(sequelize, target);
   const preservedHolders = sourceHolders.map(({ holderType, model }) => {
@@ -390,7 +390,7 @@ async function addRoleHolders(
   options: GuardOptions,
 ): Promise<void> {
   const { sequelize } = queryInterface;
-  const resolved = resolveOptions(options);
+  const resolved = resolveGuardOptions(options);
   const holders = holderTables(sequelize, resolved);
   if (!holders.length) return;
   await withMigration(

@@ -95,12 +95,17 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.getUserRoles = async function (
     user: Model,
   ): Promise<GuardRoleData[]> {
-    return readMemberRoles(
-      this,
-      userMemberships(this),
-      getPolicyUser(this, user),
-    );
+    const roles = await readUserRoles(this, user);
+    return roles.map((role) => role.toJSON<GuardRoleData>());
   };
+}
+
+export function readUserRoles(guard: SequelizeGuardInstance, user: Model) {
+  return readMemberRoles(
+    guard,
+    userMemberships(guard),
+    getPolicyUser(guard, user),
+  );
 }
 
 export function getPolicyUser(

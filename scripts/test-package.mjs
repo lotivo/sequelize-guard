@@ -63,7 +63,9 @@ assert.equal(Guard, SequelizeGuard);
 assert.equal(migration, Guard.migration);
 const sequelize = new Sequelize({ dialect: 'sqlite', storage: ':memory:', logging: false });
 try {
-  const guard = new Guard(sequelize, { sync: false });
+  const Team = sequelize.define('Team', {});
+  await Team.sync();
+  const guard = new Guard(sequelize, { sync: false, roleHolders: { team: Team } });
   await guard.ready;
   assert.equal(await guard.sync({ logging: false }), guard);
   await guard.allow('reader', 'read', 'document');
@@ -85,6 +87,17 @@ try {
   await user.rmAssignedRoles(['reader']);
   assert.equal(await user.can('read document'), false);
   assert.equal(await user.isA('reader'), false);
+
+  const team = await Team.create();
+  assert.deepEqual(await guard.assignRolesToHolder(team, ['editor']), { assigned: 1 });
+  const child = await guard.setRoleParent('editor', 'reader');
+  assert.equal(typeof child.save, 'function');
+  const roles = await guard.getHolderRoles(team);
+  assert.deepEqual(roles.map(role => role.name), ['editor']);
+  assert.equal(roles[0].save, undefined);
+  assert.equal(await guard.holderCan(team, 'read document'), true);
+  await guard.removeRolesFromHolder(team, ['editor']);
+  assert.equal(await guard.holderCan(team, 'read document'), false);
 } finally {
   await sequelize.close();
 }
@@ -223,6 +236,28 @@ export async function useCustomUser(sequelize: Sequelize, AccountModel: ModelSta
   // @ts-expect-error Supplied model creation retains its required attributes.
   await guard.models().GuardUser.create({ accountKey: 'alice' });
   return { key, allowed, sameUser };
+}
+export async function useRoleHolder(sequelize: Sequelize, Team: ModelStatic<Account>) {
+  const guard = new Guard(sequelize, { roleHolders: { team: Team }, sync: false });
+  const team = await Team.create({ accountKey: 'team', displayName: 'Team' });
+  const result = await guard.assignRolesToHolder(team, ['editor']);
+  const assigned: number = result.assigned;
+  const editor = await guard.setRoleParent('editor', 'reader');
+  await editor.save();
+  await guard.setRoleParent('editor', null);
+  const allowed: boolean = await guard.holderCan(team, 'read document');
+  const roles = await guard.getHolderRoles(team);
+  const removed: void = await guard.removeRolesFromHolder(team, ['editor']);
+  await migration.addRoleHolders(sequelize.getQueryInterface(), sequelize, { roleHolders: { team: Team } });
+  // @ts-expect-error Parent names are strings or null, rather than numeric keys.
+  await guard.setRoleParent('editor', 1);
+  // @ts-expect-error Holder role reads return plain data.
+  await roles[0].save();
+  // @ts-expect-error Role holder registrations require model classes.
+  new Guard(sequelize, { roleHolders: { team } });
+  // @ts-expect-error A holder must be a model instance.
+  await guard.assignRolesToHolder(Team, ['editor']);
+  return { assigned, allowed, removed };
 }
 `;
 

@@ -3,7 +3,7 @@ import type { Model, ModelStatic } from 'sequelize';
 import { memberId } from '../guard/RoleMemberships';
 import type { RoleMemberships } from '../guard/RoleMemberships';
 import { normalizeRoleName } from '../guard/Roles';
-import type { GuardRoleData } from '../sequelize-models';
+import type { GuardRoleModel } from '../sequelize-models';
 import { quoteGuardTable } from '../sequelize-models/guard-tables';
 import type { SequelizeGuardInstance } from '../SequelizeGuard';
 
@@ -76,7 +76,7 @@ export async function readMemberRoles(
   guard: SequelizeGuardInstance,
   memberships: RoleMemberships,
   member: Model,
-): Promise<GuardRoleData[]> {
+): Promise<GuardRoleModel[]> {
   const direct = directMemberships(guard, memberships, member);
   const roles = await guard.sequelize.query(
     `SELECT policy_role.* ${direct.sql}`,
@@ -89,7 +89,7 @@ export async function readMemberRoles(
     },
   );
   assertCanonicalRoleNames(roles.map(({ name }) => name));
-  return roles.map((role) => role.toJSON());
+  return roles;
 }
 
 export async function readMemberPermissions(
