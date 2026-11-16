@@ -105,6 +105,7 @@ export async function readMemberPermissions(
   guard: SequelizeGuardInstance,
   memberships: RoleMemberships,
   member: Model,
+  resource: string,
 ) {
   const direct = directMemberships(guard, memberships, member);
   const parent = activeTable(guard, guard._models.GuardRole, 'parent_role');
@@ -142,13 +143,15 @@ export async function readMemberPermissions(
     UNION ALL
     SELECT NULL AS role_name, ${permission.column('action')} AS action, ${permission.column('resource')} AS resource
     FROM ${permission.table}
-    WHERE ${permission.active} AND ${permission.column('id')} IN (
+    WHERE ${permission.active}
+      AND ${permission.column('resource')} IN ($resource, '*')
+      AND ${permission.column('id')} IN (
       SELECT ${link.column('permission_id')} FROM valid_roles
       JOIN ${link.table} ON ${link.column('role_id')} = valid_roles.role_id AND ${link.active}
     )
   `,
     {
-      bind: direct.bind,
+      bind: { ...direct.bind, resource },
       type: QueryTypes.SELECT,
       useMaster: true,
       transaction: null,

@@ -118,6 +118,24 @@ describe('Policy mutations', () => {
     expect(await guard.findPerms({ resource: 'otherwise-valid' })).toEqual([]);
   });
 
+  it('resolves permission data without broadening literal or malformed grants', () => {
+    const { guard } = context;
+    const grants = [
+      { action: '["*",0]', resource: '*' },
+      { action: '["*"]', resource: 'white space' },
+      { action: '["inspect"]', resource: 'Asset' },
+    ];
+
+    expect(guard.resolvePermission(grants, 'inspect Asset')).toBe(true);
+    expect(guard.resolvePermission(grants, 'inspect asset')).toBe(false);
+    expect(guard.resolvePermission(grants, 'inspect other')).toBe(false);
+    expect(guard.resolvePermission(grants, 'inspect Asset extra')).toBe(false);
+    expect(guard.resolvePermission([], 'inspect Asset')).toBe(false);
+    expect(
+      guard.resolvePermission([{ action: '["*"]', resource: '*' }], '*'),
+    ).toBe(true);
+  });
+
   it.each([
     '"read"',
     '["read",7]',
