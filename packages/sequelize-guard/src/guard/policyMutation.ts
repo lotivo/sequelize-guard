@@ -19,6 +19,8 @@ export interface PolicyMutation {
   emitAfterCommit: (event: string, data: object) => void;
 }
 
+export const policyBatchSize = 200;
+
 const activeCallerTransactions = new WeakSet<Transaction>();
 const sqliteTransactions = new WeakMap<Sequelize, Promise<unknown>>();
 

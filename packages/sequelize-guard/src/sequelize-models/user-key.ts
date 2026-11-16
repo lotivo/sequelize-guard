@@ -1,6 +1,8 @@
 import {
   DataTypes,
   type AbstractDataType,
+  type Model,
+  type ModelStatic,
   type Sequelize,
   type TableName,
 } from 'sequelize';
@@ -36,25 +38,34 @@ export function guardUserKey(
       ),
     };
   }
-  if (
-    UserModel.sequelize !== sequelize ||
-    UserModel.primaryKeyAttributes.length !== 1
-  ) {
-    throw new Error(
-      'UserModel must belong to this Sequelize instance and have one primary key',
-    );
-  }
-  const attribute = UserModel.primaryKeyAttribute;
-  const { field, type } = UserModel.getAttributes()[attribute];
-  const column = field || attribute;
+  const key = modelKey(sequelize, UserModel, 'UserModel');
+  const { attribute, column } = key;
   if (userPk !== undefined && userPk !== attribute && userPk !== column) {
     throw new Error(
       `userPk must identify the supplied UserModel primary key "${attribute}"`,
     );
   }
+  return key;
+}
+
+export function modelKey(
+  sequelize: Sequelize,
+  model: ModelStatic<Model>,
+  name: string,
+): UserKey {
+  if (
+    model?.sequelize !== sequelize ||
+    model.primaryKeyAttributes.length !== 1
+  ) {
+    throw new Error(
+      `${name} must belong to this Sequelize instance and have one primary key`,
+    );
+  }
+  const attribute = model.primaryKeyAttribute;
+  const { field, type } = model.getAttributes()[attribute];
   if (sequelize.getDialect() === 'sqlite' && type instanceof DataTypes.BIGINT) {
     throw new Error(
-      'SQLite UserModel primary keys must fit JavaScript safe integers; use INTEGER, STRING, or UUID',
+      `SQLite ${name} primary keys must fit JavaScript safe integers; use INTEGER, STRING, or UUID`,
     );
   }
   if (
@@ -65,8 +76,13 @@ export function guardUserKey(
     )
   ) {
     throw new Error(
-      'UserModel primary key must use INTEGER, BIGINT, STRING, CHAR, or UUID',
+      `${name} primary key must use INTEGER, BIGINT, STRING, CHAR, or UUID`,
     );
   }
-  return { attribute, column, type, table: UserModel.getTableName() };
+  return {
+    attribute,
+    column: field || attribute,
+    type,
+    table: model.getTableName(),
+  };
 }

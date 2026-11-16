@@ -65,6 +65,13 @@ export interface GuardOptions {
   UserModel?: ModelStatic<Model> | null;
 
   /**
+   * Application model classes keyed by a stable role holder type.
+   * Types use lower-case ASCII letters, digits, and underscores, starting
+   * with a letter. Each model must have a single supported primary key.
+   */
+  roleHolders?: Readonly<Record<string, ModelStatic<Model>>>;
+
+  /**
    * Attribute or physical column name of the user model's single primary key.
    * Defaults to the supplied model's primary key, or `id` for the built-in model.
    */

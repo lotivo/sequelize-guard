@@ -5,6 +5,7 @@ export enum BaseModelType {
   Permissions = 'permissions',
   Roles = 'roles',
   Users = 'users',
+  RoleHierarchy = 'role_hierarchy',
 }
 
 export enum AssociationModelType {
@@ -21,6 +22,7 @@ export const tablesMap = {
   [AssociationModelType.RolePermission]: 'role_permission',
   [AssociationModelType.RoleUser]: 'role_user',
   [BaseModelType.Users]: 'users',
+  [BaseModelType.RoleHierarchy]: 'role_hierarchy',
 } as const;
 
 export const defaultTableNames = Object.values(tablesMap);
@@ -30,6 +32,7 @@ export const baseModelsNameMap = {
   [BaseModelType.Permissions]: 'permission',
   [BaseModelType.Roles]: 'role',
   [BaseModelType.Users]: 'user',
+  [BaseModelType.RoleHierarchy]: 'role_hierarchy',
 } as const;
 
 export const ModelClassNameMap = {
@@ -39,6 +42,7 @@ export const ModelClassNameMap = {
   [AssociationModelType.RolePermission]: 'RolePermission',
   [AssociationModelType.RoleUser]: 'RoleUser',
   [BaseModelType.Users]: 'User',
+  [BaseModelType.RoleHierarchy]: 'GuardRoleHierarchy',
 } as const;
 
 export const getTableName = (
@@ -46,5 +50,9 @@ export const getTableName = (
   options: Pick<GuardInternalOptions, 'prefix'> &
     Partial<Pick<GuardInternalOptions, 'tables'>>,
 ) => {
-  return options.prefix + (options.tables?.[modelType] ?? tablesMap[modelType]);
+  const suffix =
+    modelType === BaseModelType.RoleHierarchy
+      ? tablesMap[modelType]
+      : (options.tables?.[modelType] ?? tablesMap[modelType]);
+  return options.prefix + suffix;
 };

@@ -1,4 +1,5 @@
 import type { Model } from 'sequelize';
+import { readMemberRoles } from '../authorize/roleMembershipQuery';
 import type { GuardRoleData, GuardUserModel } from '../sequelize-models';
 import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
 import type { PolicyMutationOptions, UserRoleAssignment } from '../types';
@@ -91,11 +92,11 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.getUserRoles = async function (
     user: Model,
   ): Promise<GuardRoleData[]> {
-    const roles = await getPolicyUser(this, user).getRoles!({
-      useMaster: true,
-      transaction: null,
-    });
-    return roles.map((role) => role.toJSON());
+    return readMemberRoles(
+      this,
+      userMemberships(this),
+      getPolicyUser(this, user),
+    );
   };
 }
 

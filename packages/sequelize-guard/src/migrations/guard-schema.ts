@@ -14,6 +14,7 @@ import {
   BaseModelType,
 } from '../sequelize-models';
 import { guardTable, sequelizeOptions } from '../sequelize-models/guard-tables';
+import { getRoleHierarchySchema } from '../sequelize-models/GuardRoleHierarchy';
 import { guardUserKey } from '../sequelize-models/user-key';
 import type { GuardInternalOptions } from '../types';
 
@@ -25,6 +26,7 @@ export const schemas = {
   role_permission: getGuardRolePermissionSchema(),
   role_user: getGuardRoleUserSchema(),
   users: getGuardUserSchema(),
+  role_hierarchy: getRoleHierarchySchema(),
 } as const;
 
 export function guardColumns(
@@ -65,6 +67,7 @@ export function guardColumns(
     permissions: columns(getGuardPermissionSchema()),
     roles: columns(getGuardRoleSchema(role)),
     users: columns(getGuardUserSchema()),
+    role_hierarchy: getRoleHierarchySchema(),
     role_permission: columns(
       getGuardRolePermissionSchema({
         roleReference: role,

@@ -157,13 +157,15 @@ describe('Authorization after revocation', () => {
     await user.assignRole!('reader');
     const readStarted = Promise.withResolvers<void>();
     const releaseRead = Promise.withResolvers<void>();
-    const getRoles = user.getRoles!.bind(user);
-    vi.spyOn(user, 'getRoles').mockImplementationOnce(async () => {
-      const roles = await getRoles();
-      readStarted.resolve();
-      await releaseRead.promise;
-      return roles;
-    });
+    const query = guard.sequelize.query.bind(guard.sequelize);
+    vi.spyOn(guard.sequelize, 'query').mockImplementationOnce(
+      async (...args) => {
+        const roles = await query(...args);
+        readStarted.resolve();
+        await releaseRead.promise;
+        return roles;
+      },
+    );
 
     const earlierRead = guard.getUserRoles(user);
     await readStarted.promise;
@@ -187,7 +189,7 @@ describe('Authorization after revocation', () => {
     expect(await user.can!('read document')).toBe(true);
     expect(await user.isA!('reader')).toBe(true);
     const error = new Error('authorization database unavailable');
-    vi.spyOn(user, 'getRoles').mockRejectedValue(error);
+    vi.spyOn(guard.sequelize, 'query').mockRejectedValue(error);
 
     await expect(user.can!('read document')).rejects.toThrow(error);
     await expect(user.cant!('read document')).rejects.toThrow(error);
@@ -244,15 +246,17 @@ describe('Authorization after revocation', () => {
     await guard.allow('reader', 'read', 'document');
     const user = await guard.makeUser();
     await user.assignRole!('reader');
-    const query = vi.spyOn(guard.models().GuardRole, 'findAll');
+    const query = vi.spyOn(guard.sequelize, 'query');
 
     expect(await user.can!('read document')).toBe(true);
     expect(query).toHaveBeenLastCalledWith(
-      expect.objectContaining({ useMaster: true }),
+      expect.stringContaining('WITH RECURSIVE'),
+      expect.objectContaining({ useMaster: true, transaction: null }),
     );
     expect(await user.isA!('reader')).toBe(true);
     expect(query).toHaveBeenLastCalledWith(
-      expect.objectContaining({ useMaster: true }),
+      expect.stringContaining('SELECT policy_role.*'),
+      expect.objectContaining({ useMaster: true, transaction: null }),
     );
   });
 
