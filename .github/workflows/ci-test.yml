@@ -168,7 +168,7 @@ jobs:
             ${{ matrix.dialect == 'postgres'
                 && format('postgresql://postgres:guard-test@127.0.0.1:{0}/guard_test', job.services.postgres.ports['5432'])
                 || format('mysql://root:guard-test@127.0.0.1:{0}/guard_test', job.services.mysql.ports['3306']) }}
-        run: ./node_modules/.bin/vitest run --config packages/sequelize-guard/vitest.dialects.config.mts dialect.integration.ts
+        run: ./node_modules/.bin/vitest run --config packages/sequelize-guard/vitest.dialects.config.mts dialect.integration.ts holder-dialects.integration.ts
 
       - name: Verify authorization against a lagging physical standby
         if: matrix.dialect == 'postgres'
