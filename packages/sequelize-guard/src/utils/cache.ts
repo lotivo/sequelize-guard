@@ -26,6 +26,7 @@ export class GuardCache extends NodeCache {
   async getRolesWithPerms(
     guard: SequelizeGuard,
   ): Promise<Record<number, GuardRoleModel>> {
+    guard._assertModelBindings();
     const cRoles = lodash.values(this.getRoles());
     const r2Fetch = cRoles
       .filter((role) => !role.Permissions)

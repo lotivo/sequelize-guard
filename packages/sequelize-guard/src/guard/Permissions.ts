@@ -35,8 +35,13 @@ export function extendWithPermissions(
     actions: string | string[],
     options: CreatePermsOptions = {},
   ): Promise<GuardPermissionModel[]> {
+    this._assertModelBindings();
     const permissions = this._sanitizePermsInput(resources, actions, options);
-    return insertPermissionsToDb(this as unknown as SequelizeGuard, permissions, options);
+    return insertPermissionsToDb(
+      this as unknown as SequelizeGuard,
+      permissions,
+      options,
+    );
   };
 
   /**
@@ -48,6 +53,7 @@ export function extendWithPermissions(
     permissions: BulkPermissionInput[],
     options: CreatePermsOptions = {},
   ): Promise<GuardPermissionModel[]> {
+    this._assertModelBindings();
     const sanitized = permissions.map((p) => {
       let _acts: string[] = [];
       if (typeof p.actions === 'string') _acts = [p.actions];
@@ -60,7 +66,11 @@ export function extendWithPermissions(
       };
     });
 
-    return insertPermissionsToDb(this as unknown as SequelizeGuard, sanitized, options);
+    return insertPermissionsToDb(
+      this as unknown as SequelizeGuard,
+      sanitized,
+      options,
+    );
   };
 
   /**
@@ -70,6 +80,7 @@ export function extendWithPermissions(
   SequelizeGuard.prototype.findPerms = async function (
     args: FindPermsArgs = {},
   ): Promise<GuardPermissionModel[]> {
+    this._assertModelBindings();
     const wheres: WhereOptions<InferAttributes<GuardPermissionModel>>[] = [];
     const cond: FindOptions<InferAttributes<GuardPermissionModel>> = {
       where: {},

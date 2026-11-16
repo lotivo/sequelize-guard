@@ -1,4 +1,10 @@
-import type { Model, Sequelize, SyncOptions } from 'sequelize';
+import type {
+  Model,
+  Options,
+  Sequelize,
+  SyncOptions,
+  TableName,
+} from 'sequelize';
 import { captureGuardBindings } from './core/guard-bindings';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
@@ -40,6 +46,28 @@ import type { GuardCache } from './utils/cache';
 import type { GuardUserCache } from './utils/userCache';
 
 const claimedSequelize = new WeakSet<Sequelize>();
+
+function tableIdentity(sequelize: Sequelize, table: TableName): string {
+  const name = typeof table === 'string' ? table : table.tableName;
+  const schema = typeof table === 'string' ? undefined : table.schema;
+  if (sequelize.getDialect() === 'postgres')
+    return JSON.stringify([schema || 'public', name]);
+  if (!schema) return name;
+  const delimiter = typeof table === 'string' ? '.' : table.delimiter || '.';
+  return `${schema}${delimiter}${name}`;
+}
+
+function configuredGuardTable(sequelize: Sequelize, name: string): TableName {
+  const options = (sequelize as Sequelize & { readonly options: Options })
+    .options;
+  const define = options.define as
+    | (Record<string, unknown> & { schema?: string; schemaDelimiter?: string })
+    | undefined;
+  const schema = define?.schema === undefined ? options.schema : define.schema;
+  return schema
+    ? { tableName: name, schema, delimiter: define?.schemaDelimiter || '.' }
+    : name;
+}
 
 /**
  * SequelizeGuard - Authorization library for Sequelize
@@ -92,10 +120,7 @@ export class SequelizeGuard<
    * @param sequelize - A Sequelize instance
    * @param options - Custom configuration options
    */
-  constructor(
-    sequelize: Sequelize,
-    options: GuardOptions<TUser> = {},
-  ) {
+  constructor(sequelize: Sequelize, options: GuardOptions<TUser> = {}) {
     super(options);
 
     if (claimedSequelize.has(sequelize) || 'guard' in sequelize)
@@ -129,18 +154,18 @@ export class SequelizeGuard<
       );
       if (!table.trim() || table.includes('\0'))
         throw new Error(`Invalid guard table name "${table}"`);
+      const expectedTable = tableIdentity(
+        sequelize,
+        configuredGuardTable(sequelize, table),
+      );
       const userTable = user?.getTableName();
-      const userTableName =
-        typeof userTable === 'string' ? userTable : userTable?.tableName;
-      if (userTableName === table)
+      if (userTable && tableIdentity(sequelize, userTable) === expectedTable)
         throw new Error(`Guard table "${table}" conflicts with UserModel`);
       if (
         Object.values(sequelize.models).some((model) => {
           if (model === user) return false;
-          const existing = model.getTableName();
           return (
-            (typeof existing === 'string' ? existing : existing.tableName) ===
-            table
+            tableIdentity(sequelize, model.getTableName()) === expectedTable
           );
         })
       )

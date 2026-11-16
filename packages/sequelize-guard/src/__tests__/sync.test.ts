@@ -158,6 +158,74 @@ describe('Guard synchronization', () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it('rejects direct permission reads and writes after a model binding changes, before SQL', async () => {
+    const guard = new SequelizeGuard(sequelize);
+    await guard.ready;
+    const query = vi.spyOn(sequelize, 'query');
+    Object.defineProperty(guard.models().GuardPermission, 'tableName', {
+      value: 'redirected_permissions',
+      configurable: true,
+    });
+    await expect(guard.findPerms()).rejects.toThrow('binding changed');
+    await expect(guard.createPerms('document', 'read')).rejects.toThrow(
+      'binding changed',
+    );
+    await expect(
+      guard.createPermsBulk([{ resource: 'document', actions: 'read' }]),
+    ).rejects.toThrow('binding changed');
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('rejects direct role reads and deletion after a model binding changes, before SQL', async () => {
+    const guard = new SequelizeGuard(sequelize);
+    await guard.ready;
+    const query = vi.spyOn(sequelize, 'query');
+    Object.defineProperty(guard.models().GuardRole, 'tableName', {
+      value: 'redirected_roles',
+      configurable: true,
+    });
+    await expect(guard.findRoles()).rejects.toThrow('binding changed');
+    await expect(guard.deleteRoles('reader')).rejects.toThrow(
+      'binding changed',
+    );
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('allows an application model with the guard table name in another schema', async () => {
+    await sequelize.close();
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+      define: { schema: 'tenant' },
+    });
+    sequelize.define(
+      'OtherRole',
+      { value: DataTypes.STRING },
+      { schema: 'other', tableName: 'guard_roles' },
+    );
+    expect(() => new SequelizeGuard(sequelize, { sync: false })).not.toThrow();
+  });
+
+  it('rejects an application model with the guard table name in the same schema', async () => {
+    await sequelize.close();
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+      define: { schema: 'tenant' },
+    });
+    sequelize.define(
+      'OtherRole',
+      { value: DataTypes.STRING },
+      { schema: 'tenant', tableName: 'guard_roles' },
+    );
+    expect(() => new SequelizeGuard(sequelize, { sync: false })).toThrow(
+      'conflicts',
+    );
+    expect(sequelize.models.GuardRole).toBeUndefined();
+  });
+
   it('awaits all guard models and forwards sync options without syncing unrelated models', async () => {
     const unrelated = sequelize.define('Unrelated', {
       value: DataTypes.STRING,

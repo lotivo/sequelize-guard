@@ -33,6 +33,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     role: RoleCreationParam,
     description?: string,
   ): Promise<RoleCreationResult> {
+    this._assertModelBindings();
     if (!role) throw new Error('Role must be string with length not zero');
 
     const roleData = makeRoleData(role);
@@ -67,6 +68,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     roles: RoleCreationParam[],
     options: CreateRolesOptions = { json: true },
   ): Promise<GuardRoleModel[]> {
+    this._assertModelBindings();
     const sanitizedRoles = sanitizeRolesInput(roles);
     let roles2insert = [...sanitizedRoles];
 
@@ -106,6 +108,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.deleteRoles = async function (
     roles: string | RoleCreationParam[] | GuardRoleModel[],
   ): Promise<number> {
+    this._assertModelBindings();
     const sanitizedRoles = sanitizeRolesInput(roles);
     const rolesToDelete = await this._models.GuardRole.findAll({
       where: { name: { [Op.in]: sanitizedRoles.map((role) => role.name) } },
@@ -130,6 +133,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.allRoles = async function (): Promise<
     GuardRoleModel[]
   > {
+    this._assertModelBindings();
     const cache = await this.getCache();
     return Object.values(cache.getRoles());
   };
@@ -141,6 +145,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.getRole = async function (
     role: string,
   ): Promise<GuardRoleModel | null> {
+    this._assertModelBindings();
     const cache = await this.getCache();
     const roles = Object.values(cache.getRoles()).filter(
       (r) => r.name === role.toLowerCase(),
@@ -155,6 +160,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.findRoles = async function (
     args: FindRolesArgs = {},
   ): Promise<GuardRoleModel[]> {
+    this._assertModelBindings();
     const wheres: WhereOptions<InferAttributes<GuardRoleModel>>[] = [];
     const cond: FindOptions<InferAttributes<GuardRoleModel>> = { where: {} };
 
@@ -195,6 +201,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     actions: string | string[],
     resources: string | string[],
   ): Promise<AddPermsToRoleResult> {
+    this._assertModelBindings();
     const perms = await this.createPerms(resources, actions, {
       all: true,
     });
@@ -231,6 +238,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     actions: string | string[],
     resources: string | string[],
   ): Promise<RemovePermsFromRoleResult> {
+    this._assertModelBindings();
     const perms2rmIn = this._sanitizePermsInput(resources, actions);
 
     const { role: roleModel } = await this.makeRole(role);
