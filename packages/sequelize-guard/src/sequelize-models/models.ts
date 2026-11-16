@@ -1,5 +1,9 @@
 import type { SequelizeGuard } from '../SequelizeGuard';
-import { validateGuardTables } from './guard-tables';
+import {
+  guardTable,
+  physicalTableKey,
+  validateGuardTables,
+} from './guard-tables';
 import {
   GuardPermissionModelStatic,
   initGuardPermission,
@@ -12,6 +16,11 @@ import {
 } from './GuardRolePermission';
 import { GuardRoleUserModelStatic, initGuardRoleUser } from './GuardRoleUser';
 import { GuardUserModelStatic, initOrSetupGuardUser } from './GuardUser';
+import {
+  BaseModelType,
+  ModelClassNameMap,
+  type ModelType,
+} from './types/ModelType';
 import { guardUserKey } from './user-key';
 
 /**
@@ -21,6 +30,7 @@ import { guardUserKey } from './user-key';
 export function initGuardModels(guard: SequelizeGuard): GuardModels {
   const userKey = guardUserKey(guard.sequelize, guard.options);
   validateGuardTables(guard.sequelize, guard.options);
+  assertModelNamesAvailable(guard);
 
   const GuardResource = initGuardResource(guard);
   const GuardPermission = initGuardPermission(guard);
@@ -50,6 +60,36 @@ export function initGuardModels(guard: SequelizeGuard): GuardModels {
     GuardUser,
     RoleUser,
   };
+}
+
+function assertModelNamesAvailable({
+  sequelize,
+  options,
+}: SequelizeGuard): void {
+  const owned = (Object.keys(ModelClassNameMap) as ModelType[]).filter(
+    (type) => type !== BaseModelType.Users || !options.UserModel,
+  );
+  const tables = new Set(
+    owned.map((type) =>
+      physicalTableKey(sequelize, guardTable(sequelize, options, type)),
+    ),
+  );
+  for (const type of owned) {
+    const name = ModelClassNameMap[type];
+    if (name in sequelize.models) {
+      throw new Error(`Sequelize model registry already defines "${name}"`);
+    }
+  }
+  for (const model of sequelize.modelManager.models) {
+    if (model === options.UserModel) continue;
+    const table = model.getTableName();
+    if (tables.has(physicalTableKey(sequelize, table))) {
+      const name = typeof table === 'string' ? table : table.tableName;
+      throw new Error(
+        `Guard table "${name}" already belongs to model "${model.name}"`,
+      );
+    }
+  }
 }
 
 /**

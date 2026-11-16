@@ -1,7 +1,10 @@
 import type { Model, Sequelize, SyncOptions } from 'sequelize';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
-import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
+import {
+  assertGuardUserAssociations,
+  guardUserMethods,
+} from './guard/GuardUserAssociations';
 import migration from './migrations/guard-migrations';
 import type {
   GuardModel,
@@ -102,22 +105,36 @@ export class SequelizeGuard extends SequelizeGuardBase {
   constructor(sequelize: Sequelize, options: GuardOptions = {}) {
     super(options);
 
+    if ('guard' in sequelize) {
+      throw new Error('This Sequelize instance already has a guard');
+    }
     this.sequelize = sequelize as SequelizeWithGuard;
+    if ('GuardModels' in sequelize.models) {
+      throw new Error('Sequelize model registry already defines "GuardModels"');
+    }
+
+    const { UserModel } = this.options;
+    const userMethods = guardUserMethods(this);
+    if (UserModel) {
+      if (sequelize.models[UserModel.name] !== UserModel) {
+        throw new Error(
+          'UserModel must be registered on this Sequelize instance',
+        );
+      }
+      assertGuardUserAssociations(UserModel, userMethods);
+    }
 
     const holders = roleHolderTables(sequelize, this.options);
     assertAvailableHolderModelNames(sequelize, holders);
 
-    // Initialize models
     this._models = initGuardModels(this);
     this._roleHierarchy = initRoleHierarchy(this);
     this._roleHolders = initRoleHolders(sequelize, this.options, holders);
+    Object.assign(this._models.GuardUser.prototype, userMethods);
 
-    // Attach guard to sequelize instance
     this.sequelize.guard = this;
     this.sequelize.models.GuardModels = this._models;
-
-    // Setup user associations
-    this.sequelize.models.User = setupGuardUserAssociations(this);
+    this.sequelize.models.User ??= this._models.GuardUser;
 
     this.ready = this.options.sync
       ? this.sync().then(() => undefined)

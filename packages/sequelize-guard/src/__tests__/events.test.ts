@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createTestDatabase, closeTestDatabase, TestContext } from './setup';
 
 describe('Events', () => {
@@ -12,17 +12,21 @@ describe('Events', () => {
     await closeTestDatabase(context);
   });
 
-  it('should register and listen on onRolesCreated event, remove with returned fn', async () => {
-    // setup
-    // execute
-    const rmCb = context.guard.onRolesCreated((data) => {
-      // assert
-      expect(data.length).toBe(1);
-      rmCb();
-      expect(context.guard._ee.listenerCount('onRolesCreated')).toBe(1);
-    });
-    expect(context.guard._ee.listenerCount('onRolesCreated')).toBe(2);
-    await context.guard.makeRole('EventOnRolesCreatedRole');
+  it('delivers committed role models and stops notifying an unsubscribed listener', async () => {
+    const listener = vi.fn();
+    const unsubscribe = context.guard.onRolesCreated(listener);
+    const result = await context.guard
+      .init()
+      .allow('events-reader')
+      .to('read')
+      .on('article')
+      .commit();
+
+    expect(listener).toHaveBeenCalledExactlyOnceWith([result.role]);
+    expect(result.role).toBeInstanceOf(context.guard.models().GuardRole);
+    unsubscribe();
+    await context.guard.makeRole('events-writer');
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it('should register and listen on someEvent event, removed AFTER one call', () => {

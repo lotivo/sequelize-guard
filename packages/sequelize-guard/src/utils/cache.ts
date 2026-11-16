@@ -109,7 +109,7 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
    */
   SequelizeGuard.prototype.resetCache = function (): GuardCache {
     if (!this._cache) {
-      this._cache = new GuardCache();
+      this._cache = new GuardCache({ checkperiod: 0 });
       bindGuardListeners(this);
     }
     this._cache.flushAll();

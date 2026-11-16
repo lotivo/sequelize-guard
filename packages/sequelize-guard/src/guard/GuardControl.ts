@@ -1,6 +1,7 @@
-import lodash from 'lodash';
 import type { SequelizeGuard } from '../SequelizeGuard';
 import type { AddPermsToRoleResult, PolicyMutationOptions } from '../types';
+import { canonicalPermissionActions, permissionResources } from './Permissions';
+import { normalizeRoleName } from './Roles';
 
 /**
  * GuardControl - Fluent API for creating guard statements
@@ -36,9 +37,7 @@ export class GuardControl {
    * ```
    */
   allow(roles: string): this {
-    if (typeof roles === 'string') {
-      this._roles = roles;
-    }
+    this._roles = normalizeRoleName(roles);
     return this;
   }
 
@@ -53,14 +52,9 @@ export class GuardControl {
    * ```
    */
   to(actions: string | string[]): this {
-    if (typeof actions === 'string') {
-      this._actions = lodash.uniq([...this._actions, actions]);
-    }
-
-    if (Array.isArray(actions)) {
-      this._actions = lodash.uniq([...this._actions, ...actions]);
-    }
-
+    this._actions = [
+      ...new Set([...this._actions, ...canonicalPermissionActions(actions)]),
+    ];
     return this;
   }
 
@@ -75,14 +69,9 @@ export class GuardControl {
    * ```
    */
   on(resources: string | string[]): this {
-    if (typeof resources === 'string') {
-      this._resources = lodash.uniq([...this._resources, resources]);
-    }
-
-    if (Array.isArray(resources)) {
-      this._resources = lodash.uniq([...this._resources, ...resources]);
-    }
-
+    this._resources = [
+      ...new Set([...this._resources, ...permissionResources(resources)]),
+    ];
     return this;
   }
 
@@ -94,11 +83,14 @@ export class GuardControl {
    * await control.commit()
    * ```
    */
-  commit(options?: PolicyMutationOptions): Promise<AddPermsToRoleResult> {
-    const roles = this._roles;
-    const actions = this._actions;
-    const resources = this._resources;
+  async commit(options?: PolicyMutationOptions): Promise<AddPermsToRoleResult> {
+    const role = normalizeRoleName(this._roles);
+    const actions = canonicalPermissionActions(this._actions);
+    const resources = permissionResources(this._resources);
+    this._roles = '';
+    this._actions = [];
+    this._resources = [];
 
-    return this.guard.addPermsToRole(roles, actions, resources, options);
+    return this.guard.addPermsToRole(role, actions, resources, options);
   }
 }
