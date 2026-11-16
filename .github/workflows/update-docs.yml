@@ -52,7 +52,7 @@ jobs:
           git show-ref --verify --quiet -- "$release_ref"
           git merge-base --is-ancestor "$release_ref" HEAD
           if [[ -n "$RELEASE_SHA" ]]; then
-            [[ "$(git rev-parse "$release_ref^{commit}")" == "$RELEASE_SHA" ]]
+            test "$(git rev-parse "$release_ref^{commit}")" = "$RELEASE_SHA"
           fi
           git checkout --detach "$release_ref"
 
@@ -119,7 +119,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.generate.outputs.version }}
         run: |
-          [[ "$(npm view sequelize-guard dist-tags.latest --prefer-online)" == "$RELEASE_VERSION" ]]
+          test "$(npm view sequelize-guard dist-tags.latest --prefer-online)" = "$RELEASE_VERSION"
           api_dir=apps/sequelize-guard-docs/content/docs/api
           test -f "$RUNNER_TEMP/api-docs/index.mdx"
           rm -rf -- "$api_dir"

@@ -10,7 +10,7 @@ title: "Class: SequelizeGuard<TUser>"
 
 # Class: SequelizeGuard\<TUser\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:79](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L79)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:79](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L79)
 
 SequelizeGuard - Authorization library for Sequelize
 
@@ -46,7 +46,7 @@ const canEdit = await user.can('edit blog');
 
 > **new SequelizeGuard**\<`TUser`\>(`sequelize`, ...`options`): `SequelizeGuard`\<`TUser`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:123](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L123)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:123](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L123)
 
 Creates a SequelizeGuard instance
 
@@ -78,7 +78,7 @@ Custom configuration options
 
 > `readonly` **sequelize**: `SequelizeWithGuard`\<`TUser`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:83](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L83)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:83](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L83)
 
 Sequelize instance
 
@@ -88,7 +88,7 @@ Sequelize instance
 
 > `readonly` **ready**: `Promise`\<`void`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:114](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L114)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:114](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L114)
 
 Automatic startup completion, including model sync and cache initialization.
 With sync: false, resolves without database work; await sync() separately
@@ -108,7 +108,7 @@ await guard.ready;
 
 > `static` **migration**: `object`
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:311](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L311)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:311](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L311)
 
 Migration utilities
 
@@ -218,7 +218,7 @@ migration, construction, down, and upgrade require the complete registration set
 
 > **init**: () => `GuardControl`
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:315](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L315)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:315](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L315)
 
 #### Returns
 
@@ -230,7 +230,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:315](https://github.
 
 > **allow**: (`role`, `actions`, `resources`, `options?`) => `Promise`\<[`AddPermsToRoleResult`](/docs/api/interfaces/AddPermsToRoleResult)\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:316](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L316)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:316](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L316)
 
 #### Parameters
 
@@ -260,7 +260,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:316](https://github.
 
 > **createPerms**: \<`TOptions`\>(`resources`, `actions`, ...`options`) => `Promise`\<[`GuardCreationResult`](/docs/api/type-aliases/GuardCreationResult)\<`TOptions`\[`0`\], `GuardPermissionModel`, [`GuardPermissionData`](/docs/api/interfaces/GuardPermissionData)\>\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:324](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L324)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:324](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L324)
 
 #### Type Parameters
 
@@ -292,7 +292,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:324](https://github.
 
 > **createPermsBulk**: \<`TOptions`\>(`permissions`, ...`options`) => `Promise`\<[`GuardCreationResult`](/docs/api/type-aliases/GuardCreationResult)\<`TOptions`\[`0`\], `GuardPermissionModel`, [`GuardPermissionData`](/docs/api/interfaces/GuardPermissionData)\>\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:331](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L331)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:331](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L331)
 
 #### Type Parameters
 
@@ -320,7 +320,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:331](https://github.
 
 > **findPerms**: (`args?`) => `Promise`\<`GuardPermissionModel`[]\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:337](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L337)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:337](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L337)
 
 #### Parameters
 
@@ -338,7 +338,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:337](https://github.
 
 > **onPermsCreated**: (`cb`) => [`UnsubscribeFn`](/docs/api/type-aliases/UnsubscribeFn)
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:338](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L338)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:338](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L338)
 
 #### Parameters
 
@@ -356,7 +356,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:338](https://github.
 
 > **onPermsAddedToRole**: (`cb`) => [`UnsubscribeFn`](/docs/api/type-aliases/UnsubscribeFn)
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:341](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L341)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:341](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L341)
 
 #### Parameters
 
@@ -374,7 +374,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:341](https://github.
 
 > **onPermsRemovedFromRole**: (`cb`) => [`UnsubscribeFn`](/docs/api/type-aliases/UnsubscribeFn)
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:344](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L344)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:344](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L344)
 
 #### Parameters
 
@@ -392,7 +392,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:344](https://github.
 
 > **\_sanitizePermsInput**: (`resources`, `actions`, `options?`) => [`PermissionData`](/docs/api/interfaces/PermissionData)[]
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:347](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L347)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:347](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L347)
 
 #### Parameters
 
@@ -418,7 +418,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:347](https://github.
 
 > **makeRole**: (`role`, `options?`) => `Promise`\<[`RoleCreationResult`](/docs/api/interfaces/RoleCreationResult)\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:354](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L354)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:354](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L354)
 
 #### Parameters
 
@@ -440,7 +440,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:354](https://github.
 
 > **makeRoles**: \<`TOptions`\>(`roles`, ...`options`) => `Promise`\<[`GuardCreationResult`](/docs/api/type-aliases/GuardCreationResult)\<`TOptions`\[`0`\], `GuardRoleModel`, [`GuardRoleData`](/docs/api/type-aliases/GuardRoleData), [`GuardRoleData`](/docs/api/type-aliases/GuardRoleData)\>\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:358](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L358)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:358](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L358)
 
 #### Type Parameters
 
@@ -468,7 +468,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:358](https://github.
 
 > **deleteRoles**: (`roles`, `options?`) => `Promise`\<`number`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:369](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L369)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:369](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L369)
 
 #### Parameters
 
@@ -490,7 +490,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:369](https://github.
 
 > **setRoleParent**: (`role`, `parent`, `options?`) => `Promise`\<`GuardRoleModel`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:373](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L373)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:373](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L373)
 
 #### Parameters
 
@@ -516,7 +516,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:373](https://github.
 
 > **allRoles**: () => `Promise`\<`GuardRoleModel`[]\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:378](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L378)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:378](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L378)
 
 #### Returns
 
@@ -528,7 +528,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:378](https://github.
 
 > **getRole**: (`role`) => `Promise`\<`GuardRoleModel` \| `null`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:379](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L379)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:379](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L379)
 
 #### Parameters
 
@@ -546,7 +546,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:379](https://github.
 
 > **findRoles**: (`args?`) => `Promise`\<`GuardRoleModel`[]\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:380](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L380)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:380](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L380)
 
 #### Parameters
 
@@ -564,7 +564,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:380](https://github.
 
 > **addPermsToRole**: (`role`, `actions`, `resources`, `options?`) => `Promise`\<[`AddPermsToRoleResult`](/docs/api/interfaces/AddPermsToRoleResult)\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:381](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L381)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:381](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L381)
 
 #### Parameters
 
@@ -594,7 +594,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:381](https://github.
 
 > **rmPermsFromRole**: (`role`, `actions`, `resources`, `options?`) => `Promise`\<[`RemovePermsFromRoleResult`](/docs/api/interfaces/RemovePermsFromRoleResult)\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:387](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L387)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:387](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L387)
 
 #### Parameters
 
@@ -624,7 +624,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:387](https://github.
 
 > **onRolesCreated**: (`cb`) => [`UnsubscribeFn`](/docs/api/type-aliases/UnsubscribeFn)
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:393](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L393)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:393](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L393)
 
 #### Parameters
 
@@ -642,7 +642,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:393](https://github.
 
 > **onRolesDeleted**: (`cb`) => [`UnsubscribeFn`](/docs/api/type-aliases/UnsubscribeFn)
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:396](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L396)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:396](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L396)
 
 #### Parameters
 
@@ -660,7 +660,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:396](https://github.
 
 > **makeUser**: (`options?`) => `Promise`\<`TUser` & [`GuardUserMethods`](/docs/api/interfaces/GuardUserMethods)\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:401](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L401)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:401](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L401)
 
 #### Parameters
 
@@ -678,7 +678,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:401](https://github.
 
 > **assignRole**: \<`TUser`\>(`user`, `role`, `options?`) => `Promise`\<`TUser`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:404](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L404)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:404](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L404)
 
 #### Type Parameters
 
@@ -710,7 +710,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:404](https://github.
 
 > **assignRoles**: (`user`, `roles`, `options?`) => `Promise`\<`void`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:409](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L409)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:409](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L409)
 
 #### Parameters
 
@@ -736,7 +736,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:409](https://github.
 
 > **assignRolesToUsers**: (`users`, `roles`, `options?`) => `Promise`\<[`RoleAssignmentResult`](/docs/api/interfaces/RoleAssignmentResult)\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:414](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L414)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:414](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L414)
 
 #### Parameters
 
@@ -762,7 +762,7 @@ readonly `string`[]
 
 > **assignUserRoles**: (`assignments`, `options?`) => `Promise`\<[`RoleAssignmentResult`](/docs/api/interfaces/RoleAssignmentResult)\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:419](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L419)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:419](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L419)
 
 #### Parameters
 
@@ -784,7 +784,7 @@ readonly [`UserRoleAssignment`](/docs/api/interfaces/UserRoleAssignment)[]
 
 > **rmAssignedRoles**: (`user`, `roles`, `options?`) => `Promise`\<`void`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:423](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L423)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:423](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L423)
 
 #### Parameters
 
@@ -810,7 +810,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:423](https://github.
 
 > **getUserRoles**: (`user`) => `Promise`\<[`GuardRoleData`](/docs/api/type-aliases/GuardRoleData)[]\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:428](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L428)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:428](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L428)
 
 #### Parameters
 
@@ -828,7 +828,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:428](https://github.
 
 > **assignRolesToHolder**: (`holder`, `roles`, `options?`) => `Promise`\<[`RoleAssignmentResult`](/docs/api/interfaces/RoleAssignmentResult)\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:430](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L430)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:430](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L430)
 
 #### Parameters
 
@@ -854,7 +854,7 @@ readonly `string`[]
 
 > **removeRolesFromHolder**: (`holder`, `roles`, `options?`) => `Promise`\<`void`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:435](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L435)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:435](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L435)
 
 #### Parameters
 
@@ -880,7 +880,7 @@ readonly `string`[]
 
 > **getHolderRoles**: (`holder`) => `Promise`\<[`GuardRoleData`](/docs/api/type-aliases/GuardRoleData)[]\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:440](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L440)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:440](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L440)
 
 #### Parameters
 
@@ -898,7 +898,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:440](https://github.
 
 > **holderCan**: (`holder`, `permission`) => `Promise`\<`boolean`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:441](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L441)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:441](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L441)
 
 #### Parameters
 
@@ -920,7 +920,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:441](https://github.
 
 > **userCan**: (`user`, `permission`) => `Promise`\<`boolean`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:444](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L444)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:444](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L444)
 
 #### Parameters
 
@@ -942,7 +942,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:444](https://github.
 
 > **userCant**: (`user`, `permission`) => `Promise`\<`boolean`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:445](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L445)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:445](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L445)
 
 #### Parameters
 
@@ -964,7 +964,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:445](https://github.
 
 > **resolvePermission**: (`givenPermissions`, `wantedPermission`) => `boolean`
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:446](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L446)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:446](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L446)
 
 #### Parameters
 
@@ -986,7 +986,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:446](https://github.
 
 > **userHasRoles**: (`user`, `roles`) => `Promise`\<`boolean`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:452](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L452)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:452](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L452)
 
 #### Parameters
 
@@ -1008,7 +1008,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:452](https://github.
 
 > **userHasAllRoles**: (`user`, `roles`) => `Promise`\<`boolean`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:453](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L453)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:453](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L453)
 
 #### Parameters
 
@@ -1030,7 +1030,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:453](https://github.
 
 > **userIsA**: (`user`, `role`) => `Promise`\<`boolean`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:454](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L454)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:454](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L454)
 
 #### Parameters
 
@@ -1052,7 +1052,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:454](https://github.
 
 > **resetCache**: () => `GuardCache`
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:457](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L457)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:457](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L457)
 
 #### Returns
 
@@ -1064,7 +1064,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:457](https://github.
 
 > **getCache**: () => `Promise`\<`GuardCache`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:458](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L458)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:458](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L458)
 
 #### Returns
 
@@ -1076,7 +1076,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:458](https://github.
 
 > **resetUserCache**: () => `GuardUserCache`
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:461](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L461)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:461](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L461)
 
 #### Returns
 
@@ -1088,7 +1088,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:461](https://github.
 
 > **getUserCache**: () => `GuardUserCache`
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:462](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L462)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:462](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L462)
 
 #### Returns
 
@@ -1100,7 +1100,7 @@ Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:462](https://github.
 
 > `readonly` **options**: [`GuardInternalOptions`](/docs/api/interfaces/GuardInternalOptions)
 
-Defined in: [packages/sequelize-guard/src/core/SequelizeGuardBase.ts:9](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/core/SequelizeGuardBase.ts#L9)
+Defined in: [packages/sequelize-guard/src/core/SequelizeGuardBase.ts:9](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/core/SequelizeGuardBase.ts#L9)
 
 Guard configuration options
 
@@ -1114,7 +1114,7 @@ Guard configuration options
 
 > **sync**(`options`): `Promise`\<`SequelizeGuard`\<`TUser`\>\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:189](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L189)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:189](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L189)
 
 Synchronize guard models, then reload their cached roles and permissions.
 Calls are serialized, including automatic startup. Errors reject the caller.
@@ -1141,7 +1141,7 @@ This guard after synchronization and cache initialization complete.
 
 > **models**(): `GuardModels`\<`TUser`\>
 
-Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:303](https://github.com/lotivo/sequelize-guard/blob/481d6449fc32743ac37ca58b5f243e5fd8944b68/packages/sequelize-guard/src/SequelizeGuard.ts#L303)
+Defined in: [packages/sequelize-guard/src/SequelizeGuard.ts:303](https://github.com/lotivo/sequelize-guard/blob/510eda0cf752b8128756bf3e80476bf6d555f9df/packages/sequelize-guard/src/SequelizeGuard.ts#L303)
 
 Get all Guard models
 
