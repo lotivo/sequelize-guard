@@ -1,5 +1,13 @@
 import { Sequelize } from 'sequelize';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  onTestFinished,
+  vi,
+} from 'vitest';
 import migration, { migrationOrder } from '../migrations/guard-migrations';
 import { schemas } from '../migrations/guard-schema';
 import { getTableName, GuardUserModel } from '../sequelize-models';
@@ -125,35 +133,29 @@ describe('SequelizeGuard Setup', () => {
       expect(migrationArr).toEqual(expected);
     });
 
-    it('should run down migrations', async () => {
-      // setup
-      const { stub, migration: migrationArr } = createQueryInterfaceStub(
-        context.sequelize,
-      );
-      const expected = migrationOrder.down.map((m) =>
-        getTableName(m, { prefix: 'guard_' }),
-      );
-      // execute
-      await migration.down(stub, context.guard.sequelize);
-      // assert
-      expect(migrationArr).toEqual(expected);
-    });
-
-    it('should run down migrations with options', async () => {
-      // setup
-      const { stub, migration: migrationArr } = createQueryInterfaceStub(
-        context.sequelize,
-      );
-      const expected = migrationOrder.down.map((m) =>
-        getTableName(m, { prefix: 'guard_' }),
-      );
-      // execute
-      await migration.down(stub, context.guard.sequelize, {
-        prefix: 'guard_',
-      });
-      // assert
-      expect(migrationArr).toEqual(expected);
-    });
+    it.each([
+      undefined,
+      { prefix: 'checked_', timestamps: true, paranoid: true },
+    ])(
+      'runs down migrations in dependency order with options %j',
+      async (options) => {
+        const sequelize = new Sequelize({
+          dialect: 'sqlite',
+          storage: ':memory:',
+          logging: false,
+        });
+        onTestFinished(() => sequelize.close());
+        const queryInterface = sequelize.getQueryInterface();
+        await migration.up(queryInterface, sequelize, options);
+        const dropTable = vi.spyOn(queryInterface, 'dropTable');
+        await migration.down(queryInterface, sequelize, options);
+        expect(dropTable.mock.calls.map(([table]) => table)).toEqual(
+          migrationOrder.down.map((type) =>
+            getTableName(type, { prefix: options?.prefix ?? 'guard_' }),
+          ),
+        );
+      },
+    );
   });
 
   // describe('Seeders', () => {

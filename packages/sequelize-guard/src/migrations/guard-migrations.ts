@@ -22,7 +22,9 @@ import {
 } from '../sequelize-models/guard-tables';
 import { guardUserKey } from '../sequelize-models/user-key';
 import type { GuardInternalOptions, GuardOptions } from '../types';
+import { verifyMigrationTables } from './guard-migration-ownership';
 import { guardColumns } from './guard-schema';
+import { createMigrationTable } from './guard-table-ddl';
 import { copyGuardTables, type GuardUpgradeOptions } from './guard-upgrade';
 
 type MigrationQueries = Pick<QueryOptions, 'transaction' | 'useMaster'>;
@@ -125,7 +127,7 @@ async function createTables(
       type === AssociationModelType.RoleUser && options.UserModel
         ? options.UserModel.options
         : define;
-    await queryInterface.createTable(table, columns[type], {
+    await createMigrationTable(queryInterface, table, columns[type], {
       ...queryOptions,
       charset: collation?.charset,
       collate: collation?.collate,
@@ -158,13 +160,24 @@ async function down(
 ): Promise<void> {
   const { sequelize } = queryInterface;
   const resolved = lodash.merge({}, defaultOptions, options);
-  const tables = migrationTables(sequelize, resolved, 'down');
+  const columns = guardColumns(sequelize, resolved);
+  const tables = migrationTables(sequelize, resolved, 'down').map(
+    ({ type, table }) => ({
+      table,
+      columns: columns[type],
+      indexes: guardIndexes(type, getTableName(type, resolved)),
+    }),
+  );
   await withMigration(sequelize, queryInterface, async (queryOptions) => {
     await assertGuardSchema(sequelize, resolved, queryOptions);
     await assertNoLegacyTableNames(sequelize, resolved, queryOptions);
-    for (const { table } of tables) {
+    const existing = await verifyMigrationTables(
+      queryInterface,
+      tables,
+      queryOptions,
+    );
+    for (const table of existing)
       await queryInterface.dropTable(table, queryOptions);
-    }
   });
 }
 
