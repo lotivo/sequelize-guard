@@ -67,7 +67,7 @@ Test names in this table refer to `packages/sequelize-guard/src/__tests__`; pack
 | I1 | Verified | malformed/wrong-base/duplicate/tag injection tests and read-only registry preflight. |
 | I2 | Verified | stable latest/normal versus RC next/prerelease metadata, manifest/archive version assertions and candidate changelog. |
 | I3 | External limitation | Maintainer confirmed npm trusted publisher; historical provenance and GitHub controls inspected in handoff. Private npm registration and candidate OIDC exchange are not independently exercised; publishing is unauthorized. |
-| I4 | Pending hosted CI | Pinned actions, narrow permissions and static workflow checks pass; final hosted runs pending PR. |
+| I4 | Verified | Pinned actions, narrow permissions and static checks; all eight GitHub CI jobs pass at c187433 in run 43785554785. |
 | I5 | Verified | exact stable/RC archive checks, checksum tamper rejection and publication recovery documentation; nothing published. |
 | I6 | Verified | maintainer-selected6.1.0, immutable6.0.2, root changelog and explicit policy/schema/offline rollback compatibility notes. |
 | I7 | Pending hosted CI/PR | Local full matrix and independent safety reviews pass; final PR review and GitHub-hosted acceptance remain pending. |
@@ -78,4 +78,8 @@ MySQL interrupted nontransactional rollback/failed cleanup can require manual op
 
 ## Hosted acceptance and bounded PR review
 
-Pending PR creation after final source/artifact consolidation. Record final CI links and at most three post-PR review rounds here. Do not mark I3 complete from the maintainer confirmation alone or claim an authorized release.
+[PR #49](https://github.com/lotivo/sequelize-guard/pull/49) targets master from the separate branch and remains unmerged. [Initial hosted CI](https://github.com/lotivo/sequelize-guard/actions/runs/43785554785) passed all eight jobs at `c187433`: two build/docs/source jobs, four database jobs and two fresh-consumer jobs. Both PostgreSQL jobs also execute the physical standby harness. Vercel's automatic PR preview passed. No Codex review comments or GitHub review submissions were present when checked.
+
+Post-PR round 1 used three independent Sol/medium reviewers for security, schema and release/docs. Security and release reviews found no actionable issue. Schema review identified one P2 documentation contradiction: incremental `addRoleHolders` accepts only new registrations, while the guide implied repeating existing ones. Commit `0c24659` corrects the guide and API comment and expands the packed advanced recipe to preserve existing membership/inheritance across a separate deployment connection while adding a new holder. It rejects repeated registration, proves same-ID isolation and preserves application tables on rollback. Runtime behavior is unchanged. Updated exact archives and the second review round follow this correction.
+
+The user caps post-PR review/fix rounds at three. Do not mark I3 complete from the maintainer confirmation alone or claim an authorized release.

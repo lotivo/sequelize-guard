@@ -143,7 +143,7 @@ These features require design and migration review before implementation. Their 
 
 - [ ] **I3 — Verify publishing authorization and provenance. Verification gap.** Inspect the actual npm trusted-publisher/environment configuration, repository permissions and intended release controls. **Done:** publishing identity and provenance are confirmed for this repository/workflow; no long-lived token is introduced without need.
 
-- [ ] **I4 — Apply least-privilege and reproducible workflow dependencies. Improvement.** Review permissions, pin third-party actions to reviewed commits with an update process, and avoid an unreviewed moving `npm@latest` toolchain. **Done:** CI/release/docs workflows function with only their required privileges and recorded tool versions.
+- [x] **I4 — Apply least-privilege and reproducible workflow dependencies. Improvement.** Review permissions, pin third-party actions to reviewed commits with an update process, and avoid an unreviewed moving `npm@latest` toolchain. **Done:** CI/release/docs workflows function with only their required privileges and recorded tool versions.
 
 - [x] **I5 — Publish the artifact that was validated. Verify.** Keep lint/types/tests/build/consumer checks ahead of publishing and ensure version changes do not invalidate the tested tarball. Plan retry behavior if npm publication succeeds but GitHub release/docs steps fail. **Done:** release rehearsal records artifact contents/version and recovery steps without republishing or mutating an existing version.
 

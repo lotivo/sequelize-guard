@@ -12,7 +12,7 @@ title: "Type Alias: GuardCreationResult<TOptions, TModel, TData, TDefault>"
 
 > **GuardCreationResult**\<`TOptions`, `TModel`, `TData`, `TDefault`\> = `TOptions` *extends* `undefined` ? `TDefault`[] : `"json"` *extends* keyof `TOptions` ? `CreatedRows`\<`TOptions`\[`"json"`\], `TModel`, `TData`\> : `TModel`[]
 
-Defined in: [packages/sequelize-guard/src/types/api.ts:80](https://github.com/lotivo/sequelize-guard/blob/7db180505c869dc90ed958ccab238b890e88b4d3/packages/sequelize-guard/src/types/api.ts#L80)
+Defined in: [packages/sequelize-guard/src/types/api.ts:80](https://github.com/lotivo/sequelize-guard/blob/0c24659dddac413c6b77447b9a2bd1eff45e7780/packages/sequelize-guard/src/types/api.ts#L80)
 
 Result for literal or dynamic JSON options, including the omitted-option default.
 

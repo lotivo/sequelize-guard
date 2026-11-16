@@ -2,7 +2,7 @@
 title: "API Reference"
 ---
 
-Package **6.1.0**, source revision [7db180505c869dc90ed958ccab238b890e88b4d3](https://github.com/lotivo/sequelize-guard/tree/7db180505c869dc90ed958ccab238b890e88b4d3). Generated from this checkout; local uncommitted changes, if any, are included.
+Package **6.1.0**, source revision [0c24659dddac413c6b77447b9a2bd1eff45e7780](https://github.com/lotivo/sequelize-guard/tree/0c24659dddac413c6b77447b9a2bd1eff45e7780). Generated from this checkout; local uncommitted changes, if any, are included.
 
 **sequelize-guard v6.1.0**
 
@@ -51,7 +51,7 @@ SequelizeGuard - Authorization Library for Sequelize
 
 > **migration**: `object`
 
-Defined in: [packages/sequelize-guard/src/migrations/guard-migrations.ts:506](https://github.com/lotivo/sequelize-guard/blob/7db180505c869dc90ed958ccab238b890e88b4d3/packages/sequelize-guard/src/migrations/guard-migrations.ts#L506)
+Defined in: [packages/sequelize-guard/src/migrations/guard-migrations.ts:511](https://github.com/lotivo/sequelize-guard/blob/0c24659dddac413c6b77447b9a2bd1eff45e7780/packages/sequelize-guard/src/migrations/guard-migrations.ts#L511)
 
 #### Type Declaration
 
@@ -133,6 +133,9 @@ Use the actual table names of the previous installation for `from`.
 > **addRoleHolders**: (`queryInterface`, `_Sequelize`, `options`) => `Promise`\<`void`\>
 
 Provision only newly registered holder junctions for a current Guard schema.
+Pass only new types in options.roleHolders; existing types are rejected.
+Keep other schema options matched to the existing installation. After this
+migration, construction, down, and upgrade require the complete registration set.
 
 ###### Parameters
 
