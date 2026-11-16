@@ -10,7 +10,7 @@ title: "Interface: GuardInternalOptions"
 
 # Interface: GuardInternalOptions
 
-Defined in: [types/options.ts:90](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L90)
+Defined in: [types/options.ts:93](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L93)
 
 Internal options with all defaults applied
 
@@ -24,7 +24,7 @@ Internal options with all defaults applied
 
 > **prefix**: `string`
 
-Defined in: [types/options.ts:24](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L24)
+Defined in: [types/options.ts:24](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L24)
 
 Prefix for guard tables in database
 
@@ -44,7 +44,7 @@ Prefix for guard tables in database
 
 > **primaryKey**: `string`
 
-Defined in: [types/options.ts:30](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L30)
+Defined in: [types/options.ts:30](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L30)
 
 Primary key for guard tables
 
@@ -64,7 +64,7 @@ Primary key for guard tables
 
 > **timestamps**: `boolean`
 
-Defined in: [types/options.ts:36](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L36)
+Defined in: [types/options.ts:36](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L36)
 
 Add timestamps to tables
 
@@ -84,7 +84,7 @@ false
 
 > **paranoid**: `boolean`
 
-Defined in: [types/options.ts:42](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L42)
+Defined in: [types/options.ts:42](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L42)
 
 Enable soft deletes of items
 
@@ -104,9 +104,10 @@ false
 
 > **sync**: `boolean`
 
-Defined in: [types/options.ts:48](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L48)
+Defined in: [types/options.ts:49](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L49)
 
-Auto create tables, set to false if using migrations
+Auto sync tables and initialize the cache; await guard.ready for completion.
+Set false to defer database work to guard.sync(options) or use migrations.
 
 #### Default
 
@@ -124,7 +125,7 @@ true
 
 > **debug**: `boolean`
 
-Defined in: [types/options.ts:54](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L54)
+Defined in: [types/options.ts:55](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L55)
 
 Debug mode, output logs
 
@@ -144,7 +145,7 @@ false
 
 > **UserModel**: `ModelStatic`\<`GuardUserModel`\> \| `null`
 
-Defined in: [types/options.ts:60](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L60)
+Defined in: [types/options.ts:61](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L61)
 
 Model used for User (pass model, not string name)
 
@@ -164,7 +165,7 @@ null
 
 > **userPk**: `string`
 
-Defined in: [types/options.ts:66](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L66)
+Defined in: [types/options.ts:67](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L67)
 
 Primary key used for User Model
 
@@ -184,7 +185,7 @@ Primary key used for User Model
 
 > **safeGuardDeletes**: `boolean`
 
-Defined in: [types/options.ts:72](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L72)
+Defined in: [types/options.ts:73](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L73)
 
 Roles or permissions can't be deleted while associated with other data
 
@@ -200,13 +201,16 @@ true
 
 ***
 
-### userCache
+### ~~userCache~~
 
 > **userCache**: `boolean`
 
-Defined in: [types/options.ts:78](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L78)
+Defined in: [types/options.ts:80](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L80)
 
-Cache user roles for faster permission resolution
+#### Deprecated
+
+Authorization and getUserRoles always read the database.
+Retained for configuration compatibility; does not enable authorization caching.
 
 #### Default
 
@@ -224,9 +228,10 @@ true
 
 > **userCacheTtl**: `number`
 
-Defined in: [types/options.ts:84](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L84)
+Defined in: [types/options.ts:87](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L87)
 
-Time to cache user roles (in seconds)
+TTL for entries manually stored in getUserCache() (in seconds).
+Authorization does not read this cache.
 
 #### Default
 
@@ -244,7 +249,7 @@ Time to cache user roles (in seconds)
 
 > **tables**: `Required`\<`NonNullable`\<[`GuardOptions`](GuardOptions.mdx)\[`"tables"`\]\>\>
 
-Defined in: [types/options.ts:91](https://github.com/lotivo/sequelize-guard/blob/54cf657cc63ddcd820e422130eb2dd6374655c97/packages/sequelize-guard/src/types/options.ts#L91)
+Defined in: [types/options.ts:94](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/options.ts#L94)
 
 Table names configuration
 
