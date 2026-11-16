@@ -31,6 +31,10 @@ export abstract class SequelizeGuardBase {
 
   constructor(options: GuardOptions = {}) {
     this.options = resolveGuardOptions(options);
+    Object.defineProperty(this, 'options', {
+      writable: false,
+      configurable: false,
+    });
     this._ee = new EventEmitter();
   }
 

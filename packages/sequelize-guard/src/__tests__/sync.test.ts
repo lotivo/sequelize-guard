@@ -1,5 +1,13 @@
 import { DataTypes, Sequelize } from 'sequelize';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+  vi,
+} from 'vitest';
 import { SequelizeGuard } from '../index';
 import type { GuardModel, GuardUserModel } from '../sequelize-models';
 
@@ -105,6 +113,87 @@ describe('Guard synchronization', () => {
     expect((await guard.allRoles()).map((role) => role.name)).toEqual([
       'reader',
     ]);
+  });
+
+  it('binds schema options before checking ownership and dropping tables', async () => {
+    const UserModel = sequelize.define('Account', {});
+    const Team = sequelize.define('Team', {});
+    const OtherUser = sequelize.define('OtherAccount', {
+      accountId: { type: DataTypes.INTEGER, primaryKey: true },
+    });
+    const OtherTeam = sequelize.define('OtherTeam', {});
+    for (const model of [UserModel, Team, OtherUser, OtherTeam]) {
+      await model.sync();
+    }
+    const input = {
+      sync: false,
+      prefix: 'source_',
+      tables: { roles: 'policy' },
+      UserModel,
+      userPk: 'id',
+      roleHolders: { team: Team },
+    };
+    const destination = {
+      prefix: 'destination_',
+      tables: { roles: 'policy' },
+      UserModel: OtherUser,
+      userPk: 'accountId',
+      roleHolders: { team: OtherTeam },
+    };
+    const query = sequelize.getQueryInterface();
+    await SequelizeGuard.migration.up(query, sequelize, destination);
+    await query.bulkInsert('destination_policy', [
+      { name: 'destination-role' },
+    ]);
+
+    const guard = new SequelizeGuard(sequelize, input);
+    await guard.ready;
+    const { GuardRole } = guard.models();
+    await GuardRole.sync();
+    await GuardRole.create({ name: 'source-role' });
+
+    input.prefix = 'caller_';
+    input.tables.roles = 'caller_roles';
+    input.roleHolders.team = OtherTeam;
+    expect(guard.options.prefix).toBe('source_');
+    expect(guard.options.tables.roles).toBe('policy');
+    expect(guard.options.roleHolders.team).toBe(Team);
+    expect(Object.isFrozen(UserModel)).toBe(false);
+    expect(Object.isFrozen(Team)).toBe(false);
+
+    const remapped = [
+      Reflect.set(guard.options.tables, 'roles', 'unexpected'),
+      Reflect.set(guard.options.roleHolders, 'team', OtherTeam),
+      ...Object.entries(destination).map(([name, value]) =>
+        Reflect.set(guard.options, name, value),
+      ),
+      Reflect.set(guard, 'options', { ...guard.options, ...destination }),
+    ];
+    const execute = vi.spyOn(sequelize, 'query');
+    const drop = vi.spyOn(GuardRole, 'drop');
+    await expect(guard.sync({ force: true })).rejects.toThrow(
+      'has no Guard ownership receipt',
+    );
+    expect(remapped).toEqual(
+      Array.from({ length: remapped.length }, () => false),
+    );
+    expect(drop).not.toHaveBeenCalled();
+    expect(execute.mock.calls.map(([sql]) => sql)).not.toContainEqual(
+      expect.stringMatching(/^(?:DROP|ALTER|CREATE) /iu),
+    );
+    expect(await GuardRole.findOne()).toMatchObject({ name: 'source-role' });
+    expect(await query.select(GuardRole, 'destination_policy', {})).toEqual([
+      expect.objectContaining({ name: 'destination-role' }),
+    ]);
+
+    expectTypeOf<Pick<typeof guard.options, 'prefix'>>().toEqualTypeOf<{
+      readonly prefix: string;
+    }>();
+    expectTypeOf<Pick<typeof guard.options.tables, 'roles'>>().toEqualTypeOf<{
+      readonly roles?: string;
+    }>();
+    guard.options.safeGuardDeletes = false;
+    expect(guard.options.safeGuardDeletes).toBe(false);
   });
 
   it('enforces the database name match before destructive synchronization', async () => {
