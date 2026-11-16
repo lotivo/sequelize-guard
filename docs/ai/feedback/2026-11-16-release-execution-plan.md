@@ -17,11 +17,11 @@ The orchestrator owns integration, scheduling, design decisions, cross-category 
 | Category | Responsibility | Prerequisites | State |
 | --- | --- | --- | --- |
 | A | Authorization, permission grammar, safe mutations and transactions | Baseline | Integrated; final API/docs review pending |
-| B | Schema, migrations, custom identities and database integration | Baseline; coordinate constraints with A | Integrated; final edge-case review running |
+| B | Schema, migrations, custom identities and database integration | Baseline; coordinate constraints with A | Foundation integrated; fixing independent-review findings |
 | D | Dependency/security cleanup and authentication example requirements | Baseline; owns dependency manifest/lock changes | D1–D3 integrated; D4/D5 await E |
 | F | Bulk assignment, role inheritance, polymorphic role holders | Integrated A + B and user design choices | Running |
-| C | Public API/types/options/lifecycle and compatibility audit | Integrated A + B + F | Waiting |
-| I | CI/release hardening and dry-run checks | D; coordinate B database jobs and H consumers | Running |
+| C | Public API/types/options/lifecycle and compatibility audit | Final audit after integrated F; independent lifecycle work can start earlier | Running independent work |
+| I | CI/release hardening and dry-run checks | D; coordinate B database jobs and H consumers | Workflows integrated; final acceptance pending |
 | H | Contract matrix, isolated consumers, performance and acceptance | Integrated A + B + C + D + F | Waiting |
 | E | Correct human documentation, shared executable recipes and API generation | Final implementation and validation contracts | Waiting |
 | G | Agent instructions, packaged skill and discovery/evaluation | E fixtures and final public APIs | Waiting |
@@ -54,6 +54,10 @@ No production data changes or release publication are part of this task. Categor
 - `f4d761a`, `c6a5ee4`: atomic policy mutations, canonical identities, exact-token revocation, writer-backed administrative reads, and transaction/event regression tests. A validated 145 SQLite tests and six packed-consumer checks on both Node lines, plus PostgreSQL/MySQL concurrency checks.
 - `afbf021`: model/migration schema parity, custom primary keys, constraints/indexes and explicit offline upgrades into distinct tables. The combined A+B+D branch passed lint, types, build, six packed checks and 162 SQLite tests on Node 22.17.1. B also validated PostgreSQL 17 and MySQL 8.4 integration.
 - `eef42a1`: reproducible physical PostgreSQL standby test, including paused replication and an older transaction snapshot. B ran the isolated container exercise successfully; the integrated implementation will rerun it before final acceptance.
+- The orchestrator reran the physical standby harness successfully on the combined branch. `e5d5ef5` adds ambiguous-table-name and unsafe SQLite BIGINT preflights; the integrated suite remains at 162 passing tests.
+- Independent foundation review identified three migration risks: unverified table ownership on rollback, MySQL concurrent-create cleanup, and noncanonical legacy role names that cannot be revoked through normalized names. B is reproducing and fixing these before final acceptance. F additionally gates activation of previously inert parent pointers during upgrade.
+- `c071411`, `7976135`: 7.0.0 candidate metadata, isolated release jobs, pinned workflow actions, exact-artifact consumers and safe tag validation. Preliminary stable and prerelease rehearsal artifacts passed seven checks each on both Node lines, with unchanged checksums and tamper rejection. The [workflow assessment](./2026-11-16-release-workflow-assessment.md) records evidence and remaining final-acceptance work. The maintainer confirmed the private npm trusted-publisher mapping on 16 November 2026.
+- `eddb4c6`: atomic bulk assignment foundation, validated by F with 166 SQLite tests and type checking. F's final shared membership implementation will additionally validate collection input shapes and graph-lock concurrency before completion.
 
 F's implementation design preserves the existing user junction and gives each registered holder type its own typed junction with real foreign keys. A singleton database lock serializes role-graph edits across processes. The new bulk APIs count newly assigned links, and inherited permission checks remain separate from direct role membership. These designs are under implementation, not completed checklist evidence.
 
