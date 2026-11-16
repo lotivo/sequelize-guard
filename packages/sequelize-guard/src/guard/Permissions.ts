@@ -24,6 +24,7 @@ import type {
 } from '../types';
 import { findOrInsertPolicyRecord, mutatePolicy } from './policyMutation';
 import type { PolicyMutation } from './policyMutation';
+import { lockRoleHierarchy } from './RoleHierarchy';
 
 interface PermissionDefinition extends PermissionData {
   generated: boolean;
@@ -259,6 +260,7 @@ async function createPermissionResult<
 > {
   const result = permissions.length
     ? await mutatePolicy(guard, options ?? {}, async (mutation) => {
+        await lockRoleHierarchy(guard, mutation.transaction);
         const models = await createPermissions(
           guard,
           permissions,

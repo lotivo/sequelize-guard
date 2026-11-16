@@ -56,6 +56,7 @@ function directMemberships(
   { members, links }: RoleMemberships,
   member: Model,
 ) {
+  guard._assertModelBindings();
   const holder = activeTable(guard, members, 'principal');
   const link = activeTable(guard, links, 'membership');
   const role = activeTable(guard, guard._models.GuardRole, 'policy_role');

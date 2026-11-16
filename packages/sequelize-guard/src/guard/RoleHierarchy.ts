@@ -6,6 +6,7 @@ export async function lockRoleHierarchy(
   guard: SequelizeGuardInstance,
   transaction: Transaction,
 ): Promise<void> {
+  guard._assertModelBindings();
   // A write makes PostgreSQL reject stale repeatable-read snapshots.
   const [locked] = await guard._roleHierarchy.update(
     { revision: literal('1 - revision') },

@@ -415,6 +415,62 @@ describe('Guard schema migrations on SQLite', () => {
     );
   });
 
+  it('never leaves a complete receipt when its final write fails or adopts a replacement table', async () => {
+    const query = sequelize.getQueryInterface();
+    const insert = query.bulkInsert.bind(query);
+    const failure = vi
+      .spyOn(query, 'bulkInsert')
+      .mockImplementation(async (table, rows, options, attributes) => {
+        if (table === 'guard_role_hierarchy')
+          throw new Error('receipt write failed');
+        return insert(table, rows, options, attributes);
+      });
+    await expect(migration.up(query, sequelize)).rejects.toThrow(
+      'receipt write failed',
+    );
+    expect(await query.showAllTables()).toEqual([]);
+    failure.mockRestore();
+
+    // This coincidental shape must not become owned after the failed run.
+    await query.createTable('guard_users', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+    });
+    await query.bulkInsert('guard_users', [{ id: 41 }]);
+    await expect(migration.up(query, sequelize)).rejects.toThrow(
+      'already exists',
+    );
+    const drop = vi.spyOn(query, 'dropTable');
+    await expect(migration.down(query, sequelize)).rejects.toThrow(
+      'no Guard ownership receipt',
+    );
+    expect(drop).not.toHaveBeenCalled();
+    expect(await query.select(null, 'guard_users')).toEqual([{ id: 41 }]);
+    await query.dropTable('guard_users');
+    await migration.up(query, sequelize);
+    await migration.down(query, sequelize);
+    expect(await query.showAllTables()).toEqual([]);
+  });
+
+  it('creates indexes on the exact SQLite physical name when model defaults contain a schema', async () => {
+    await sequelize.close();
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+      define: { schema: 'tenant' },
+    });
+    const query = sequelize.getQueryInterface();
+    await migration.up(query, sequelize);
+    expect(await query.showAllTables()).toContain('tenant.guard_roles');
+    expect(await query.showIndex('tenant.guard_roles')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'guard_roles_parent_id' }),
+      ]),
+    );
+    await migration.down(query, sequelize);
+    expect(await query.showAllTables()).toEqual([]);
+  });
+
   it.each(['sync', 'migration'])(
     'upgrades actual 6.0.2 %s tables without changing the source',
     async (creation) => {

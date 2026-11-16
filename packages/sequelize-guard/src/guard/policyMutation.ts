@@ -34,6 +34,7 @@ export async function mutatePolicy<T>(
   options: PolicyMutationOptions,
   mutate: (mutation: PolicyMutation) => Promise<T>,
 ): Promise<T> {
+  guard._assertModelBindings();
   const { sequelize } = guard;
   if (options.transaction) {
     const transaction = options.transaction;
@@ -81,6 +82,7 @@ async function runPolicyMutation<T>(
   { transaction }: PolicyMutationOptions,
   mutate: (mutation: PolicyMutation) => Promise<T>,
 ): Promise<T> {
+  guard._assertModelBindings();
   const events: Array<{ event: string; data: object }> = [];
   const options = transaction
     ? { transaction }

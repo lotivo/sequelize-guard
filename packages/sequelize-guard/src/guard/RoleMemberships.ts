@@ -3,7 +3,11 @@ import type { Model, ModelStatic, Transaction } from 'sequelize';
 import type { GuardRoleUserModelStatic } from '../sequelize-models';
 import type { SequelizeGuardInstance } from '../SequelizeGuard';
 import type { PolicyMutationOptions, RoleAssignmentResult } from '../types';
-import { canArchiveLinks, mutatePolicy, policyBatchSize } from './policyMutation';
+import {
+  canArchiveLinks,
+  mutatePolicy,
+  policyBatchSize,
+} from './policyMutation';
 import { lockRoleHierarchy } from './RoleHierarchy';
 import { createRoles, lockRoles, normalizeRoleName } from './Roles';
 
@@ -82,10 +86,9 @@ export async function assignMemberships(
       const missing = chunk.filter(
         (link) => !existing.has(membershipKey(link)),
       );
-      const archived =
-        canArchiveLinks(links)
-          ? previous.filter((link) => link.isSoftDeleted()).map(({ id }) => id)
-          : [];
+      const archived = canArchiveLinks(links)
+        ? previous.filter((link) => link.isSoftDeleted()).map(({ id }) => id)
+        : [];
       if (archived.length) {
         await links.restore({ where: { id: archived }, transaction });
       }

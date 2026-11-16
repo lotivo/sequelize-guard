@@ -1,4 +1,5 @@
 import type { Model, ModelStatic, Sequelize, SyncOptions } from 'sequelize';
+import { captureGuardBindings } from './core/guard-bindings';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
 import {
@@ -96,6 +97,9 @@ export class SequelizeGuard<
   /** @internal Registered application principals and their junction models. */
   readonly _roleHolders: ReturnType<typeof initRoleHolders>;
 
+  /** @internal Reject changed schema routing or model metadata before using bound tables. */
+  readonly _assertModelBindings: () => void;
+
   /**
    * Automatic startup completion, including model sync and cache initialization.
    * With sync: false, resolves without database work; await sync() separately
@@ -160,6 +164,15 @@ export class SequelizeGuard<
     this.sequelize.models.GuardModels = this.models();
     sequelize.models.User ??= this._models.GuardUser;
 
+    this._assertModelBindings = captureGuardBindings(sequelize, [
+      this._roleHierarchy,
+      ...(Object.values(this._models) as GuardModel[]),
+      ...[...this._roleHolders.values()].flatMap(({ members, links }) => [
+        members,
+        links,
+      ]),
+    ]);
+
     this.ready = this.options.sync
       ? this.sync().then(() => undefined)
       : Promise.resolve();
@@ -179,6 +192,7 @@ export class SequelizeGuard<
       ...options,
     };
     const task = this.syncTask.then(async () => {
+      this._assertModelBindings();
       if (
         syncOptions.match &&
         !syncOptions.match.test(this.sequelize.getDatabaseName())
@@ -233,22 +247,37 @@ export class SequelizeGuard<
         : syncOptions;
       if (!receipt) {
         if (suppliedUser) await this._models.GuardUser.sync(syncOptions);
-        await provisionGuardSchema(this.sequelize.getQueryInterface(), this.options, {
-          logging: syncOptions.logging,
-          benchmark: syncOptions.benchmark,
-        });
+        await provisionGuardSchema(
+          this.sequelize.getQueryInterface(),
+          this.options,
+          {
+            logging: syncOptions.logging,
+            benchmark: syncOptions.benchmark,
+          },
+        );
       } else if (syncOptions.force) {
         await verifyOwnedGuardTables(
           this.sequelize.getQueryInterface(),
           this.options,
           { logging: syncOptions.logging, useMaster: true },
         );
-        for (const model of [...policyModels].reverse()) {
-          if (model !== suppliedUser) await model.drop(requestedSync);
-        }
+        await migration.down(
+          this.sequelize.getQueryInterface(),
+          this.sequelize,
+          this.options,
+        );
+        if (suppliedUser) await suppliedUser.sync(syncOptions);
+        await provisionGuardSchema(
+          this.sequelize.getQueryInterface(),
+          this.options,
+          {
+            logging: syncOptions.logging,
+            benchmark: syncOptions.benchmark,
+          },
+        );
       }
       for (const model of policyModels) {
-        if (model === suppliedUser && !receipt) continue;
+        if (model === suppliedUser && (!receipt || syncOptions.force)) continue;
         await model.sync(model === suppliedUser ? syncOptions : requestedSync);
       }
       this.resetCache();

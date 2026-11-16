@@ -68,6 +68,7 @@ export function extendWithRoleHolders(
 }
 
 function holderMemberships(guard: SequelizeGuardInstance, holder: Model) {
+  guard._assertModelBindings();
   const membership = guard._roleHolders.get(holder?.constructor);
   if (!membership)
     throw new TypeError('Expected a registered role holder model');

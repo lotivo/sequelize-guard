@@ -592,20 +592,31 @@ async function linkPermissions(
   let missing = permissions;
   if (canArchiveLinks(links)) {
     const previous = await links.findAll({
-      where: { role_id: role.id, permission_id: permissions.map(({ id }) => id) },
+      where: {
+        role_id: role.id,
+        permission_id: permissions.map(({ id }) => id),
+      },
       paranoid: false,
       transaction,
       useMaster: true,
       lock: true,
     });
-    const existing = new Set(previous.map(({ permission_id }) => permission_id));
+    const existing = new Set(
+      previous.map(({ permission_id }) => permission_id),
+    );
     missing = permissions.filter(({ id }) => !existing.has(id));
-    const archived = previous.filter((link) => link.isSoftDeleted()).map(({ id }) => id);
-    if (archived.length) await links.restore({ where: { id: archived }, transaction });
+    const archived = previous
+      .filter((link) => link.isSoftDeleted())
+      .map(({ id }) => id);
+    if (archived.length)
+      await links.restore({ where: { id: archived }, transaction });
   }
   if (missing.length) {
     await links.bulkCreate(
-      missing.map((permission) => ({ role_id: role.id, permission_id: permission.id })),
+      missing.map((permission) => ({
+        role_id: role.id,
+        permission_id: permission.id,
+      })),
       { transaction },
     );
   }

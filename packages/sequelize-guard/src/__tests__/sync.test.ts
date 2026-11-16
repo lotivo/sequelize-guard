@@ -115,6 +115,30 @@ describe('Guard synchronization', () => {
     ]);
   });
 
+  it('forwards force and alter to the supplied user after removing owned junctions', async () => {
+    const UserModel = sequelize.define('Account', { label: DataTypes.STRING });
+    const guard = new SequelizeGuard(sequelize, { UserModel });
+    await guard.ready;
+    const user = await UserModel.create({ label: 'old' });
+    await guard.makeRole('reader');
+    await guard.assignRole(user, 'reader');
+    const sync = vi.spyOn(UserModel, 'sync');
+    await guard.sync({ force: true });
+    expect(sync).toHaveBeenCalledExactlyOnceWith({
+      logging: false,
+      force: true,
+    });
+    expect(await UserModel.count()).toBe(0);
+    await UserModel.create({ label: 'new' });
+    sync.mockClear();
+    await guard.sync({ alter: { drop: false } });
+    expect(sync).toHaveBeenCalledExactlyOnceWith({
+      logging: false,
+      alter: { drop: false },
+    });
+    expect(await UserModel.count()).toBe(1);
+  });
+
   it('binds schema options before checking ownership and dropping tables', async () => {
     const UserModel = sequelize.define('Account', {});
     const Team = sequelize.define('Team', {});
@@ -207,6 +231,149 @@ describe('Guard synchronization', () => {
     expect(query).not.toHaveBeenCalled();
     expect(await guard.models().GuardRole.count()).toBe(1);
   });
+
+  it.each(['schema', 'define.schema', 'define.schemaDelimiter'])(
+    'rejects live Sequelize routing drift before sync or policy access (%s)',
+    async (setting) => {
+      const guard = new SequelizeGuard(sequelize);
+      await guard.ready;
+      await guard.allow('reader', 'read', 'document');
+      const user = await guard.makeUser();
+      await guard.assignRole(user, 'reader');
+      const runtime = sequelize as Sequelize & {
+        options: {
+          schema?: string;
+          define: { schema?: string; schemaDelimiter?: string };
+        };
+      };
+      if (setting === 'schema') runtime.options.schema = 'other';
+      else if (setting === 'define.schema')
+        runtime.options.define.schema = 'other';
+      else runtime.options.define.schemaDelimiter = '__';
+      const query = vi.spyOn(sequelize, 'query');
+      await expect(guard.sync({ force: true })).rejects.toThrow(
+        'schema defaults changed',
+      );
+      await expect(guard.userCan(user, 'read document')).rejects.toThrow(
+        'schema defaults changed',
+      );
+      await expect(guard.assignRole(user, 'reader')).rejects.toThrow(
+        'schema defaults changed',
+      );
+      await expect(guard.createPerms('document', 'write')).rejects.toThrow(
+        'schema defaults changed',
+      );
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['table', 'key', 'paranoid', 'registration'])(
+    'rejects supplied user metadata drift before sync, authorization or writes (%s)',
+    async (change) => {
+      const UserModel = sequelize.define(
+        'Account',
+        {},
+        { timestamps: true, paranoid: true },
+      );
+      const guard = new SequelizeGuard(sequelize, { UserModel });
+      await guard.ready;
+      await guard.allow('reader', 'read', 'document');
+      const user = await guard.makeUser();
+      await guard.assignRole(user, 'reader');
+      if (change === 'table')
+        Reflect.set(UserModel, 'tableName', 'other_accounts');
+      if (change === 'key') UserModel.getAttributes().id.field = 'other_id';
+      if (change === 'paranoid') UserModel.options.paranoid = false;
+      if (change === 'registration') sequelize.define('Account', {});
+      const query = vi.spyOn(sequelize, 'query');
+      await expect(guard.sync({ force: true })).rejects.toThrow(
+        'model binding changed',
+      );
+      await expect(guard.userCan(user, 'read document')).rejects.toThrow(
+        'model binding changed',
+      );
+      await expect(guard.assignRole(user, 'reader')).rejects.toThrow(
+        'model binding changed',
+      );
+      expect(query).not.toHaveBeenCalled();
+      expect(Object.isFrozen(UserModel)).toBe(false);
+    },
+  );
+
+  it('rejects reinitialized registered holder metadata before any query', async () => {
+    const Team = sequelize.define('Team', {});
+    await Team.sync();
+    const guard = new SequelizeGuard(sequelize, {
+      roleHolders: { team: Team },
+    });
+    await guard.ready;
+    const team = await Team.create();
+    await guard.makeRole('reader');
+    await guard.assignRolesToHolder(team, ['reader']);
+    Team.init(
+      { key: { type: DataTypes.STRING, primaryKey: true } },
+      {
+        sequelize,
+        modelName: 'Team',
+        tableName: 'replacement_teams',
+      },
+    );
+    const query = vi.spyOn(sequelize, 'query');
+    await expect(guard.sync({ force: true })).rejects.toThrow(
+      'model binding changed',
+    );
+    await expect(guard.holderCan(team, 'read document')).rejects.toThrow(
+      'model binding changed',
+    );
+    await expect(guard.assignRolesToHolder(team, ['reader'])).rejects.toThrow(
+      'model binding changed',
+    );
+    expect(query).not.toHaveBeenCalled();
+    expect(Object.isFrozen(Team)).toBe(false);
+  });
+
+  it.each(['foreign key', 'index'])(
+    'rejects reinitialization at the same table and key with changed %s before alter',
+    async (change) => {
+      const Parent = sequelize.define('Parent', {}, { timestamps: false });
+      await Parent.sync();
+      const attributes = {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        parent_id: {
+          type: DataTypes.INTEGER,
+          references: { model: Parent, key: 'id' },
+          onDelete: 'RESTRICT',
+        },
+      };
+      const options = {
+        sequelize,
+        modelName: 'Account',
+        tableName: 'accounts',
+        timestamps: false,
+      };
+      const UserModel = sequelize.define('Account', attributes, options);
+      const guard = new SequelizeGuard(sequelize, { UserModel });
+      await guard.ready;
+      UserModel.init(
+        {
+          ...attributes,
+          parent_id: {
+            ...attributes.parent_id,
+            onDelete: change === 'foreign key' ? 'CASCADE' : 'RESTRICT',
+          },
+        },
+        {
+          ...options,
+          indexes: change === 'index' ? [{ fields: ['parent_id'] }] : [],
+        },
+      );
+      const query = vi.spyOn(sequelize, 'query');
+      await expect(guard.sync({ alter: true })).rejects.toThrow(
+        'model binding changed',
+      );
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([{}, { force: true }, { alter: true }])(
     'rejects a schema override before any database work (%j)',

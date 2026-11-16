@@ -14,12 +14,7 @@ import { SequelizeGuard, type GuardOptions } from '../index';
 import migration, { migrationOrder } from '../migrations/guard-migrations';
 import { schemas } from '../migrations/guard-schema';
 import { getTableName, GuardUserModel } from '../sequelize-models';
-import {
-  createTestDatabase,
-  closeTestDatabase,
-  createQueryInterfaceStub,
-  TestContext,
-} from './setup';
+import { createTestDatabase, closeTestDatabase, TestContext } from './setup';
 import { generateDbPath, cleanupDbFile } from './utils/db-utils';
 
 describe('SequelizeGuard Initialization', () => {
@@ -103,37 +98,46 @@ describe('SequelizeGuard Setup', () => {
   });
 
   describe('Migrations', () => {
-    it('should run up migration', async () => {
-      // setup
-      const { stub, migration: migrationArr } = createQueryInterfaceStub(
-        context.sequelize,
-      );
-      const expected = migrationOrder.up.map((m) =>
-        getTableName(m, { prefix: 'guard_' }),
-      );
-      // execute
-      await migration.up(stub, context.guard.sequelize);
-      // assert
-      expect(migrationArr).toEqual(expected);
-    });
-
-    it('should run up migration with options', async () => {
-      // setup
-      const { stub, migration: migrationArr } = createQueryInterfaceStub(
-        context.sequelize,
-      );
-      const expected = migrationOrder.up.map((m) =>
-        getTableName(m, { prefix: 'guard_' }),
-      );
-      // execute
-      await migration.up(stub, context.guard.sequelize, {
-        prefix: 'guard_',
-        timestamps: true,
-        paranoid: true,
-      });
-      // assert
-      expect(migrationArr).toEqual(expected);
-    });
+    it.each([
+      undefined,
+      { prefix: 'checked_', timestamps: true, paranoid: true },
+    ])(
+      'creates the real schema exclusively in dependency order with options %j',
+      async (options) => {
+        const sequelize = new Sequelize({
+          dialect: 'sqlite',
+          storage: ':memory:',
+          logging: false,
+        });
+        onTestFinished(() => sequelize.close());
+        const statements: string[] = [];
+        const execute = vi.spyOn(sequelize, 'query');
+        await migration.up(sequelize.getQueryInterface(), sequelize, options);
+        for (const [sql] of execute.mock.calls) {
+          const statement = typeof sql === 'string' ? sql : sql.query;
+          if (statement.startsWith('CREATE TABLE ')) statements.push(statement);
+        }
+        const expected = migrationOrder.up.map((type) =>
+          getTableName(type, { prefix: options?.prefix ?? 'guard_' }),
+        );
+        expect(statements).toHaveLength(expected.length);
+        statements.forEach((statement, index) => {
+          expect(statement).toMatch(
+            new RegExp('^CREATE TABLE `' + expected[index] + '`'),
+          );
+          expect(statement).not.toContain('IF NOT EXISTS');
+        });
+        const query = sequelize.getQueryInterface();
+        for (const table of expected)
+          expect(await query.tableExists(table)).toBe(true);
+        const [receipt] = await query.select(null, expected.at(-1)!);
+        expect(receipt).toMatchObject({
+          id: 1,
+          revision: 0,
+          ownership: expect.any(String),
+        });
+      },
+    );
 
     it.each([
       undefined,

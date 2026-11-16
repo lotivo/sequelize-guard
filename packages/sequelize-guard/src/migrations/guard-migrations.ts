@@ -41,7 +41,10 @@ import { guardColumns } from './guard-schema';
 import { createMigrationTable } from './guard-table-ddl';
 import { copyGuardTables, type GuardUpgradeOptions } from './guard-upgrade';
 
-type MigrationQueries = Pick<QueryOptions, 'transaction' | 'useMaster' | 'logging' | 'benchmark'>;
+type MigrationQueries = Pick<
+  QueryOptions,
+  'transaction' | 'useMaster' | 'logging' | 'benchmark'
+>;
 
 export const migrationOrder = {
   up: [
@@ -105,8 +108,14 @@ async function createIndexedTable(
     collate: table.collate,
   });
   created.push(table.table);
+  // SQLite schemas are encoded in the physical table name. Passing a string
+  // with a dot to addIndex makes Sequelize split it into SQL qualification.
+  const indexTable =
+    query.sequelize.getDialect() === 'sqlite' && typeof table.table === 'string'
+      ? { tableName: table.table }
+      : table.table;
   for (const index of table.indexes)
-    await query.addIndex(table.table, { ...index, ...options });
+    await query.addIndex(indexTable, { ...index, ...options });
 }
 
 async function assertCreatableHolderTables(
@@ -241,9 +250,18 @@ async function createOwnershipReceipt(
 ): Promise<void> {
   const { sequelize } = queryInterface;
   const table = guardTable(sequelize, options, BaseModelType.RoleHierarchy);
-  await createMigrationTable(queryInterface, table, guardColumns(sequelize, options).role_hierarchy, queryOptions);
+  await createMigrationTable(
+    queryInterface,
+    table,
+    guardColumns(sequelize, options).role_hierarchy,
+    queryOptions,
+  );
   created.push(table);
-  await queryInterface.bulkInsert(table, [ownershipRow(sequelize, options)], queryOptions);
+  await queryInterface.bulkInsert(
+    table,
+    [ownershipRow(sequelize, options)],
+    queryOptions,
+  );
 }
 
 export async function provisionGuardSchema(
@@ -252,11 +270,15 @@ export async function provisionGuardSchema(
   logging: Pick<QueryOptions, 'logging' | 'benchmark'> = {},
 ): Promise<void> {
   const { sequelize } = queryInterface;
-  await withMigration(sequelize, queryInterface, async (queryOptions, created) => {
-    const writer = { ...logging, ...queryOptions };
-    await createTables(queryInterface, sequelize, options, writer, created);
-    await createOwnershipReceipt(queryInterface, options, writer, created);
-  });
+  await withMigration(
+    sequelize,
+    queryInterface,
+    async (queryOptions, created) => {
+      const writer = { ...logging, ...queryOptions };
+      await createTables(queryInterface, sequelize, options, writer, created);
+      await createOwnershipReceipt(queryInterface, options, writer, created);
+    },
+  );
 }
 
 /** Create a fresh Guard schema. Application user tables must already exist. */
@@ -286,6 +308,17 @@ async function down(
       resolved,
       queryOptions,
     );
+    if (['mysql', 'mariadb'].includes(sequelize.getDialect())) {
+      // DDL cannot roll back here. Revoke the complete receipt before the first
+      // DROP so an interrupted rollback cannot claim a subsequently reused name.
+      // Remaining tables require operator recovery, never automatic adoption.
+      const receipt = guardTable(
+        sequelize,
+        resolved,
+        BaseModelType.RoleHierarchy,
+      );
+      await queryInterface.bulkDelete(receipt, { id: 1 }, queryOptions);
+    }
     for (const table of existing) {
       await queryInterface.dropTable(table, queryOptions);
     }
@@ -412,7 +445,12 @@ async function upgrade(
         created,
       );
       await copy();
-      await createOwnershipReceipt(queryInterface, target, queryOptions, created);
+      await createOwnershipReceipt(
+        queryInterface,
+        target,
+        queryOptions,
+        created,
+      );
     },
   );
 }

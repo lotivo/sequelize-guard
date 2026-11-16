@@ -335,16 +335,6 @@ it.runIf(new URL(url).protocol === 'mysql:')(
         await release.promise;
       }
     });
-    const create = loser.createTable.bind(loser);
-    vi.spyOn(loser, 'createTable').mockImplementation(
-      async (table, columns, tableOptions) => {
-        if (table === prefix + 'permissions') {
-          throw new Error('competing migration failed before its second table');
-        }
-        return create(table, columns, tableOptions);
-      },
-    );
-
     const tableExists = loser.tableExists.bind(loser);
     let successful: Promise<void> | undefined;
     vi.spyOn(loser, 'tableExists').mockImplementation(
@@ -430,5 +420,128 @@ it.runIf(new URL(url).protocol === 'mysql:')(
       }),
     ).toEqual([{ id: 41, guard_user_id: user.id }]);
     await expect(rollback).rejects.toThrow(applicationDatabase);
+  },
+);
+
+it.runIf(new URL(url).protocol === 'mysql:')(
+  'cleans up only its own partial schema and never leaves a complete receipt after a failed final write',
+  async () => {
+    const query = sequelize.getQueryInterface();
+    const options = { prefix };
+    const insert = query.bulkInsert.bind(query);
+    const failure = vi
+      .spyOn(query, 'bulkInsert')
+      .mockImplementation(async (table, rows, queryOptions, attributes) => {
+        if (table === prefix + 'role_hierarchy')
+          throw new Error('receipt insert failed');
+        return insert(table, rows, queryOptions, attributes);
+      });
+    await expect(migration.up(query, sequelize, options)).rejects.toThrow(
+      'receipt insert failed',
+    );
+    failure.mockRestore();
+    const remaining = (await query.showAllTables()).filter((table) =>
+      String(table).startsWith(prefix),
+    );
+    expect(remaining).toEqual([]);
+    await migration.up(query, sequelize, options);
+    await migration.down(query, sequelize, options);
+  },
+);
+
+it.runIf(new URL(url).protocol === 'mysql:')(
+  'revokes its receipt before any nontransactional DROP and preserves reused names after interrupted rollback',
+  async () => {
+    const query = sequelize.getQueryInterface();
+    const options = { prefix };
+    await migration.up(query, sequelize, options);
+    const removeReceipt = vi
+      .spyOn(query, 'bulkDelete')
+      .mockRejectedValueOnce(new Error('cannot revoke receipt'));
+    const drop = vi.spyOn(query, 'dropTable');
+    await expect(migration.down(query, sequelize, options)).rejects.toThrow(
+      'cannot revoke receipt',
+    );
+    expect(drop).not.toHaveBeenCalled();
+    removeReceipt.mockRestore();
+    const actualDrop = query.dropTable.bind(query);
+    drop.mockRestore();
+    const interrupted = vi
+      .spyOn(query, 'dropTable')
+      .mockImplementation(async (table, queryOptions) => {
+        if (table === prefix + 'role_permission')
+          throw new Error('interrupted DDL');
+        return actualDrop(table, queryOptions);
+      });
+    await expect(migration.down(query, sequelize, options)).rejects.toThrow(
+      'interrupted DDL',
+    );
+    interrupted.mockRestore();
+    expect(await query.select(null, prefix + 'role_hierarchy')).toEqual([]);
+    await query.createTable(prefix + 'role_user', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+    });
+    await query.bulkInsert(prefix + 'role_user', [{ id: 91 }]);
+    const retryDrop = vi.spyOn(query, 'dropTable');
+    await expect(migration.down(query, sequelize, options)).rejects.toThrow(
+      'ownership receipt is missing or invalid',
+    );
+    await expect(migration.up(query, sequelize, options)).rejects.toThrow(
+      'already exists',
+    );
+    expect(retryDrop).not.toHaveBeenCalled();
+    expect(await query.select(null, prefix + 'role_user')).toEqual([
+      { id: 91 },
+    ]);
+    retryDrop.mockRestore();
+    // Explicit operator recovery: these are isolated test-owned tables.
+    for (const table of [
+      'role_user',
+      'role_permission',
+      'roles',
+      'permissions',
+      'resources',
+      'users',
+      'role_hierarchy',
+    ]) {
+      await query.dropTable(prefix + table);
+    }
+  },
+);
+
+it.runIf(new URL(url).protocol === 'mysql:')(
+  'fails closed when cleanup of an incomplete MySQL creation also fails',
+  async () => {
+    const query = sequelize.getQueryInterface();
+    const options = { prefix };
+    const addIndex = vi
+      .spyOn(query, 'addIndex')
+      .mockRejectedValueOnce(new Error('index creation failed'));
+    const drop = vi
+      .spyOn(query, 'dropTable')
+      .mockRejectedValueOnce(new Error('cleanup connection failed'));
+    await expect(migration.up(query, sequelize, options)).rejects.toThrow(
+      'could not remove all newly created tables',
+    );
+    addIndex.mockRestore();
+    drop.mockRestore();
+    expect(await query.tableExists(prefix + 'role_hierarchy')).toBe(false);
+    // The failed runner never created this name, so its retry cannot claim it.
+    await query.createTable(prefix + 'users', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+    });
+    await query.bulkInsert(prefix + 'users', [{ id: 17 }]);
+    const retryDrop = vi.spyOn(query, 'dropTable');
+    await expect(migration.up(query, sequelize, options)).rejects.toThrow(
+      'already exists',
+    );
+    await expect(migration.down(query, sequelize, options)).rejects.toThrow(
+      'no Guard ownership receipt',
+    );
+    expect(retryDrop).not.toHaveBeenCalled();
+    expect(await query.select(null, prefix + 'users')).toEqual([{ id: 17 }]);
+    retryDrop.mockRestore();
+    for (const table of ['roles', 'permissions', 'resources', 'users'])
+      await query.dropTable(prefix + table);
   },
 );

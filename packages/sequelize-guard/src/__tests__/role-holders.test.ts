@@ -327,3 +327,58 @@ it('preflights an already registered model targeting a holder junction under ano
   expect(sequelize.models.ApplicationJunction).toBeDefined();
   expect(sequelize.models.GuardRole).toBeUndefined();
 });
+
+it('restores archived holder memberships atomically and counts only inactive links', async () => {
+  const { guard, sequelize, roleHolders } = await setup();
+  const holder = await roleHolders.device.create({ key: 7 });
+  await guard.allow('reader', 'read', 'article');
+  await guard.assignRolesToHolder(holder, ['reader', 'active']);
+  const registration = guard._roleHolders.get(roleHolders.device);
+  if (!registration) throw new Error('Missing holder registration');
+  const { links } = registration;
+  const reader = await guard.getRole('reader');
+  if (!reader) throw new Error('Missing reader role');
+  const archived = await links.findOne({
+    where: { role_id: reader.id },
+    rejectOnEmpty: true,
+  });
+  await archived.destroy();
+  const transaction = await sequelize.transaction();
+  const created = vi.fn();
+  guard.onRolesCreated(created);
+  try {
+    links.addHook('beforeBulkCreate', 'failed-holder-restore', () => {
+      throw new Error('holder insertion failed');
+    });
+    await expect(
+      guard.assignRolesToHolder(holder, ['reader', 'new'], { transaction }),
+    ).rejects.toThrow('holder insertion failed');
+    links.removeHook('beforeBulkCreate', 'failed-holder-restore');
+    expect(await links.count({ transaction })).toBe(1);
+    expect(
+      await guard
+        .models()
+        .GuardRole.count({ where: { name: 'new' }, transaction }),
+    ).toBe(0);
+    await expect(
+      guard.assignRolesToHolder(holder, ['reader', 'active'], { transaction }),
+    ).resolves.toEqual({ assigned: 1 });
+    await expect(
+      guard.assignRolesToHolder(holder, ['reader', 'active'], { transaction }),
+    ).resolves.toEqual({ assigned: 0 });
+    await transaction.rollback();
+  } finally {
+    links.removeHook('beforeBulkCreate', 'failed-holder-restore');
+    if (!('finished' in transaction) || !transaction.finished)
+      await transaction.rollback();
+  }
+  expect(created).not.toHaveBeenCalled();
+  await expect(guard.holderCan(holder, 'read article')).resolves.toBe(false);
+  await expect(
+    guard.assignRolesToHolder(holder, ['reader', 'active']),
+  ).resolves.toEqual({ assigned: 1 });
+  expect(await links.count({ paranoid: false })).toBe(2);
+  const restored = await links.findByPk(archived.id, { rejectOnEmpty: true });
+  expect(restored.isSoftDeleted()).toBe(false);
+  await expect(guard.holderCan(holder, 'read article')).resolves.toBe(true);
+});
