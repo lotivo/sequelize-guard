@@ -15,6 +15,7 @@ import {
 import type { GuardInternalOptions, GuardOptions } from '../types';
 import { guardColumns, timestampColumns } from './guard-schema';
 
+/** Source and destination schemas for an offline, non-destructive policy copy. */
 export interface GuardUpgradeOptions {
   /** Options describing the existing installation's actual tables. */
   from: GuardOptions;

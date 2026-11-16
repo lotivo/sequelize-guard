@@ -59,23 +59,7 @@ import { SequelizeWithGuard } from './types/helpers';
 import type { GuardCache } from './utils/cache';
 import type { GuardUserCache } from './utils/userCache';
 
-/**
- * SequelizeGuard - Authorization library for Sequelize
- * @example
- * ```typescript
- * const sequelize = new Sequelize(...);
- * const guard = new SequelizeGuard(sequelize, options);
- *
- * // Assign roles
- * await user.assignRole('admin');
- *
- * // Create permissions
- * await guard.allow('admin', ['view', 'edit'], 'blog');
- *
- * // Check permissions
- * const canEdit = await user.can('edit blog');
- * ```
- */
+/** Manage roles, permissions and database-backed authorization for one Sequelize instance. */
 export class SequelizeGuard<
   TUser extends Model = GuardUserModel,
 > extends SequelizeGuardBase {
@@ -101,15 +85,7 @@ export class SequelizeGuard<
   readonly _assertModelBindings: () => void;
 
   /**
-   * Automatic startup completion, including model sync and cache initialization.
-   * With sync: false, resolves without database work; await sync() separately
-   * or prepare the tables with migrations before using the guard.
-   * @example
-   * ```typescript
-   * const guard = new SequelizeGuard(sequelize, { sync: true });
-   * await guard.ready;
-   * // Now safe to use guard
-   * ```
+   * Resolves after automatic sync and cache loading. With sync: false, performs no database work.
    */
   public readonly ready: Promise<void>;
 
@@ -293,12 +269,8 @@ export class SequelizeGuard<
   }
 
   /**
-   * Get all Guard models
-   * @example
-   * ```typescript
-   * const models = guard.models();
-   * ```
-   * @returns Array of models used in authorization
+   * Get the models bound to this guard.
+   * @returns Named model classes, including the supplied or built-in GuardUser.
    */
   models(): GuardModels<TUser> {
     // The constructor registers the exact supplied model before adding guard methods.
@@ -312,7 +284,19 @@ export class SequelizeGuard<
 
   // Implementations are installed on the prototype by the package entry point.
   // init
+  /**
+   * Start a new fluent permission statement.
+   * @returns A builder completed by commit().
+   */
   declare init: () => GuardControl;
+  /**
+   * Grant permissions to a role, creating the role if needed.
+   * @param role - Role name.
+   * @param actions - Action tokens, or `*` for all actions.
+   * @param resources - Resource tokens, or `*` for all resources.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns The role and its current direct permissions.
+   */
   declare allow: (
     role: string,
     actions: string | string[],
@@ -321,6 +305,13 @@ export class SequelizeGuard<
   ) => Promise<AddPermsToRoleResult>;
 
   // Permission guard methods
+  /**
+   * Create one permission bundle per resource, reusing matching bundles.
+   * @param resources - Resource tokens, or `*` for all resources.
+   * @param actions - Action tokens, or `*` for all actions.
+   * @param options - Names, result format, existing-row inclusion and optional transaction.
+   * @returns New permission models by default; json: true returns plain data.
+   */
   declare createPerms: <TOptions extends [options?: CreatePermsOptions]>(
     resources: string | string[],
     actions: string | string[],
@@ -328,22 +319,52 @@ export class SequelizeGuard<
   ) => Promise<
     GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
   >;
+  /**
+   * Create permission bundles with separate actions and names per resource.
+   * @param permissions - Permission bundle definitions.
+   * @param options - Default names, result format, existing-row inclusion and optional transaction.
+   * @returns New permission models by default; json: true returns plain data.
+   */
   declare createPermsBulk: <TOptions extends [options?: CreatePermsOptions]>(
     permissions: BulkPermissionInput[],
     ...options: TOptions
   ) => Promise<
     GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
   >;
+  /**
+   * Find permissions in the writer database.
+   * @param args - Optional filters combined with OR; omitted filters return all permissions.
+   * @returns Matching permission models.
+   */
   declare findPerms: (args?: FindPermsArgs) => Promise<GuardPermissionModel[]>;
+  /**
+   * Subscribe to permission creation after commit.
+   * Caller-owned transactions emit no events.
+   * @param cb - In-process listener receiving new permission models.
+   * @returns A function that removes this listener.
+   */
   declare onPermsCreated: (
     cb: GuardEventCallback<GuardPermissionModel[]>,
   ) => UnsubscribeFn;
+  /**
+   * Subscribe to direct permission grants after commit.
+   * Caller-owned transactions emit no events.
+   * @param cb - In-process listener receiving the role with updated direct permissions.
+   * @returns A function that removes this listener.
+   */
   declare onPermsAddedToRole: (
     cb: GuardEventCallback<GuardRoleModel>,
   ) => UnsubscribeFn;
+  /**
+   * Subscribe to direct permission removal after commit.
+   * Caller-owned transactions emit no events.
+   * @param cb - In-process listener receiving the role with updated direct permissions.
+   * @returns A function that removes this listener.
+   */
   declare onPermsRemovedFromRole: (
     cb: GuardEventCallback<GuardRoleModel>,
   ) => UnsubscribeFn;
+  /** @internal Normalize permission creation input. */
   declare _sanitizePermsInput: (
     resources: string | string[],
     actions: string | string[],
@@ -351,10 +372,22 @@ export class SequelizeGuard<
   ) => PermissionData[];
 
   // Role guard methods
+  /**
+   * Create a role if its name is not already present.
+   * @param role - Role name or attributes.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns The role model and whether it was created.
+   */
   declare makeRole: (
     role: RoleCreationParam,
     options?: PolicyMutationOptions,
   ) => Promise<RoleCreationResult>;
+  /**
+   * Create roles, reusing existing names.
+   * @param roles - Role names or attributes.
+   * @param options - Result format, existing-row inclusion and optional transaction.
+   * @returns New roles as plain data if options are omitted; explicit options default to models.
+   */
   declare makeRoles: <TOptions extends [options?: CreateRolesOptions]>(
     roles: RoleCreationParam[],
     ...options: TOptions
@@ -366,99 +399,272 @@ export class SequelizeGuard<
       GuardRoleData
     >
   >;
+  /**
+   * Delete roles; safeGuardDeletes rejects roles with links or children.
+   * @param roles - Role name, names, attributes or models to delete.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns Number of roles deleted.
+   */
   declare deleteRoles: (
     roles: string | RoleCreationParam[] | GuardRoleModel[],
     options?: PolicyMutationOptions,
   ) => Promise<number>;
+  /**
+   * Set the parent whose permissions a role inherits; cycles are rejected.
+   * @param role - Role name.
+   * @param parent - Existing parent role name, or null to detach.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns The updated role model.
+   */
   declare setRoleParent: (
     role: string,
     parent: string | null,
     options?: PolicyMutationOptions,
   ) => Promise<GuardRoleModel>;
+  /**
+   * Read all active roles and their direct permissions from the writer database.
+   * @returns Role models with Permissions loaded.
+   */
   declare allRoles: () => Promise<GuardRoleModel[]>;
+  /**
+   * Read a role and its direct permissions from the writer database.
+   * @param role - Role name.
+   * @returns The role model, or null if absent.
+   */
   declare getRole: (role: string) => Promise<GuardRoleModel | null>;
+  /**
+   * Find active roles in the writer database.
+   * @param args - Optional names, substring matching and parent inclusion.
+   * @returns Matching role models.
+   */
   declare findRoles: (args?: FindRolesArgs) => Promise<GuardRoleModel[]>;
+  /**
+   * Grant permissions to a role, creating a named role if needed.
+   * @param role - Role name or persisted role model.
+   * @param actions - Action tokens, or `*` for all actions.
+   * @param resources - Resource tokens, or `*` for all resources.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns The role and its current direct permissions.
+   */
   declare addPermsToRole: (
     role: string | GuardRoleModel,
     actions: string | string[],
     resources: string | string[],
     options?: PolicyMutationOptions,
   ) => Promise<AddPermsToRoleResult>;
+  /**
+   * Remove exact action tokens from direct grants; wildcards do not create deny rules.
+   * @param role - Role name.
+   * @param actions - Exact action tokens to remove.
+   * @param resources - Exact resource tokens to modify.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns The role, remaining permissions and unlinked bundles.
+   */
   declare rmPermsFromRole: (
     role: string,
     actions: string | string[],
     resources: string | string[],
     options?: PolicyMutationOptions,
   ) => Promise<RemovePermsFromRoleResult>;
+  /**
+   * Subscribe to role creation after commit.
+   * Caller-owned transactions emit no events.
+   * @param cb - In-process listener receiving new role models.
+   * @returns A function that removes this listener.
+   */
   declare onRolesCreated: (
     cb: GuardEventCallback<GuardRoleModel[]>,
   ) => UnsubscribeFn;
+  /**
+   * Subscribe to role deletion after commit.
+   * Caller-owned transactions emit no events.
+   * @param cb - In-process listener receiving deleted role models.
+   * @returns A function that removes this listener.
+   */
   declare onRolesDeleted: (
     cb: GuardEventCallback<GuardRoleModel[]>,
   ) => UnsubscribeFn;
 
   // User guard methods
+  /**
+   * Create a user without attributes; use models().GuardUser.create for custom fields.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns The persisted user with guard methods.
+   */
   declare makeUser: (
     options?: PolicyMutationOptions,
   ) => Promise<TUser & GuardUserMethods>;
+  /**
+   * Assign a direct role to a user, restoring an archived assignment if needed.
+   * @param user - Persisted guard user.
+   * @param role - Role name.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns The supplied user.
+   */
   declare assignRole: <TUser extends Model>(
     user: TUser,
     role: string,
     options?: PolicyMutationOptions,
   ) => Promise<TUser>;
+  /**
+   * Assign direct roles to a user, restoring archived assignments if needed.
+   * @param user - Persisted guard user.
+   * @param roles - Direct role names.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   */
   declare assignRoles: (
     user: Model,
     roles: string[],
     options?: PolicyMutationOptions,
   ) => Promise<void>;
+  /**
+   * Assign every listed role to every listed user atomically.
+   * @param users - Persisted guard users.
+   * @param roles - Direct role names.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns A result counting assignments added or reactivated.
+   */
   declare assignRolesToUsers: (
     users: readonly Model[],
     roles: readonly string[],
     options?: PolicyMutationOptions,
   ) => Promise<RoleAssignmentResult>;
+  /**
+   * Assign each user their listed roles atomically.
+   * @param assignments - Users and their direct role names.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns A result counting assignments added or reactivated.
+   */
   declare assignUserRoles: (
     assignments: readonly UserRoleAssignment[],
     options?: PolicyMutationOptions,
   ) => Promise<RoleAssignmentResult>;
+  /**
+   * Remove direct role assignments from a user.
+   * @param user - Persisted guard user.
+   * @param roles - Direct role names.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   */
   declare rmAssignedRoles: (
     user: Model,
     roles: string[],
     options?: PolicyMutationOptions,
   ) => Promise<void>;
+  /**
+   * Read active, directly assigned user roles from the writer database.
+   * @param user - Persisted guard user.
+   * @returns Plain role data; inherited roles are excluded.
+   */
   declare getUserRoles: (user: Model) => Promise<GuardRoleData[]>;
 
+  /**
+   * Assign direct roles to a registered holder, restoring archived assignments.
+   * @param holder - Persisted instance of a registered role-holder model.
+   * @param roles - Direct role names.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns A result counting assignments added or reactivated.
+   */
   declare assignRolesToHolder: (
     holder: Model,
     roles: readonly string[],
     options?: PolicyMutationOptions,
   ) => Promise<RoleAssignmentResult>;
+  /**
+   * Remove direct role assignments from a registered holder.
+   * @param holder - Persisted instance of a registered role-holder model.
+   * @param roles - Direct role names.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   */
   declare removeRolesFromHolder: (
     holder: Model,
     roles: readonly string[],
     options?: PolicyMutationOptions,
   ) => Promise<void>;
+  /**
+   * Read active, directly assigned holder roles from the writer database.
+   * @param holder - Persisted instance of a registered role-holder model.
+   * @returns Plain role data; inherited roles are excluded.
+   */
   declare getHolderRoles: (holder: Model) => Promise<GuardRoleData[]>;
+  /**
+   * Check direct and inherited permissions in the writer database; query errors reject.
+   * @param holder - Persisted instance of a registered role-holder model.
+   * @param permission - Permission in `action resource` form; `*` means `* *`.
+   * @returns Whether access is granted; malformed requests return false.
+   */
   declare holderCan: (holder: Model, permission: string) => Promise<boolean>;
 
   //User permission resolution methods
+  /**
+   * Check direct and inherited permissions in the writer database; query errors reject.
+   * @param user - Persisted guard user.
+   * @param permission - Permission in `action resource` form; `*` means `* *`.
+   * @returns Whether access is granted; malformed requests return false.
+   */
   declare userCan: (user: Model, permission: string) => Promise<boolean>;
+  /**
+   * Negate userCan; database errors still reject.
+   * @param user - Persisted guard user.
+   * @param permission - Permission in `action resource` form; `*` means `* *`.
+   * @returns Whether access is denied.
+   */
   declare userCant: (user: Model, permission: string) => Promise<boolean>;
+  /**
+   * Match a permission against supplied grants without querying the database.
+   * @param givenPermissions - Grants with JSON-encoded action arrays and resource tokens.
+   * @param wantedPermission - Permission in `action resource` form, or `*`.
+   * @returns Whether a valid grant matches; malformed grants are ignored.
+   */
   declare resolvePermission: (
     givenPermissions: { action: string; resource: string }[],
     wantedPermission: string,
   ) => boolean;
 
   // User role resolution methods
+  /**
+   * Check whether a user directly holds any listed role.
+   * @param user - Persisted guard user.
+   * @param roles - Direct role names.
+   * @returns Whether any role matches; false for an empty list.
+   */
   declare userHasRoles: (user: Model, roles: string[]) => Promise<boolean>;
+  /**
+   * Check whether a user directly holds every listed role.
+   * @param user - Persisted guard user.
+   * @param roles - Direct role names.
+   * @returns Whether every role matches; true for an empty list.
+   */
   declare userHasAllRoles: (user: Model, roles: string[]) => Promise<boolean>;
+  /**
+   * Check whether a user directly holds a role; inherited roles are excluded.
+   * @param user - Persisted guard user.
+   * @param role - Role name.
+   * @returns Whether the active direct membership exists.
+   */
   declare userIsA: (user: Model, role: string) => Promise<boolean>;
 
   // Cache
+  /**
+   * Clear the role and permission snapshot; authorization does not use this cache.
+   * @returns The empty cache, reloaded on the next getCache() call.
+   */
   declare resetCache: () => GuardCache;
+  /**
+   * Get the role and permission snapshot, loading it if needed.
+   * @returns A manual snapshot cache; authorization always reads the database.
+   */
   declare getCache: () => Promise<GuardCache>;
 
   // User cache
+  /**
+   * Clear the manual user cache; authorization does not use it.
+   * @returns The empty cache. Call close() when it is no longer needed.
+   */
   declare resetUserCache: () => GuardUserCache;
+  /**
+   * Get or create the manual user cache; authorization does not use it.
+   * @returns The cache. Call close() when it is no longer needed.
+   */
   declare getUserCache: () => GuardUserCache;
 }
 

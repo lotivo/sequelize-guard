@@ -23,19 +23,19 @@ import {
 import { GuardModelInitParams, SequelizeModelClass } from './types/types';
 import { modelOptions } from './utils';
 
+/** Stored role attributes, including its optional permission-inheritance parent. */
 export type GuardRoleData = {
   id: CreationOptional<number>;
   name: string;
   description?: string | null;
+  /** Parent role ID; inherits permissions, not role membership. */
   parent_id?: ForeignKey<GuardRoleModel['id']> | null;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
 };
 
-/**
- * GuardPermission Model - Represents permissions (e.g., view blog, edit post)
- */
+/** Role model with optional loaded permissions, users and hierarchy associations. */
 export interface GuardRoleModel
   extends SequelizeModelClass<GuardRoleModel>,
     GuardRoleData {

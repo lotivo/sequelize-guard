@@ -11,25 +11,46 @@ import type {
 } from '../SequelizeGuard';
 
 /**
- * Extended NodeCache with Guard-specific methods
+ * Manual role and permission snapshots; authorization does not read this cache.
  */
 export class GuardCache extends NodeCache {
+  /**
+   * Read cached role models keyed by role ID.
+   */
   getRoles(): Record<number, GuardRoleModel> {
     return this.get('roles') || {};
   }
 
+  /**
+   * Read cached permission data keyed by permission ID.
+   */
   getPerms(): Record<number, GuardPermissionData> {
     return this.get('perms') || {};
   }
 
+  /**
+   * Replace cached roles.
+   * @param roles - Role models keyed by ID.
+   * @returns Whether the cache accepted the value.
+   */
   setRoles(roles: Record<number, GuardRoleModel>): boolean {
     return this.set('roles', roles);
   }
 
+  /**
+   * Replace cached permissions.
+   * @param perms - Permission data keyed by ID.
+   * @returns Whether the cache accepted the value.
+   */
   setPerms(perms: Record<number, GuardPermissionData>): boolean {
     return this.set('perms', perms);
   }
 
+  /**
+   * Load missing Permissions associations for cached roles.
+   * @param guard - Guard whose models supply the missing data.
+   * @returns Cached roles keyed by ID; this is not an authorization read.
+   */
   async getRolesWithPerms(
     guard: SequelizeGuardInstance,
   ): Promise<Record<number, GuardRoleModel>> {

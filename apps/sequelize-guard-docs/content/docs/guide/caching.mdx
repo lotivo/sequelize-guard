@@ -40,6 +40,6 @@ If you use `getUserCache()`, keep the instance and call `cache.close()` when fin
 
 ## Performance
 
-Each authorization call now requires a database read. This trades the old cache-only performance for current revocation behavior. Checks use indexed queries to retrieve relevant grants and still validate the full ancestor lineage. Measure your database and policy size before increasing traffic. The repository benchmark runs with `node --expose-gc scripts/benchmark-authorization.mjs` after building the library. Avoid caching an authorization result in application code, since it can delay revocation.
+Each authorization call now requires a database read. This trades the old cache-only performance for current revocation behavior. Checks use indexed queries to retrieve relevant grants and still validate the full ancestor lineage. Measure your database and policy size before increasing traffic. Avoid caching an authorization result in application code, since it can delay revocation.
 
 The application still owns authentication and authorization of role/permission administration. Use a principal established by verified authentication; do not treat a user ID from an unverified request header as proof of identity.

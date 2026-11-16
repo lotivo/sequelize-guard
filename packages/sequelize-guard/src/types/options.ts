@@ -59,7 +59,7 @@ export interface GuardOptions<TUser extends Model = Model> {
   debug?: boolean;
 
   /**
-   * Model used for User (pass model, not string name)
+   * User model already initialized on this Sequelize instance; omit for the built-in user.
    * @default null
    */
   UserModel?: ModelStatic<TUser> | null;
@@ -78,7 +78,7 @@ export interface GuardOptions<TUser extends Model = Model> {
   userPk?: string;
 
   /**
-   * Roles or permissions can't be deleted while associated with other data
+   * Reject role deletion while memberships, permission links or child roles exist.
    * @default true
    */
   safeGuardDeletes?: boolean;

@@ -3,23 +3,17 @@ import type { AddPermsToRoleResult, PolicyMutationOptions } from '../types';
 import { canonicalPermissionActions, permissionResources } from './Permissions';
 import { normalizeRoleName } from './Roles';
 
-/**
- * GuardControl - Fluent API for creating guard statements
- * @example
- * ```typescript
- * guard.init()
- *   .allow('admin')
- *   .to(['view', 'edit'])
- *   .on('blog')
- *   .commit();
- * ```
- */
+/** Build one role permission statement and persist it with commit(). */
 export class GuardControl {
   private guard: SequelizeGuardInstance;
   _roles: string;
   _actions: string[];
   _resources: string[];
 
+  /**
+   * Create a permission statement for a guard.
+   * @param guard - Guard used to persist the statement.
+   */
   constructor(guard: SequelizeGuardInstance) {
     this.guard = guard;
     this._roles = '';
@@ -28,13 +22,9 @@ export class GuardControl {
   }
 
   /**
-   * Specify role to allow
-   * @param roles - The name of role
-   * @returns This GuardControl instance for chaining
-   * @example
-   * ```typescript
-   * control.allow('admin')
-   * ```
+   * Select the role receiving permissions.
+   * @param roles - Role name; created on commit if absent.
+   * @returns This builder.
    */
   allow(roles: string): this {
     this._roles = normalizeRoleName(roles);
@@ -42,14 +32,9 @@ export class GuardControl {
   }
 
   /**
-   * Specify actions for current control
-   * @param actions - The name(s) of actions
-   * @returns This GuardControl instance for chaining
-   * @example
-   * ```typescript
-   * control.to('view')
-   * control.to(['view', 'edit'])
-   * ```
+   * Add actions to this statement.
+   * @param actions - Action tokens, or `*` for all actions.
+   * @returns This builder.
    */
   to(actions: string | string[]): this {
     this._actions = [
@@ -59,14 +44,9 @@ export class GuardControl {
   }
 
   /**
-   * Specify resources for current control
-   * @param resources - The name(s) of resources
-   * @returns This GuardControl instance for chaining
-   * @example
-   * ```typescript
-   * control.on('blog')
-   * control.on(['blog', 'post'])
-   * ```
+   * Add resources to this statement.
+   * @param resources - Resource tokens, or `*` for all resources.
+   * @returns This builder.
    */
   on(resources: string | string[]): this {
     this._resources = [
@@ -76,12 +56,9 @@ export class GuardControl {
   }
 
   /**
-   * Commit current control - saves to database
-   * @returns Promise resolved with role and assigned permissions
-   * @example
-   * ```typescript
-   * await control.commit()
-   * ```
+   * Save the complete statement, clearing it before persistence even if saving fails.
+   * @param options - Optional outer transaction. Using one suppresses guard events.
+   * @returns The role and its current direct permissions.
    */
   async commit(options?: PolicyMutationOptions): Promise<AddPermsToRoleResult> {
     const role = normalizeRoleName(this._roles);

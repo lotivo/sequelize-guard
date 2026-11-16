@@ -281,7 +281,12 @@ export async function provisionGuardSchema(
   );
 }
 
-/** Create a fresh Guard schema. Application user tables must already exist. */
+/**
+ * Create a fresh guard schema; supplied application tables must already exist.
+ * @param queryInterface - Query interface for the target database.
+ * @param _Sequelize - Sequelize instance or constructor; retained for migration compatibility.
+ * @param options - Table names, user binding and complete holder registration.
+ */
 async function up(
   queryInterface: QueryInterface,
   _Sequelize: Sequelize | typeof Sequelize,
@@ -290,7 +295,12 @@ async function up(
   await provisionGuardSchema(queryInterface, resolveGuardOptions(options));
 }
 
-/** Drop the owned Guard tables in reverse dependency order. */
+/**
+ * Drop verified guard-owned tables, preserving supplied application tables.
+ * @param queryInterface - Query interface for the target database.
+ * @param _Sequelize - Sequelize instance or constructor; retained for migration compatibility.
+ * @param options - Schema configuration with the complete holder registration.
+ */
 async function down(
   queryInterface: QueryInterface,
   _Sequelize: Sequelize | typeof Sequelize,
@@ -351,7 +361,9 @@ export function verifyOwnedGuardTables(
 
 /**
  * Copy an offline installation to distinct tables, preserving the originals.
- * Use the actual table names of the previous installation for `from`.
+ * @param queryInterface - Query interface for the target database.
+ * @param _Sequelize - Sequelize instance or constructor; retained for migration compatibility.
+ * @param __namedParameters - Actual source and destination schemas, plus optional legacy parent inheritance.
  */
 async function upgrade(
   queryInterface: QueryInterface,
@@ -456,10 +468,10 @@ async function upgrade(
 }
 
 /**
- * Provision only newly registered holder junctions for a current Guard schema.
- * Pass only new types in options.roleHolders; existing types are rejected.
- * Keep other schema options matched to the existing installation. After this
- * migration, construction, down, and upgrade require the complete registration set.
+ * Create junctions for new holder types; subsequent guard configuration must include all types.
+ * @param queryInterface - Query interface for the target database.
+ * @param _Sequelize - Sequelize instance or constructor; retained for migration compatibility.
+ * @param options - Existing schema configuration with only new types in roleHolders.
  */
 async function addRoleHolders(
   queryInterface: QueryInterface,

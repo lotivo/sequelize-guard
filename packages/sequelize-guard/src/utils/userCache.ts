@@ -2,9 +2,13 @@ import NodeCache from 'node-cache';
 import type { SequelizeGuardType } from '../SequelizeGuard';
 
 /**
- * User-specific cache for storing user roles
+ * Manual user cache; authorization ignores it. Call close() to stop its expiry timer.
  */
 export class GuardUserCache extends NodeCache {
+  /**
+   * Create an expiring manual cache.
+   * @param ttl - Entry lifetime in seconds; defaults to 60.
+   */
   constructor(ttl: number = 60) {
     super({ stdTTL: ttl });
   }

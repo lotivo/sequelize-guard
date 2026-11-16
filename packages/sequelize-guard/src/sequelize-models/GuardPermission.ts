@@ -14,12 +14,16 @@ import {
 import { GuardModelInitParams, SequelizeModelClass } from './types/types';
 import { modelOptions } from './utils';
 
+/** Stored permission bundle for one resource and a set of actions. */
 export interface GuardPermissionData {
   id: CreationOptional<number>;
+  /** Bundle name; generated when omitted during creation. */
   name: string | null;
   description?: string | null;
+  /** Resource token, or `*` for all resources. */
   resource: string;
-  action: string; // JSON stringified array
+  /** JSON-encoded array of action tokens, including `*` for all actions. */
+  action: string;
   /** @deprecated Reserved for compatibility. Guard permissions only grant access. */
   allow?: number | null;
   createdAt?: Date;

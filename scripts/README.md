@@ -8,4 +8,4 @@ For an already built archive, run `RELEASE_TARBALL=/absolute/path/package.tgz RE
 
 `yarn docs:generate` runs local TypeDoc from the exact checkout, records the source revision and removes stale API artifacts. `DOCS_SOURCE_REVISION` identifies the checked-out release revision for source links. Run `node scripts/check-docs.mjs`, docs lint and docs build afterward. See [documentation automation](../docs/DOCS_AUTOMATION.md).
 
-`node --expose-gc scripts/benchmark-authorization.mjs` measures the built package on a disposable database. Measurements are environment-specific, not latency/capacity guarantees. Real-dialect and standby tests use the isolated URLs/service setup described in the repository workflows; never supply production credentials.
+Real-dialect and standby tests use the isolated URLs/service setup described in the repository workflows; never supply production credentials.
