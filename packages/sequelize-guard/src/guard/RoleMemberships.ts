@@ -102,6 +102,7 @@ export async function removeMemberships(
   if (!names.length) return;
 
   await mutatePolicy(guard, options, async ({ transaction }) => {
+    await lockRoleHierarchy(guard, transaction);
     const rolesToRemove = await lockRoles(guard, names, transaction);
     if (!rolesToRemove.length) return;
     await links.destroy({

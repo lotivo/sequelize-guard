@@ -11,6 +11,7 @@ import type { GuardInternalOptions } from '../types';
 import { guardIndexes } from './guard-indexes';
 import {
   guardTable,
+  physicalTableKey,
   quoteGuardTable,
   scopedGuardTable,
   validateGuardTables,
@@ -100,10 +101,20 @@ export function assertAvailableHolderModelNames(
   sequelize: Sequelize,
   registrations: ReturnType<typeof roleHolderTables>,
 ): void {
-  for (const { type } of registrations) {
+  const applicationTables = new Set(
+    sequelize.modelManager.models.map((model) =>
+      physicalTableKey(sequelize, model.getTableName()),
+    ),
+  );
+  for (const { type, table, tableName } of registrations) {
     if (sequelize.models[holderModelName(type)]) {
       throw new Error(
         `Guard role holder junction model "${holderModelName(type)}" already exists`,
+      );
+    }
+    if (applicationTables.has(physicalTableKey(sequelize, table))) {
+      throw new Error(
+        `Guard role holder junction "${tableName}" conflicts with a registered application table`,
       );
     }
   }

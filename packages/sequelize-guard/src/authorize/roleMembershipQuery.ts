@@ -67,9 +67,18 @@ function directMemberships(
     JOIN ${role.table}
       ON ${role.column('id')} = ${link.column('role_id')} AND ${role.active}
     JOIN ${hierarchy.table}
-      ON ${hierarchy.column('id')} = 1 AND ${hierarchy.column('revision')} IN (0, 1)
+      ON ${hierarchy.column('id')} = 1
+      AND ${hierarchy.column('revision')} IN (0, 1)
+      AND ${hierarchy.column('ownership')} LIKE $guardOwnership
     WHERE ${holder.column(members.primaryKeyAttribute)} = $holderId AND ${holder.active}`;
-  return { role, sql, bind: { holderId: memberId(members, member) } };
+  return {
+    role,
+    sql,
+    bind: {
+      holderId: memberId(members, member),
+      guardOwnership: guard._ownershipPattern,
+    },
+  };
 }
 
 export async function readMemberRoles(

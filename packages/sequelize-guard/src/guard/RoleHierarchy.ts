@@ -1,4 +1,4 @@
-import { literal } from 'sequelize';
+import { literal, Op } from 'sequelize';
 import type { Transaction } from 'sequelize';
 import type { SequelizeGuardInstance } from '../SequelizeGuard';
 
@@ -9,7 +9,14 @@ export async function lockRoleHierarchy(
   // A write makes PostgreSQL reject stale repeatable-read snapshots.
   const [locked] = await guard._roleHierarchy.update(
     { revision: literal('1 - revision') },
-    { where: { id: 1, revision: [0, 1] }, transaction },
+    {
+      where: {
+        id: 1,
+        revision: [0, 1],
+        ownership: { [Op.like]: guard._ownershipPattern },
+      },
+      transaction,
+    },
   );
   if (locked !== 1) throw new Error('Guard role hierarchy is not initialized');
 }

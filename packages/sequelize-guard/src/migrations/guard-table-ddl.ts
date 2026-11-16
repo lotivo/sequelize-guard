@@ -48,7 +48,16 @@ export async function createMigrationTable(
     await queryInterface.createTable(table, columns, options);
     return;
   }
+  await createExclusiveMigrationTable(queryInterface, table, columns, options);
+}
 
+export async function createExclusiveMigrationTable(
+  queryInterface: QueryInterface,
+  table: TableName,
+  columns: ModelAttributes,
+  options: QueryInterfaceCreateTableOptions,
+): Promise<void> {
+  const { sequelize } = queryInterface;
   const generator = queryInterface.queryGenerator as DdlGenerators;
   const attributes = Object.fromEntries(
     Object.entries(columns).map(([name, column]) => [
@@ -62,9 +71,16 @@ export async function createMigrationTable(
   });
   const statement = generator.createTableQuery(table, definitions, options);
   const conditional = 'CREATE TABLE IF NOT EXISTS ';
+  if (
+    statement.startsWith('CREATE TABLE ') &&
+    !statement.startsWith(conditional)
+  ) {
+    await sequelize.query(statement, options);
+    return;
+  }
   if (!statement.startsWith(conditional)) {
     throw new Error(
-      'Cannot make the Sequelize MySQL CREATE TABLE statement exclusive',
+      'Cannot make the Sequelize CREATE TABLE statement exclusive',
     );
   }
   // Cleanup may only record a creation that the server actually performed.

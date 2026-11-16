@@ -1,7 +1,9 @@
 import { DataTypes, Sequelize } from 'sequelize';
 import { expect, expectTypeOf, it, onTestFinished, vi } from 'vitest';
+import { defaultOptions } from '../constants';
 import { migration, SequelizeGuard } from '../index';
 import type { GuardOptions, RoleAssignmentResult } from '../index';
+import { roleHolderTables } from '../sequelize-models/guard-role-holders';
 import { cleanupDbFile, generateDbPath } from './utils/db-utils';
 
 function database() {
@@ -136,10 +138,7 @@ it('supports custom string and UUID keys and prevents type remapping from reusin
   await expect(
     mismatched.holderCan(replacement, 'open room'),
   ).rejects.toThrow();
-  await mismatched.sync();
-  await expect(mismatched.holderCan(replacement, 'open room')).resolves.toBe(
-    false,
-  );
+  await expect(mismatched.sync()).rejects.toThrow('ownership receipt');
   await expect(guard.holderCan(device, 'open room')).resolves.toBe(true);
 });
 
@@ -219,7 +218,7 @@ it('adds holder tables without rewriting user memberships and preserves both on 
   await guard.assignRolesToHolder(holder, ['operator']);
   await expect(guard.holderCan(holder, 'start jobs')).resolves.toBe(true);
   await expect(migration.down(query, sequelize, base)).rejects.toThrow(
-    'Specify the registered model',
+    'ownership receipt',
   );
   await expect(guard.userCan(user, 'start jobs')).resolves.toBe(true);
 
@@ -314,4 +313,17 @@ it('rejects SQLite integers that cannot be represented as distinct JavaScript id
   await expect(guard.holderCan(holder, 'start jobs')).rejects.toThrow(
     'safe integer primary key',
   );
+});
+
+it('preflights an already registered model targeting a holder junction under another name', () => {
+  const sequelize = database()();
+  const { device } = holders(sequelize);
+  const options = { ...defaultOptions, sync: false, roleHolders: { device } };
+  const [{ tableName }] = roleHolderTables(sequelize, options);
+  sequelize.define('ApplicationJunction', {}, { tableName });
+  expect(() => new SequelizeGuard(sequelize, options)).toThrow(
+    'conflicts with a registered application table',
+  );
+  expect(sequelize.models.ApplicationJunction).toBeDefined();
+  expect(sequelize.models.GuardRole).toBeUndefined();
 });
