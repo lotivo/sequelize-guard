@@ -18,7 +18,6 @@ import {
   roleHolderTables,
 } from '../sequelize-models/guard-role-holders';
 import {
-  assertCurrentGuardSchema,
   assertGuardSchema,
   assertNoLegacyTableNames,
   guardTable,
@@ -29,6 +28,15 @@ import {
 import { guardUserKey } from '../sequelize-models/user-key';
 import type { GuardInternalOptions, GuardOptions } from '../types';
 import { verifyMigrationTables } from './guard-migration-ownership';
+import {
+  addHolderOwnership,
+  assertMatchingBaseReceipt,
+  assertMatchingReceipt,
+  assertOwnedOrEmptySchema,
+  guardOwnership,
+  ownershipRow,
+  readGuardOwnership,
+} from './guard-ownership';
 import { guardColumns } from './guard-schema';
 import { createMigrationTable } from './guard-table-ddl';
 import { copyGuardTables, type GuardUpgradeOptions } from './guard-upgrade';
@@ -223,7 +231,7 @@ async function createTables(
     if (type === BaseModelType.RoleHierarchy) {
       await queryInterface.bulkInsert(
         table,
-        [{ id: 1, revision: 0 }],
+        [ownershipRow(sequelize, options)],
         queryOptions,
       );
     }
@@ -252,38 +260,44 @@ async function down(
 ): Promise<void> {
   const { sequelize } = queryInterface;
   const resolved = resolveGuardOptions(options);
-  const columns = guardColumns(sequelize, resolved);
-  const tables = [
-    ...holderTables(sequelize, resolved).map(
-      ({ table, attributes, indexes }) => ({
-        table,
-        columns: attributes,
-        indexes,
-      }),
-    ),
-    ...migrationTables(sequelize, resolved, 'down').map(({ type, table }) => ({
-      table,
-      columns: columns[type],
-      indexes: guardIndexes(type, getTableName(type, resolved)),
-    })),
-  ];
   await withMigration(sequelize, queryInterface, async (queryOptions) => {
     await assertGuardSchema(sequelize, resolved, queryOptions);
     await assertNoLegacyTableNames(sequelize, resolved, queryOptions);
-    await assertCompleteRoleHolderConfiguration(
-      sequelize,
-      resolved,
-      queryOptions,
-    );
-    const existing = await verifyMigrationTables(
+    if (!(await assertOwnedOrEmptySchema(sequelize, resolved, queryOptions)))
+      return;
+    const existing = await verifyOwnedGuardTables(
       queryInterface,
-      tables,
+      resolved,
       queryOptions,
     );
     for (const table of existing) {
       await queryInterface.dropTable(table, queryOptions);
     }
   });
+}
+
+export function verifyOwnedGuardTables(
+  queryInterface: QueryInterface,
+  options: GuardInternalOptions,
+  queryOptions: QueryOptions,
+) {
+  const { sequelize } = queryInterface;
+  const columns = guardColumns(sequelize, options);
+  const tables = [
+    ...holderTables(sequelize, options).map(
+      ({ table, attributes, indexes }) => ({
+        table,
+        columns: attributes,
+        indexes,
+      }),
+    ),
+    ...migrationTables(sequelize, options, 'down').map(({ type, table }) => ({
+      table,
+      columns: columns[type],
+      indexes: guardIndexes(type, getTableName(type, options)),
+    })),
+  ];
+  return verifyMigrationTables(queryInterface, tables, queryOptions);
 }
 
 /**
@@ -357,6 +371,9 @@ async function upgrade(
         source,
         queryOptions,
       );
+      const receipt = await readGuardOwnership(sequelize, source, queryOptions);
+      if (receipt)
+        assertMatchingReceipt(receipt, guardOwnership(sequelize, source));
       const copy = await copyGuardTables(
         queryInterface,
         source,
@@ -369,7 +386,7 @@ async function upgrade(
           ...preservedHolders,
         ],
         queryOptions,
-        inheritExistingParents,
+        inheritExistingParents || receipt !== null,
       );
       await createTables(
         queryInterface,
@@ -398,7 +415,22 @@ async function addRoleHolders(
     queryInterface,
     async (queryOptions, created) => {
       await assertGuardSchema(sequelize, resolved, queryOptions);
-      await assertCurrentGuardSchema(sequelize, resolved, queryOptions);
+      const receipt = await readGuardOwnership(
+        sequelize,
+        resolved,
+        queryOptions,
+      );
+      if (!receipt)
+        throw new Error(
+          'Create or upgrade the Guard schema before adding role holders',
+        );
+      const expected = guardOwnership(sequelize, resolved);
+      assertMatchingBaseReceipt(receipt, expected);
+      const priorTypes = new Set(receipt.holders.map(([type]) => type));
+      for (const [type] of expected.holders) {
+        if (priorTypes.has(type))
+          throw new Error(`Guard role holder "${type}" already exists`);
+      }
       if (
         !(await queryInterface.tableExists(
           guardTable(sequelize, resolved, BaseModelType.Roles),
@@ -411,6 +443,7 @@ async function addRoleHolders(
       }
       await assertCreatableHolderTables(queryInterface, holders, queryOptions);
       await createHolderTables(queryInterface, holders, queryOptions, created);
+      await addHolderOwnership(sequelize, resolved, receipt, queryOptions);
     },
   );
 }

@@ -46,7 +46,7 @@ export function scopedGuardTable(
     : schema + delimiter + tableName;
 }
 
-function ownedTypes(options: GuardInternalOptions): ModelType[] {
+export function ownedTypes(options: GuardInternalOptions): ModelType[] {
   const types = Object.keys(tablesMap) as ModelType[];
   return types.filter(
     (type) => type !== BaseModelType.Users || !options.UserModel,
@@ -76,39 +76,6 @@ export function quoteGuardTable(
   return query.sequelize.getDialect() === 'postgres'
     ? [table.schema, table.tableName].map(quote).join('.')
     : quote([table.schema, table.tableName].join(table.delimiter || '.'));
-}
-
-export async function hasRoleHierarchy(
-  sequelize: Sequelize,
-  options: GuardInternalOptions,
-  queryOptions: QueryOptions = {},
-): Promise<boolean> {
-  const query = sequelize.getQueryInterface();
-  const table = guardTable(sequelize, options, BaseModelType.RoleHierarchy);
-  const writer = { ...queryOptions, useMaster: true };
-  if (!(await query.tableExists(table, writer))) return false;
-  const marker = await sequelize.query(
-    `SELECT id FROM ${quoteGuardTable(query, table)} WHERE id = 1 AND revision IN (0, 1)`,
-    { ...writer, type: QueryTypes.SELECT },
-  );
-  return marker.length === 1;
-}
-
-export async function assertCurrentGuardSchema(
-  sequelize: Sequelize,
-  options: GuardInternalOptions,
-  queryOptions: QueryOptions = {},
-): Promise<void> {
-  const roles = guardTable(sequelize, options, BaseModelType.Roles);
-  const query = sequelize.getQueryInterface();
-  if (
-    (await query.tableExists(roles, { ...queryOptions, useMaster: true })) &&
-    !(await hasRoleHierarchy(sequelize, options, queryOptions))
-  ) {
-    throw new Error(
-      'Existing guard schema requires migration.upgrade before enabling role inheritance',
-    );
-  }
 }
 
 export function validateGuardTables(

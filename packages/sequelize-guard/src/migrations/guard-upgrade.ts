@@ -7,10 +7,7 @@ import {
   type TableName,
 } from 'sequelize';
 import { assertRoleForest } from '../guard/RoleHierarchy';
-import {
-  hasRoleHierarchy,
-  quoteGuardTable,
-} from '../sequelize-models/guard-tables';
+import { quoteGuardTable } from '../sequelize-models/guard-tables';
 import {
   BaseModelType,
   type ModelType,
@@ -139,8 +136,7 @@ export async function copyGuardTables(
       assertCanonicalLegacyRoles(roles);
       if (
         roles.some(({ parent_id }) => parent_id != null) &&
-        !inheritExistingParents &&
-        !(await hasRoleHierarchy(sequelize, source, options))
+        !inheritExistingParents
       ) {
         throw new Error(
           'Legacy parent links require inheritExistingParents: true to activate inherited permissions',

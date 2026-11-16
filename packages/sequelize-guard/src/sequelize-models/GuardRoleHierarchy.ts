@@ -7,7 +7,7 @@ import {
 } from './types/ModelType';
 import type { GuardModelInitParams } from './types/types';
 
-type RoleHierarchy = Model<{ id: number; revision: number }>;
+type RoleHierarchy = Model<{ id: number; revision: number; ownership: string }>;
 
 export function initRoleHierarchy({
   sequelize,
@@ -30,5 +30,6 @@ export function getRoleHierarchySchema(): ModelAttributes<RoleHierarchy> {
   return {
     id: { type: DataTypes.INTEGER, primaryKey: true, allowNull: false },
     revision: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    ownership: { type: DataTypes.TEXT, allowNull: false },
   };
 }

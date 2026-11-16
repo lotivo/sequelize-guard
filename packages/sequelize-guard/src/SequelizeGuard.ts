@@ -5,7 +5,15 @@ import {
   assertGuardUserAssociations,
   guardUserMethods,
 } from './guard/GuardUserAssociations';
-import migration from './migrations/guard-migrations';
+import migration, {
+  verifyOwnedGuardTables,
+} from './migrations/guard-migrations';
+import {
+  assertOwnedOrEmptySchema,
+  createGuardSyncReceipt,
+  guardOwnership,
+  ownershipPattern,
+} from './migrations/guard-ownership';
 import type {
   GuardModel,
   GuardPermissionData,
@@ -18,13 +26,11 @@ import type {
 import { GuardModels, initGuardModels } from './sequelize-models';
 import {
   assertAvailableHolderModelNames,
-  assertCompleteRoleHolderConfiguration,
   assertRoleHolderTables,
   initRoleHolders,
   roleHolderTables,
 } from './sequelize-models/guard-role-holders';
 import {
-  assertCurrentGuardSchema,
   assertGuardSchema,
   assertNoLegacyTableNames,
 } from './sequelize-models/guard-tables';
@@ -84,6 +90,9 @@ export class SequelizeGuard<
   /** @internal Transaction lock for hierarchy changes. */
   readonly _roleHierarchy: ReturnType<typeof initRoleHierarchy>;
 
+  /** @internal Binding between the initialized schema and its principal model. */
+  readonly _ownershipPattern: string;
+
   /** @internal Registered application principals and their junction models. */
   readonly _roleHolders: ReturnType<typeof initRoleHolders>;
 
@@ -134,6 +143,10 @@ export class SequelizeGuard<
       }
       assertGuardUserAssociations(UserModel, userMethods);
     }
+
+    this._ownershipPattern = ownershipPattern(
+      guardOwnership(sequelize, this.options),
+    );
 
     const holders = roleHolderTables(sequelize, this.options);
     assertAvailableHolderModelNames(sequelize, holders);
@@ -202,25 +215,37 @@ export class SequelizeGuard<
       }
       await assertGuardSchema(this.sequelize, this.options, syncOptions);
       await assertNoLegacyTableNames(this.sequelize, this.options, syncOptions);
-      await assertCurrentGuardSchema(this.sequelize, this.options, syncOptions);
       await assertRoleHolderTables(
         this.sequelize,
         holders.map(({ members }) => members),
         syncOptions,
       );
+      const receipt = await assertOwnedOrEmptySchema(
+        this.sequelize,
+        this.options,
+        syncOptions,
+      );
+      if (!receipt)
+        await createGuardSyncReceipt(this.sequelize, this.options, syncOptions);
       // Drop junction tables before the tables they reference.
+      const policyModels = models.slice(1);
+      const suppliedUser = this.options.UserModel;
+      const requestedSync = syncOptions.force
+        ? { ...syncOptions, force: false }
+        : syncOptions;
       if (syncOptions.force) {
-        await assertCompleteRoleHolderConfiguration(
-          this.sequelize,
+        await verifyOwnedGuardTables(
+          this.sequelize.getQueryInterface(),
           this.options,
-          syncOptions,
+          { logging: syncOptions.logging, useMaster: true },
         );
-        for (const model of [...models].reverse())
-          await model.drop(syncOptions);
+        for (const model of [...policyModels].reverse()) {
+          if (model !== suppliedUser) await model.drop(requestedSync);
+        }
       }
-      await this._roleHierarchy.sync(syncOptions);
-      await this._roleHierarchy.upsert({ id: 1, revision: 0 }, syncOptions);
-      for (const model of models.slice(1)) await model.sync(syncOptions);
+      for (const model of policyModels) {
+        await model.sync(model === suppliedUser ? syncOptions : requestedSync);
+      }
       this.resetCache();
       await this.getCache();
       return this;
