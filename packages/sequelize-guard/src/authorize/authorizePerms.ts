@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { GuardUserModel } from '../sequelize-models';
 import type { SequelizeGuardType } from '../SequelizeGuard';
 
@@ -17,11 +18,22 @@ export function extendWithAuthorizePerms(
     user: GuardUserModel,
     permission: string,
   ): Promise<boolean> {
-    // Read membership and policy together from the writer, never from local snapshots.
-    const roles = await user.getRoles!({
-      include: ['Permissions'],
-      useMaster: true,
-    });
+    const requested = parseRequest(permission);
+    if (!requested) return false;
+    // Keep the membership and matching grants in one writer-backed read.
+    const roles = await this.committedReads.read(() =>
+      user.getRoles!({
+        include: [
+          {
+            association: 'Permissions',
+            required: false,
+            where: { resource: { [Op.in]: [requested.resource, '*'] } },
+          },
+        ],
+        useMaster: true,
+        transaction: null,
+      }),
+    );
     return roles.some((role) =>
       this.resolvePermission(role.Permissions ?? [], permission),
     );
@@ -48,32 +60,43 @@ export function extendWithAuthorizePerms(
     givenPermissions,
     wantedPermission,
   ) {
-    const allSymbol = '*';
-    if (wantedPermission === '*') wantedPermission = '* *';
-
-    const wPerms = wantedPermission.split(' ');
-    const wAction = wPerms[0];
-    const wResource = wPerms[1];
-
-    const gActions: string[][] = [];
-    const gResources: string[] = [];
-
-    givenPermissions.forEach((p) => {
-      gActions.push(JSON.parse(p.action) as string[]);
-      gResources.push(p.resource);
-    });
-
-    for (let i = 0; i <= gResources.length; i++) {
+    const requested = parseRequest(wantedPermission);
+    if (!requested) return false;
+    return givenPermissions.some(({ resource, action }) => {
       if (
-        (gResources[i] === allSymbol &&
-          (gActions[i]?.includes('*') || gActions[i]?.includes(wAction))) ||
-        (gResources[i] === wResource &&
-          (gActions[i]?.includes('*') || gActions[i]?.includes(wAction)))
-      ) {
-        return true;
+        !validToken(resource) ||
+        (resource !== '*' && resource !== requested.resource)
+      )
+        return false;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(action);
+      } catch {
+        return false;
       }
-    }
-
-    return false;
+      return (
+        Array.isArray(parsed) &&
+        parsed.every(validToken) &&
+        (parsed.includes('*') || parsed.includes(requested.action))
+      );
+    });
   };
+}
+
+function validToken(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    (value === '*' || /^[A-Za-z0-9][A-Za-z0-9_:.-]*$/.test(value))
+  );
+}
+
+function parseRequest(
+  value: string,
+): { action: string; resource: string } | null {
+  if (value === '*') return { action: '*', resource: '*' };
+  if (typeof value !== 'string') return null;
+  const parts = value.split(' ');
+  return parts.length === 2 && parts.every(validToken)
+    ? { action: parts[0], resource: parts[1] }
+    : null;
 }
