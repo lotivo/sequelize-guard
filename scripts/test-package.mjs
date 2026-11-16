@@ -2,10 +2,9 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   mkdtempSync,
-  mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,7 +14,12 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = path.join(root, 'build/packages/sequelize-guard');
-const consumer = mkdtempSync(path.join(tmpdir(), 'sequelize-guard-consumer-'));
+const consumer = realpathSync(
+  mkdtempSync(path.join(tmpdir(), 'sequelize-guard-consumer-')),
+);
+const env = { ...process.env };
+delete env.NODE_PATH;
+delete env.NODE_OPTIONS;
 after(() => rmSync(consumer, { recursive: true, force: true }));
 
 function packForConsumer() {
@@ -39,24 +43,74 @@ function packForConsumer() {
 const tarball = process.env.RELEASE_TARBALL
   ? path.resolve(process.env.RELEASE_TARBALL)
   : packForConsumer();
-const installed = path.join(consumer, 'node_modules/sequelize-guard');
-mkdirSync(installed, { recursive: true });
-execFileSync('tar', ['-xzf', tarball, '--strip-components=1', '-C', installed]);
 const manifest = JSON.parse(
-  readFileSync(path.join(installed, 'package.json'), 'utf8'),
+  execFileSync('tar', ['-xOzf', tarball, 'package/package.json'], {
+    encoding: 'utf8',
+  }),
 );
+const distributedFiles = [
+  'package/LICENSE',
+  'package/README.md',
+  'package/dist/cjs/index.cjs',
+  'package/dist/cjs/index.cjs.map',
+  'package/dist/esm/index.esm.js',
+  'package/dist/esm/index.esm.js.map',
+  'package/package.json',
+  'package/types/index.d.cts',
+  'package/types/index.d.ts',
+];
 
-// Reuse locked dependencies offline; the library itself must come from its tarball.
-for (const name of new Set([
-  ...Object.keys(manifest.dependencies),
-  ...Object.keys(manifest.peerDependencies),
-  'sqlite3',
-  '@types/node',
-])) {
-  const destination = path.join(consumer, 'node_modules', name);
-  mkdirSync(path.dirname(destination), { recursive: true });
-  symlinkSync(path.join(root, 'node_modules', name), destination, 'dir');
-}
+test('installs the exact packed files with fresh dependencies', () => {
+  const list = (flags) =>
+    execFileSync('tar', [flags, tarball], { encoding: 'utf8' })
+      .trimEnd()
+      .split('\n');
+  assert.deepEqual(list('-tzf').sort(), distributedFiles.sort());
+  assert.ok(list('-tvzf').every((entry) => entry.startsWith('-')));
+
+  writeFileSync(
+    path.join(consumer, 'package.json'),
+    JSON.stringify({ name: 'sequelize-guard-consumer', private: true }),
+  );
+  execFileSync(
+    'npm',
+    [
+      'install',
+      '--strict-peer-deps',
+      '--prefer-online',
+      '--no-audit',
+      '--no-fund',
+      tarball,
+      `sequelize@${manifest.peerDependencies.sequelize}`,
+      'sequelize-guard-previous@npm:sequelize-guard@6.0.2',
+      'sqlite3@6.0.1',
+      'typescript@5.9.3',
+      '@types/node@24.10.1',
+    ],
+    { cwd: consumer, env, stdio: 'inherit' },
+  );
+
+  for (const name of [
+    'sequelize-guard',
+    'sequelize',
+    'sequelize-guard-previous',
+    'sqlite3',
+    'typescript',
+    '@types/node',
+  ]) {
+    const dependency = path.join(consumer, 'node_modules', name);
+    assert.equal(realpathSync(dependency), dependency);
+  }
+  const packageVersion = (name) =>
+    JSON.parse(
+      readFileSync(
+        path.join(consumer, 'node_modules', name, 'package.json'),
+        'utf8',
+      ),
+    ).version;
+  assert.equal(packageVersion('sequelize-guard'), manifest.version);
+  assert.equal(packageVersion('sequelize-guard-previous'), '6.0.2');
+});
 
 const runtime = `
 assert.equal(Guard, SequelizeGuard);
@@ -114,6 +168,7 @@ ${runtime}`,
   );
   execFileSync(process.execPath, ['consumer.mjs'], {
     cwd: consumer,
+    env,
     stdio: 'inherit',
   });
 });
@@ -129,6 +184,88 @@ const { default: Guard, SequelizeGuard, migration } = require('sequelize-guard')
   );
   execFileSync(process.execPath, ['consumer.cjs'], {
     cwd: consumer,
+    env,
+    stdio: 'inherit',
+  });
+});
+
+test('upgrades a published 6.0.2 app with a custom user key', () => {
+  writeFileSync(
+    path.join(consumer, 'upgrade.mjs'),
+    `
+import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
+import { DataTypes, Sequelize } from 'sequelize';
+import Guard, { migration } from 'sequelize-guard';
+
+// 6.0.2 relied on bundler interop for its Lodash named imports.
+const previousUrl = import.meta.resolve('sequelize-guard-previous');
+const legacyInterop = registerHooks({
+  resolve(specifier, context, nextResolve) {
+    const resolved = nextResolve(specifier, context);
+    if (specifier !== 'lodash' || context.parentURL !== previousUrl) return resolved;
+    const bridge = 'import lodash from ' + JSON.stringify(resolved.url) +
+      '; export const { includes, uniq, differenceBy, concat, find, filter, intersectionBy, without, merge, values } = lodash;';
+    return { url: 'data:text/javascript,' + encodeURIComponent(bridge), shortCircuit: true };
+  },
+});
+const previous = await import('sequelize-guard-previous').finally(() => legacyInterop.deregister());
+
+function connect() {
+  const sequelize = new Sequelize({ dialect: 'sqlite', storage: 'application.sqlite', logging: false });
+  const Account = sequelize.define('Account', {
+    accountKey: { type: DataTypes.STRING, primaryKey: true, field: 'account_key' },
+    displayName: { type: DataTypes.STRING, allowNull: false },
+  }, { tableName: 'accounts' });
+  return { sequelize, Account, options: { sync: false, UserModel: Account, userPk: 'accountKey' } };
+}
+
+{
+  const { sequelize, Account, options } = connect();
+  const from = { ...options, prefix: 'legacy_' };
+  try {
+    await Account.sync();
+    await previous.migration.up(sequelize.getQueryInterface(), sequelize, from);
+    const guard = new previous.default(sequelize, from);
+    await guard.ready;
+    const user = await Account.create({ accountKey: 'account-A', displayName: 'Alex' });
+    await guard.allow('reader', 'read', 'document');
+    await user.assignRole('reader');
+    assert.equal(await user.can('read document'), true);
+  } finally {
+    await sequelize.close();
+  }
+}
+
+{
+  const { sequelize, Account, options } = connect();
+  const query = sequelize.getQueryInterface();
+  const from = { ...options, prefix: 'legacy_' };
+  const to = { ...options, prefix: 'current_' };
+  try {
+    const legacyMemberships = await query.select(null, 'legacy_role_user');
+    assert.equal(legacyMemberships.length, 1);
+    await migration.upgrade(query, sequelize, { from, to });
+    const guard = new Guard(sequelize, to);
+    await guard.ready;
+    const user = await Account.findByPk('account-A', { rejectOnEmpty: true });
+    assert.equal(user.displayName, 'Alex');
+    assert.equal(await user.can('read document'), true);
+    assert.deepEqual(await guard.assignRolesToUsers([user], ['editor']), { assigned: 1 });
+    await guard.allow('editor', 'edit', 'document');
+    assert.equal(await user.can('edit document'), true);
+    await user.rmAssignedRoles(['reader']);
+    assert.equal(await user.can('read document'), false);
+    assert.deepEqual(await query.select(null, 'legacy_role_user'), legacyMemberships);
+  } finally {
+    await sequelize.close();
+  }
+}
+`,
+  );
+  execFileSync(process.execPath, ['upgrade.mjs'], {
+    cwd: consumer,
+    env,
     stdio: 'inherit',
   });
 });
@@ -285,28 +422,11 @@ for (const [extension, module, moduleResolution] of [
     );
     execFileSync(
       process.execPath,
-      [
-        path.join(root, 'node_modules/typescript/bin/tsc'),
-        '-p',
-        'tsconfig.json',
-      ],
-      { cwd: consumer, stdio: 'inherit' },
+      ['node_modules/typescript/bin/tsc', '-p', 'tsconfig.json'],
+      { cwd: consumer, env, stdio: 'inherit' },
     );
   });
 }
-
-test('tarball contains only distributable files', () => {
-  const files = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' })
-    .trimEnd()
-    .split('\n');
-  assert.ok(files.includes('package/README.md'));
-  assert.ok(files.includes('package/LICENSE'));
-  assert.ok(
-    !files.some((file) =>
-      /(?:^|\/)(?:__tests__|coverage|node_modules)(?:\/|$)/.test(file),
-    ),
-  );
-});
 
 if (process.env.RELEASE_VERSION) {
   test('tarball manifest matches the release version', () => {
