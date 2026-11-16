@@ -36,6 +36,7 @@ export abstract class SequelizeGuardBase {
       defaultOptions,
       options,
     ) as GuardInternalOptions;
+    this.options.roleHolders = Object.freeze({ ...options.roleHolders });
     this._ee = new EventEmitter();
   }
 

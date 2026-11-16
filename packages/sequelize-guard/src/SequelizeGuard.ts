@@ -12,9 +12,18 @@ import type {
 } from './sequelize-models';
 import { GuardModels, initGuardModels } from './sequelize-models';
 import {
+  assertAvailableHolderModelNames,
+  assertCompleteRoleHolderConfiguration,
+  assertRoleHolderTables,
+  initRoleHolders,
+  roleHolderTables,
+} from './sequelize-models/guard-role-holders';
+import {
+  assertCurrentGuardSchema,
   assertGuardSchema,
   assertNoLegacyTableNames,
 } from './sequelize-models/guard-tables';
+import { initRoleHierarchy } from './sequelize-models/GuardRoleHierarchy';
 import { GuardOptions } from './types';
 import type {
   AddPermsToRoleResult,
@@ -64,6 +73,12 @@ export class SequelizeGuard extends SequelizeGuardBase {
    */
   public _models!: GuardModels;
 
+  /** @internal Transaction lock for hierarchy changes. */
+  readonly _roleHierarchy: ReturnType<typeof initRoleHierarchy>;
+
+  /** @internal Registered application principals and their junction models. */
+  readonly _roleHolders: ReturnType<typeof initRoleHolders>;
+
   /**
    * Automatic startup completion, including model sync and cache initialization.
    * With sync: false, resolves without database work; await sync() separately
@@ -89,8 +104,13 @@ export class SequelizeGuard extends SequelizeGuardBase {
 
     this.sequelize = sequelize as SequelizeWithGuard;
 
+    const holders = roleHolderTables(sequelize, this.options);
+    assertAvailableHolderModelNames(sequelize, holders);
+
     // Initialize models
     this._models = initGuardModels(this);
+    this._roleHierarchy = initRoleHierarchy(this);
+    this._roleHolders = initRoleHolders(sequelize, this.options, holders);
 
     // Attach guard to sequelize instance
     this.sequelize.guard = this;
@@ -132,7 +152,12 @@ export class SequelizeGuard extends SequelizeGuardBase {
           'sync searchPath overrides are not supported; configure schema routing on Sequelize before constructing the guard',
         );
       }
-      const models: GuardModel[] = Object.values(this._models);
+      const holders = [...this._roleHolders.values()];
+      const models = [
+        this._roleHierarchy,
+        ...(Object.values(this._models) as GuardModel[]),
+        ...holders.map(({ links }) => links),
+      ];
       // Model.sync can create in a new schema while drop/index queries use the old one.
       if (
         syncOptions.schema !== undefined &&
@@ -149,12 +174,25 @@ export class SequelizeGuard extends SequelizeGuardBase {
       }
       await assertGuardSchema(this.sequelize, this.options, syncOptions);
       await assertNoLegacyTableNames(this.sequelize, this.options, syncOptions);
+      await assertCurrentGuardSchema(this.sequelize, this.options, syncOptions);
+      await assertRoleHolderTables(
+        this.sequelize,
+        holders.map(({ members }) => members),
+        syncOptions,
+      );
       // Drop junction tables before the tables they reference.
       if (syncOptions.force) {
+        await assertCompleteRoleHolderConfiguration(
+          this.sequelize,
+          this.options,
+          syncOptions,
+        );
         for (const model of [...models].reverse())
           await model.drop(syncOptions);
       }
-      for (const model of models) await model.sync(syncOptions);
+      await this._roleHierarchy.sync(syncOptions);
+      await this._roleHierarchy.upsert({ id: 1, revision: 0 }, syncOptions);
+      for (const model of models.slice(1)) await model.sync(syncOptions);
       this.resetCache();
       await this.getCache();
       return this;
@@ -233,6 +271,11 @@ export class SequelizeGuard extends SequelizeGuardBase {
     roles: string | RoleCreationParam[] | GuardRoleModel[],
     options?: PolicyMutationOptions,
   ) => Promise<number>;
+  declare setRoleParent: (
+    role: string,
+    parent: string | null,
+    options?: PolicyMutationOptions,
+  ) => Promise<GuardRoleModel>;
   declare allRoles: () => Promise<GuardRoleModel[]>;
   declare getRole: (role: string) => Promise<GuardRoleModel | null>;
   declare findRoles: (args?: FindRolesArgs) => Promise<GuardRoleModel[]>;
@@ -284,6 +327,19 @@ export class SequelizeGuard extends SequelizeGuardBase {
     options?: PolicyMutationOptions,
   ) => Promise<void>;
   declare getUserRoles: (user: Model) => Promise<GuardRoleData[]>;
+
+  declare assignRolesToHolder: (
+    holder: Model,
+    roles: readonly string[],
+    options?: PolicyMutationOptions,
+  ) => Promise<RoleAssignmentResult>;
+  declare removeRolesFromHolder: (
+    holder: Model,
+    roles: readonly string[],
+    options?: PolicyMutationOptions,
+  ) => Promise<void>;
+  declare getHolderRoles: (holder: Model) => Promise<GuardRoleData[]>;
+  declare holderCan: (holder: Model, permission: string) => Promise<boolean>;
 
   //User permission resolution methods
   declare userCan: (user: Model, permission: string) => Promise<boolean>;

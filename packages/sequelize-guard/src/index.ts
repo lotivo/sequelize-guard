@@ -7,6 +7,7 @@ import { extendWithAuthorizePerms } from './authorize/authorizePerms';
 import { extendWithAuthorizeRoles } from './authorize/authorizeRoles';
 import { extendWithGuardControl } from './guard/init';
 import { extendWithPermissions } from './guard/Permissions';
+import { extendWithRoleHolders } from './guard/RoleHolders';
 import { extendWithRoles } from './guard/Roles';
 import { extendWithUsers } from './guard/Users';
 import { SequelizeGuard } from './SequelizeGuard';
@@ -21,6 +22,7 @@ const extensions = [
   extendWithRoles,
   extendWithPermissions,
   extendWithUsers,
+  extendWithRoleHolders,
   extendWithAuthorizePerms,
   extendWithAuthorizeRoles,
 ];
@@ -35,6 +37,7 @@ export * from './types';
 
 // Export migration and seeder
 export { default as migration } from './migrations/guard-migrations';
+export type { GuardUpgradeOptions } from './migrations/guard-upgrade';
 
 // Default export
 export default SequelizeGuard;

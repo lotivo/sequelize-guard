@@ -47,6 +47,13 @@ it('rejects invalid users and rolls back all changes on insertion failure', asyn
     ).rejects.toThrow(/persisted|no longer exists/);
   }
   expect(await guard.getRole('new role')).toBeNull();
+  const invalidRoles = 'admin' as unknown as string[];
+  await expect(guard.assignRolesToUsers([first], invalidRoles)).rejects.toThrow(
+    'Roles must be an array of names',
+  );
+  await expect(
+    guard.assignRolesToUsers([first], new Array<string>(1)),
+  ).rejects.toThrow('Role name must be a non-empty string');
 
   const failInsert = 'fail-bulk-assignment';
   RoleUser.addHook('beforeBulkCreate', failInsert, () => {
@@ -98,12 +105,11 @@ it('counts each link once across concurrent connections', async () => {
   );
 });
 
-it('keeps assignment query count constant within a chunk of existing roles', async () => {
+it('keeps assignment query count constant within a chunk of new roles and users', async () => {
   const { guard, sequelize } = await setup();
   const users = await guard
     .models()
     .GuardUser.bulkCreate(Array.from({ length: 64 }, () => ({})));
-  const roles = await guard.makeRoles(['reader', 'editor'], { all: true });
   const countQueries = async (size: number) => {
     let queries = 0;
     const log = () => {
@@ -114,7 +120,7 @@ it('keeps assignment query count constant within a chunk of existing roles', asy
       await guard.assignUserRoles(
         users.slice(0, size).map((user, index) => ({
           user,
-          roles: [roles[index % roles.length].name],
+          roles: [`new role ${size} ${index}`],
         })),
       );
       return queries;

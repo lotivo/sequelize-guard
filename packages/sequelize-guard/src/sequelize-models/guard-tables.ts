@@ -3,6 +3,7 @@ import {
   type ModelOptions,
   type Options,
   type QueryOptions,
+  type QueryInterface,
   type Sequelize,
   type TableName,
 } from 'sequelize';
@@ -29,8 +30,14 @@ export function guardTable(
   options: GuardInternalOptions,
   modelType: ModelType,
 ): TableName {
+  return scopedGuardTable(sequelize, getTableName(modelType, options));
+}
+
+export function scopedGuardTable(
+  sequelize: Sequelize,
+  tableName: string,
+): TableName {
   const { define, schema: defaultSchema } = sequelizeOptions(sequelize);
-  const tableName = getTableName(modelType, options);
   const schema = define?.schema === undefined ? defaultSchema : define.schema;
   if (!schema) return tableName;
   const delimiter = define?.schemaDelimiter || '.';
@@ -59,9 +66,56 @@ export function physicalTableKey(
   return [table.schema, tableName].join(table.delimiter || '.').toLowerCase();
 }
 
+export function quoteGuardTable(
+  query: QueryInterface,
+  table: TableName,
+): string {
+  const quote = (name: string) => query.quoteIdentifier(name, true);
+  if (typeof table === 'string') return quote(table);
+  if (!table.schema) return quote(table.tableName);
+  return query.sequelize.getDialect() === 'postgres'
+    ? [table.schema, table.tableName].map(quote).join('.')
+    : quote([table.schema, table.tableName].join(table.delimiter || '.'));
+}
+
+export async function hasRoleHierarchy(
+  sequelize: Sequelize,
+  options: GuardInternalOptions,
+  queryOptions: QueryOptions = {},
+): Promise<boolean> {
+  const query = sequelize.getQueryInterface();
+  const table = guardTable(sequelize, options, BaseModelType.RoleHierarchy);
+  const writer = { ...queryOptions, useMaster: true };
+  if (!(await query.tableExists(table, writer))) return false;
+  const marker = await sequelize.query(
+    `SELECT id FROM ${quoteGuardTable(query, table)} WHERE id = 1 AND revision IN (0, 1)`,
+    { ...writer, type: QueryTypes.SELECT },
+  );
+  return marker.length === 1;
+}
+
+export async function assertCurrentGuardSchema(
+  sequelize: Sequelize,
+  options: GuardInternalOptions,
+  queryOptions: QueryOptions = {},
+): Promise<void> {
+  const roles = guardTable(sequelize, options, BaseModelType.Roles);
+  const query = sequelize.getQueryInterface();
+  if (
+    (await query.tableExists(roles, { ...queryOptions, useMaster: true })) &&
+    !(await hasRoleHierarchy(sequelize, options, queryOptions))
+  ) {
+    throw new Error(
+      'Existing guard schema requires migration.upgrade before enabling role inheritance',
+    );
+  }
+}
+
 export function validateGuardTables(
   sequelize: Sequelize,
   options: GuardInternalOptions,
+  extraOwned: TableName[] = [],
+  extraApplication: TableName[] = [],
 ): void {
   const types = ownedTypes(options);
   const owned = types.map((type) => guardTable(sequelize, options, type));
@@ -81,13 +135,14 @@ export function validateGuardTables(
     }
   }
   const application = options.UserModel?.getTableName();
-  const tables = application ? [...owned, application] : owned;
+  const tables = [...owned, ...extraOwned, ...extraApplication];
+  if (application) tables.push(application);
   if (
     new Set(tables.map((table) => physicalTableKey(sequelize, table))).size !==
     tables.length
   ) {
     throw new Error(
-      'Guard tables must have distinct names and may not overlap the supplied user table',
+      'Guard and registered application tables must have distinct names',
     );
   }
   const dialect = sequelize.getDialect();
@@ -101,7 +156,7 @@ export function validateGuardTables(
     dialect !== 'postgres' ||
     sequelizeOptions(sequelize).quoteIdentifiers !== false;
   const quote = dialect === 'postgres' ? '"' : '`';
-  for (const table of owned) {
+  for (const table of [...owned, ...extraOwned]) {
     const name = typeof table === 'string' ? table : table.tableName;
     if (
       !name.trim() ||
@@ -149,7 +204,15 @@ export async function assertGuardSchema(
   if (sequelize.getDialect() !== 'postgres') return;
   const owned = guardTable(sequelize, options, BaseModelType.Roles);
   const application = options.UserModel?.getTableName();
-  if (typeof owned !== 'string' && typeof application !== 'string') return;
+  const unboundHolder = Object.values(options.roleHolders).some(
+    (model) => typeof model.getTableName() === 'string',
+  );
+  if (
+    typeof owned !== 'string' &&
+    typeof application !== 'string' &&
+    !unboundHolder
+  )
+    return;
   const [result] = await sequelize.query<{ schemas: string[] }>(
     'SELECT current_schemas(false)::text[] AS schemas',
     {

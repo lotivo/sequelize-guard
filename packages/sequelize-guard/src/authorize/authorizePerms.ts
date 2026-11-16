@@ -1,11 +1,12 @@
 import type { Model } from 'sequelize';
-import { getPolicyUser } from '../guard/Users';
+import { getPolicyUser, userMemberships } from '../guard/Users';
 import type { SequelizeGuardType } from '../SequelizeGuard';
 import {
   isPermissionToken,
   parsePermissionRequest,
   readPermissionActions,
 } from './permissionGrammar';
+import { readMemberPermissions } from './roleMembershipQuery';
 
 /**
  * Extend SequelizeGuard with permission-based authorization
@@ -25,15 +26,12 @@ export function extendWithAuthorizePerms(
   ): Promise<boolean> {
     if (!parsePermissionRequest(permission)) return false;
 
-    // Read membership and policy together from the writer, never from local snapshots.
-    const roles = await getPolicyUser(this, user).getRoles!({
-      include: ['Permissions'],
-      useMaster: true,
-      transaction: null,
-    });
-    return roles.some((role) =>
-      this.resolvePermission(role.Permissions ?? [], permission),
+    const permissions = await readMemberPermissions(
+      this,
+      userMemberships(this),
+      getPolicyUser(this, user),
     );
+    return this.resolvePermission(permissions, permission);
   };
 
   /**

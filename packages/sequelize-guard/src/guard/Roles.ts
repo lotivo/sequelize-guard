@@ -1,7 +1,9 @@
+import lodash from 'lodash';
 import { Op } from 'sequelize';
 import type { FindOptions, InferAttributes, Transaction } from 'sequelize';
 import { readPermissionActions } from '../authorize/permissionGrammar';
 import type { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
+import { assertCompleteRoleHolderConfiguration } from '../sequelize-models/guard-role-holders';
 import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
 import type {
   RoleCreationResult,
@@ -21,8 +23,13 @@ import {
   makePermission,
   permissionInputs,
 } from './Permissions';
-import { findOrInsertPolicyRecord, mutatePolicy } from './policyMutation';
+import {
+  findOrInsertPolicyRecord,
+  mutatePolicy,
+  policyBatchSize,
+} from './policyMutation';
 import type { PolicyMutation } from './policyMutation';
+import { assertRoleParent, lockRoleHierarchy } from './RoleHierarchy';
 
 /**
  * Extend SequelizeGuard with role management methods
@@ -39,6 +46,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   ): Promise<RoleCreationResult> {
     const roleData = makeRoleData(role);
     return mutatePolicy(this, options, async (mutation) => {
+      await lockRoleHierarchy(this, mutation.transaction);
       const result = await createRole(this, roleData, mutation.transaction);
       if (result.created)
         mutation.emitAfterCommit('onRolesCreated', [result.role]);
@@ -57,9 +65,10 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   ): Promise<GuardRoleModel[]> {
     const roleData = roleInputs(roles);
     if (!roleData.length) return [];
-    return mutatePolicy(this, options, (mutation) =>
-      createRoles(this, roleData, mutation, options),
-    );
+    return mutatePolicy(this, options, async (mutation) => {
+      await lockRoleHierarchy(this, mutation.transaction);
+      return createRoles(this, roleData, mutation, options);
+    });
   };
 
   /**
@@ -77,10 +86,20 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
       this,
       options,
       async ({ transaction, emitAfterCommit }) => {
+        await lockRoleHierarchy(this, transaction);
         const rolesToDelete = await lockRoles(this, names, transaction);
         if (!rolesToDelete.length) return 0;
+        await assertCompleteRoleHolderConfiguration(
+          this.sequelize,
+          this.options,
+          { transaction },
+        );
 
         const { GuardRole, RolePermission, RoleUser } = this._models;
+        const memberships = [
+          RoleUser,
+          ...[...this._roleHolders.values()].map(({ links }) => links),
+        ];
         const ids = rolesToDelete.map((role) => role.id);
         const links = { where: { role_id: ids }, transaction, paranoid: false };
         const children = {
@@ -97,16 +116,23 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
             attributes: ['id'],
           };
           const associated =
-            (await RoleUser.findOne({ ...links, ...options })) ||
             (await RolePermission.findOne({ ...links, ...options })) ||
             (await GuardRole.findOne({ ...children, ...options }));
           if (associated)
             throw new Error(
               'Cannot delete roles with associated memberships, permissions, or child roles',
             );
+          for (const membership of memberships) {
+            if (await membership.findOne({ ...links, ...options })) {
+              throw new Error(
+                'Cannot delete roles with associated memberships, permissions, or child roles',
+              );
+            }
+          }
         } else {
           // Explicit cleanup also applies when the role itself is soft-deleted.
-          await RoleUser.destroy({ ...links, force: true });
+          for (const membership of memberships)
+            await membership.destroy({ ...links, force: true });
           await RolePermission.destroy({ ...links, force: true });
           await GuardRole.update({ parent_id: null }, children);
         }
@@ -119,6 +145,33 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
         return deleted;
       },
     );
+  };
+
+  /** Change a role's single parent, or detach the role when parent is null. */
+  SequelizeGuard.prototype.setRoleParent = async function (
+    role: string,
+    parent: string | null,
+    options: PolicyMutationOptions = {},
+  ): Promise<GuardRoleModel> {
+    const name = normalizeRoleName(role);
+    const parentName = parent === null ? null : normalizeRoleName(parent);
+    return mutatePolicy(this, options, async ({ transaction }) => {
+      await lockRoleHierarchy(this, transaction);
+      const roles = await lockRoles(
+        this,
+        parentName ? [name, parentName] : [name],
+        transaction,
+      );
+      const child = roles.find(({ name: candidate }) => candidate === name);
+      if (!child) throw new Error('Child role does not exist');
+      const target = roles.find(
+        ({ name: candidate }) => candidate === parentName,
+      );
+      if (parentName && !target) throw new Error('Parent role does not exist');
+      if (target)
+        await assertRoleParent(this, child.id, target.id, transaction);
+      return child.update({ parent_id: target?.id ?? null }, { transaction });
+    });
   };
 
   /**
@@ -200,6 +253,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     const roleData = makeRoleData(role);
     return mutatePolicy(this, options, async (mutation) => {
       const { transaction, emitAfterCommit } = mutation;
+      if (typeof role === 'string') await lockRoleHierarchy(this, transaction);
       const { role: target, created } =
         typeof role === 'string'
           ? await createRole(this, roleData, transaction)
@@ -340,7 +394,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   };
 }
 
-export function normalizeRoleName(name: string): string {
+export function normalizeRoleName(name: unknown): string {
   if (typeof name !== 'string' || !name.trim()) {
     throw new TypeError('Role name must be a non-empty string');
   }
@@ -373,12 +427,13 @@ export async function createRole(
 ): Promise<RoleCreationResult> {
   const model = guard._models.GuardRole;
   if (roleData.parent_id != null) {
-    const parent = await model.findByPk(roleData.parent_id, {
+    const [existing] = await lockRoles(guard, [roleData.name], transaction);
+    await assertRoleParent(
+      guard,
+      existing?.id,
+      roleData.parent_id,
       transaction,
-      lock: true,
-      useMaster: true,
-    });
-    if (!parent) throw new Error('Parent role does not exist');
+    );
   }
   const [role, created] = await findOrInsertPolicyRecord(
     model,
@@ -404,11 +459,34 @@ export async function createRoles(
   { transaction, emitAfterCommit }: PolicyMutation,
   options: CreateRolesOptions = {},
 ): Promise<GuardRoleModel[]> {
+  if (!roles.length) return [];
   const results = new Map<string, RoleCreationResult>();
-  // Lock and create roles in the same name order for overlapping batches.
   const ordered = [...roles].sort((a, b) => (a.name < b.name ? -1 : 1));
-  for (const role of ordered) {
-    results.set(role.name, await createRole(guard, role, transaction));
+  for (const chunk of lodash.chunk(ordered, policyBatchSize)) {
+    const names = chunk.map(({ name }) => name);
+    for (const role of await lockRoles(guard, names, transaction)) {
+      results.set(role.name, { role, created: false });
+    }
+    const fresh = chunk.filter(
+      ({ name, parent_id }) => parent_id == null && !results.has(name),
+    );
+    if (fresh.length) {
+      await guard._models.GuardRole.bulkCreate(fresh, { transaction });
+      const created = await lockRoles(
+        guard,
+        fresh.map(({ name }) => name),
+        transaction,
+      );
+      if (created.length !== fresh.length)
+        throw new Error('Could not resolve all newly created roles');
+      for (const role of created)
+        results.set(role.name, { role, created: true });
+    }
+    for (const role of chunk) {
+      if (role.parent_id != null) {
+        results.set(role.name, await createRole(guard, role, transaction));
+      }
+    }
   }
 
   const matches = roles.map(({ name }) => results.get(name)!);
@@ -432,7 +510,8 @@ export async function lockRoles(
     useMaster: true,
     lock: true,
   });
-  return roles.filter((role) => names.includes(role.name));
+  const requested = new Set(names);
+  return roles.filter((role) => requested.has(role.name));
 }
 
 async function lockRoleInstance(

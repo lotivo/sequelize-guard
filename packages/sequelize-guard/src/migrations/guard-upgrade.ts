@@ -2,9 +2,15 @@ import {
   QueryTypes,
   Utils,
   type QueryInterface,
+  type ModelAttributes,
   type QueryOptions,
   type TableName,
 } from 'sequelize';
+import { assertRoleForest } from '../guard/RoleHierarchy';
+import {
+  hasRoleHierarchy,
+  quoteGuardTable,
+} from '../sequelize-models/guard-tables';
 import {
   BaseModelType,
   type ModelType,
@@ -17,9 +23,15 @@ export interface GuardUpgradeOptions {
   from: GuardOptions;
   /** Options for wholly distinct destination tables. */
   to: GuardOptions;
+  /** Turn previously inactive legacy parent links into inherited permissions. */
+  inheritExistingParents?: boolean;
 }
 
-type GuardTable = { type: ModelType; table: TableName };
+type GuardTable = {
+  type: ModelType;
+  table: TableName;
+  attributes?: ModelAttributes;
+};
 
 export async function copyGuardTables(
   queryInterface: QueryInterface,
@@ -28,16 +40,11 @@ export async function copyGuardTables(
   sourceTables: GuardTable[],
   targetTables: GuardTable[],
   options: QueryOptions,
+  inheritExistingParents: boolean,
 ): Promise<() => Promise<void>> {
   const { sequelize } = queryInterface;
   const identifier = (column: string) =>
     queryInterface.quoteIdentifier(column, true);
-  const quoteTable = (table: TableName) =>
-    typeof table === 'string'
-      ? identifier(table)
-      : (table.schema ? [table.schema, table.tableName] : [table.tableName])
-          .map(identifier)
-          .join('.');
   const targetColumns = guardColumns(sequelize, target);
   const configuredSourceDates = timestampColumns(sequelize, source);
   const targetDates = timestampColumns(sequelize, target);
@@ -58,14 +65,14 @@ export async function copyGuardTables(
     mappings: string[];
   }[] = [];
   for (const [index, { type, table: sourceTable }] of sourceTables.entries()) {
-    const targetTable = targetTables[index].table;
-    const from = quoteTable(sourceTable);
-    const to = quoteTable(targetTable);
+    const targetTable = targetTables[index];
+    const from = quoteGuardTable(queryInterface, sourceTable);
+    const to = quoteGuardTable(queryInterface, targetTable.table);
     const sourceColumns = await queryInterface.describeTable(
       sourceTable,
       options,
     );
-    const columns = Object.keys(targetColumns[type]);
+    const columns = Object.keys(targetTable.attributes ?? targetColumns[type]);
     const mappings = columns.map((column) => {
       const timestamp = targetDates.find((date) => date.column === column);
       if (!timestamp) {
@@ -109,11 +116,37 @@ export async function copyGuardTables(
     }
 
     if (type === BaseModelType.Roles) {
-      const roles = await sequelize.query<{ id: number; name: string }>(
-        `SELECT ${identifier('id')}, ${identifier('name')} FROM ${from}`,
-        { ...options, type: QueryTypes.SELECT },
+      const deletedColumn = targetDates.find(
+        ({ name }) => name === 'deletedAt',
+      );
+      const deletedAt =
+        deletedColumn && mappings[columns.indexOf(deletedColumn.column)];
+      const active = deletedAt
+        ? `CASE WHEN ${identifier(deletedAt)} IS NULL THEN 1 ELSE 0 END`
+        : '1';
+      const roles = await sequelize.query<{
+        id: number;
+        name: string;
+        parent_id: number | null;
+        active: number;
+      }>(
+        `SELECT ${identifier('id')}, ${identifier('name')}, ${identifier('parent_id')}, ${active} AS active FROM ${from}`,
+        {
+          ...options,
+          type: QueryTypes.SELECT,
+        },
       );
       assertCanonicalLegacyRoles(roles);
+      if (
+        roles.some(({ parent_id }) => parent_id != null) &&
+        !inheritExistingParents &&
+        !(await hasRoleHierarchy(sequelize, source, options))
+      ) {
+        throw new Error(
+          'Legacy parent links require inheritExistingParents: true to activate inherited permissions',
+        );
+      }
+      assertRoleForest(roles.filter(({ active }) => Number(active) === 1));
     }
 
     copies.push({ type, from, to, columns, mappings });

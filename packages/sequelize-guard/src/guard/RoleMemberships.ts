@@ -3,7 +3,8 @@ import type { Model, ModelStatic, Transaction } from 'sequelize';
 import type { GuardRoleUserModelStatic } from '../sequelize-models';
 import type { SequelizeGuard } from '../SequelizeGuard';
 import type { PolicyMutationOptions, RoleAssignmentResult } from '../types';
-import { mutatePolicy } from './policyMutation';
+import { mutatePolicy, policyBatchSize } from './policyMutation';
+import { lockRoleHierarchy } from './RoleHierarchy';
 import { createRoles, lockRoles, normalizeRoleName } from './Roles';
 
 export interface RoleMemberships {
@@ -13,17 +14,17 @@ export interface RoleMemberships {
 
 type MemberId = string | number;
 
-const batchSize = 200;
-
 export function memberId(model: ModelStatic<Model>, member: Model): MemberId {
   if (!(member instanceof model) || member.isNewRecord) {
     throw new TypeError('Expected a persisted member from the guard model');
   }
-  const id: unknown = member.get(model.primaryKeyAttribute);
-  if (typeof id !== 'string' && !Number.isSafeInteger(id)) {
-    throw new TypeError('Expected a string or safe integer primary key');
-  }
-  return id as MemberId;
+  const id: unknown = member.getDataValue(model.primaryKeyAttribute);
+  if (
+    typeof id === 'string' ||
+    (typeof id === 'number' && Number.isSafeInteger(id))
+  )
+    return id;
+  throw new TypeError('Expected a string or safe integer primary key');
 }
 
 export async function assignMemberships(
@@ -35,6 +36,8 @@ export async function assignMemberships(
   const assignments = new Map<string, { id: MemberId; names: Set<string> }>();
   const names = new Set<string>();
   for (const { member, roles } of requests) {
+    if (!Array.isArray(roles))
+      throw new TypeError('Roles must be an array of names');
     const id = memberId(members, member);
     const key = String(id);
     const assignment = assignments.get(key) ?? { id, names: new Set<string>() };
@@ -49,16 +52,17 @@ export async function assignMemberships(
 
   return mutatePolicy(guard, options, async (mutation) => {
     const { transaction } = mutation;
+    if (names.size) await lockRoleHierarchy(guard, transaction);
+    await assertActiveMembers(
+      members,
+      [...assignments.values()].map(({ id }) => id),
+      transaction,
+    );
     const roles = await createRoles(
       guard,
       [...names].map((name) => ({ name })),
       mutation,
       { all: true },
-    );
-    await assertActiveMembers(
-      members,
-      [...assignments.values()].map(({ id }) => id),
-      transaction,
     );
 
     const ids = new Map(roles.map(({ name, id }) => [name, id]));
@@ -91,6 +95,8 @@ export async function removeMemberships(
   roles: readonly string[],
   options: PolicyMutationOptions,
 ): Promise<void> {
+  if (!Array.isArray(roles))
+    throw new TypeError('Roles must be an array of names');
   const id = memberId(members, member);
   const names = [...new Set(roles.map(normalizeRoleName))];
   if (!names.length) return;
@@ -131,8 +137,8 @@ async function assertActiveMembers(
 }
 
 function* batches<T>(values: readonly T[]) {
-  for (let start = 0; start < values.length; start += batchSize) {
-    yield values.slice(start, start + batchSize);
+  for (let start = 0; start < values.length; start += policyBatchSize) {
+    yield values.slice(start, start + policyBatchSize);
   }
 }
 
