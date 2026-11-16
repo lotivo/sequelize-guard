@@ -98,11 +98,19 @@ export interface GuardOptions<TUser extends Model = Model> {
   userCacheTtl?: number;
 }
 
-/**
- * Internal options with all defaults applied
- */
+type RuntimeGuardOptions = Pick<
+  GuardOptions,
+  'sync' | 'debug' | 'safeGuardDeletes' | 'userCache' | 'userCacheTtl'
+>;
+
+/** Resolved options with schema settings bound at construction. */
 export interface GuardInternalOptions
-  extends Required<Omit<GuardOptions, 'userPk'>> {
-  tables: NonNullable<GuardOptions['tables']>;
-  userPk: string | undefined;
+  extends Required<RuntimeGuardOptions>,
+    Readonly<
+      Required<
+        Omit<GuardOptions, keyof RuntimeGuardOptions | 'tables' | 'userPk'>
+      >
+    > {
+  readonly tables: Readonly<NonNullable<GuardOptions['tables']>>;
+  readonly userPk: string | undefined;
 }

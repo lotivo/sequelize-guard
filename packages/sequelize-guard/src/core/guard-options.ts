@@ -64,10 +64,28 @@ export function resolveGuardOptions(
   ) {
     throw new TypeError('Guard roleHolders must map types to Sequelize models');
   }
-  return {
+  const resolved = {
     ...lodash.merge({}, defaultOptions, options),
     roleHolders: Object.freeze({ ...roleHolders }),
   };
+  Object.freeze(resolved.tables);
+  // Ownership checks and DDL must keep using the configuration that bound the models.
+  for (const name of [
+    'prefix',
+    'tables',
+    'primaryKey',
+    'timestamps',
+    'paranoid',
+    'UserModel',
+    'userPk',
+    'roleHolders',
+  ] as const) {
+    Object.defineProperty(resolved, name, {
+      writable: false,
+      configurable: false,
+    });
+  }
+  return resolved;
 }
 
 function validateTableSuffixes(
