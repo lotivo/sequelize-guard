@@ -108,6 +108,14 @@ export async function copyGuardTables(
       );
     }
 
+    if (type === BaseModelType.Roles) {
+      const roles = await sequelize.query<{ id: number; name: string }>(
+        `SELECT ${identifier('id')}, ${identifier('name')} FROM ${from}`,
+        { ...options, type: QueryTypes.SELECT },
+      );
+      assertCanonicalLegacyRoles(roles);
+    }
+
     copies.push({ type, from, to, columns, mappings });
   }
 
@@ -153,4 +161,30 @@ export async function copyGuardTables(
       }
     }
   };
+}
+
+function assertCanonicalLegacyRoles(
+  roles: { id: number; name: string }[],
+): void {
+  const remediation =
+    'Resolve the role names in the offline source, preserving role IDs and reviewing memberships, then retry.';
+  const canonical = new Map<string, number>();
+  let noncanonical: number | undefined;
+  for (const { id, name } of roles) {
+    const normalized =
+      typeof name === 'string' ? name.trim().toLowerCase() : '';
+    if (!normalized || normalized !== name) noncanonical ??= id;
+    const previous = canonical.get(normalized);
+    if (previous !== undefined) {
+      throw new Error(
+        `Legacy role names collide after normalization (IDs ${previous} and ${id}). ${remediation}`,
+      );
+    }
+    canonical.set(normalized, id);
+  }
+  if (noncanonical !== undefined) {
+    throw new Error(
+      `Noncanonical legacy role name (ID ${noncanonical}). ${remediation}`,
+    );
+  }
 }

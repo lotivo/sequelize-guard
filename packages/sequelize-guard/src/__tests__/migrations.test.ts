@@ -19,6 +19,7 @@ import {
 } from 'vitest';
 import { SequelizeGuard, migration } from '../index';
 import type { GuardOptions } from '../types';
+import { cleanupDbFile, generateDbPath } from './utils/db-utils';
 type PreviousOptions = NonNullable<Parameters<typeof previousMigration.up>[2]>;
 interface PreviousAccount
   extends InstanceType<NonNullable<PreviousOptions['UserModel']>> {
@@ -39,6 +40,15 @@ describe('Guard schema migrations on SQLite', () => {
   afterEach(async () => {
     await sequelize.close();
   });
+
+  async function useFileStorage() {
+    await sequelize.close();
+    const storage = generateDbPath('guard_migrations');
+    const options = { dialect: 'sqlite', storage, logging: false } as const;
+    sequelize = new Sequelize(options);
+    onTestFinished(() => cleanupDbFile(storage));
+    return options;
+  }
 
   const dateSettings = [
     { timestamps: false, paranoid: false },
@@ -272,6 +282,7 @@ describe('Guard schema migrations on SQLite', () => {
   });
 
   it('rejects conflicting legacy names before synchronization or fresh migration', async () => {
+    const dbOptions = await useFileStorage();
     const queryInterface = sequelize.getQueryInterface();
     await migration.up(queryInterface, sequelize);
     const existing = new SequelizeGuard(sequelize, { sync: false });
@@ -279,7 +290,9 @@ describe('Guard schema migrations on SQLite', () => {
     await existing.allow('reader', 'read', 'article');
     await existing.assignRole(user, 'reader');
     const options = { tables: { roles: 'renamed_roles' }, sync: false };
-    const renamed = new SequelizeGuard(sequelize, options);
+    const other = new Sequelize(dbOptions);
+    onTestFinished(() => other.close());
+    const renamed = new SequelizeGuard(other, options);
     await expect(renamed.sync({ force: true })).rejects.toThrow(
       'Legacy guard table "guard_roles" exists',
     );
@@ -289,6 +302,93 @@ describe('Guard schema migrations on SQLite', () => {
     expect(await existing.userCan(user, 'read article')).toBe(true);
     expect(await queryInterface.tableExists('guard_renamed_roles')).toBe(false);
   });
+
+  it('refuses a mismatched partial rollback before dropping any existing table', async () => {
+    const options = { tables: { resources: 'app_records' } };
+    const queryInterface = sequelize.getQueryInterface();
+    await migration.up(queryInterface, sequelize, options);
+    await queryInterface.dropTable('guard_app_records');
+    await queryInterface.createTable('guard_app_records', {
+      id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      name: { type: DataTypes.STRING, allowNull: false },
+      description: { type: DataTypes.TEXT, allowNull: true },
+    });
+    await queryInterface.bulkInsert('guard_app_records', [
+      { name: 'app data' },
+    ]);
+    const before = await queryInterface.showAllTables();
+
+    await expect(
+      migration.down(queryInterface, sequelize, options),
+    ).rejects.toThrow('guard_app_records');
+    expect(await queryInterface.showAllTables()).toEqual(before);
+    expect(await queryInterface.select(null, 'guard_app_records')).toEqual([
+      expect.objectContaining({ name: 'app data' }),
+    ]);
+
+    await queryInterface.renameTable(
+      'guard_app_records',
+      'preserved_app_records',
+    );
+    await migration.down(queryInterface, sequelize, options);
+    await migration.down(queryInterface, sequelize, options);
+    expect(await queryInterface.showAllTables()).toEqual([
+      'preserved_app_records',
+    ]);
+  });
+
+  it('preserves application rows that reference a Guard table on SQLite', async () => {
+    const queryInterface = sequelize.getQueryInterface();
+    await migration.up(queryInterface, sequelize);
+    await queryInterface.bulkInsert('guard_users', [{ id: 1 }]);
+    await queryInterface.createTable('app_records', {
+      appUser: {
+        type: DataTypes.INTEGER,
+        references: { model: 'guard_users', key: 'id' },
+        onDelete: 'CASCADE',
+      },
+    });
+    await queryInterface.bulkInsert('app_records', [{ appUser: 1 }]);
+
+    await expect(migration.down(queryInterface, sequelize)).rejects.toThrow(
+      'application table "app_records" references "guard_users"',
+    );
+    expect(await queryInterface.select(null, 'app_records')).toEqual([
+      { appUser: 1 },
+    ]);
+    expect(await queryInterface.tableExists('guard_role_user')).toBe(true);
+  });
+
+  it.each([
+    { names: [' reader '], message: 'Noncanonical legacy role' },
+    { names: ['reader', ' reader '], message: 'Legacy role names collide' },
+  ])(
+    'rejects legacy $names before creating any destination tables',
+    async ({ names, message }) => {
+      const from = { prefix: 'previous_' };
+      const to = { prefix: 'destination_' };
+      const queryInterface = sequelize.getQueryInterface();
+      const previous = new previousGuard(sequelize, { ...from, sync: true });
+      await previous.ready;
+      // The published 6.0.2 declarations omitted this runtime extension.
+      const makeRole = Reflect.get(previous, 'makeRole') as (
+        name: string,
+      ) => Promise<unknown>;
+      for (const name of names) await makeRole.call(previous, name);
+      const original = await queryInterface.select(null, from.prefix + 'roles');
+      expect(original.map((role) => (role as { name: string }).name)).toEqual(
+        names,
+      );
+      const create = vi.spyOn(queryInterface, 'createTable');
+      await expect(
+        migration.upgrade(queryInterface, sequelize, { from, to }),
+      ).rejects.toThrow(message);
+      expect(create).not.toHaveBeenCalled();
+      expect(await queryInterface.select(null, from.prefix + 'roles')).toEqual(
+        original,
+      );
+    },
+  );
 
   it('rolls back failed creation and lets a new migration retry without touching existing data', async () => {
     const App = sequelize.define('App', { value: DataTypes.STRING });
@@ -318,6 +418,7 @@ describe('Guard schema migrations on SQLite', () => {
   it.each(['sync', 'migration'])(
     'upgrades actual 6.0.2 %s tables without changing the source',
     async (creation) => {
+      const dbOptions = await useFileStorage();
       const source = {
         prefix: 'old_',
         timestamps: true,
@@ -329,7 +430,7 @@ describe('Guard schema migrations on SQLite', () => {
         prefix: 'new_',
         tables: { roles: 'policy_roles' },
       };
-      const queryInterface = sequelize.getQueryInterface();
+      let queryInterface = sequelize.getQueryInterface();
       if (creation === 'sync') {
         const previous = new previousGuard(sequelize, {
           ...source,
@@ -364,6 +465,9 @@ describe('Guard schema migrations on SQLite', () => {
       await queryInterface.bulkInsert('old_role_user', [
         { id: 27, role_id: 31, user_id: 12, ...dates },
       ]);
+      await sequelize.close();
+      sequelize = new Sequelize(dbOptions);
+      queryInterface = sequelize.getQueryInterface();
       await migration.upgrade(queryInterface, sequelize, {
         from: source,
         to: target,

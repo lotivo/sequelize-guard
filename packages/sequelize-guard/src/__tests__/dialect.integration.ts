@@ -8,7 +8,7 @@ import {
   UniqueConstraintError,
   type TableName,
 } from 'sequelize';
-import { beforeEach, expect, it, onTestFinished } from 'vitest';
+import { beforeEach, expect, it, onTestFinished, vi } from 'vitest';
 import { SequelizeGuard, migration } from '../index';
 
 const url = process.env.SEQUELIZE_GUARD_TEST_DATABASE_URL;
@@ -287,5 +287,92 @@ it.runIf(new URL(url).protocol.startsWith('postgres'))(
     await expect(
       guard.sync({ force: true, searchPath: appSchema }),
     ).rejects.toThrow('searchPath');
+
+    const applicationTable = { ...roleTable, schema: appSchema };
+    await queryInterface.createTable(applicationTable, {
+      value: DataTypes.STRING,
+    });
+    await queryInterface.bulkInsert(applicationTable, [
+      { value: 'application data' },
+    ]);
+    await migration.down(queryInterface, postgres, options);
+    expect(await queryInterface.tableExists(roleTable)).toBe(false);
+    expect(await queryInterface.select(null, applicationTable)).toEqual([
+      { value: 'application data' },
+    ]);
+  },
+);
+
+it.runIf(new URL(url).protocol === 'mysql:')(
+  'never cleans up a table created by a competing migration',
+  async () => {
+    const competing = new Sequelize(url, { logging: false });
+    onTestFinished(() => competing.close());
+    const winner = sequelize.getQueryInterface();
+    const loser = competing.getQueryInterface();
+    const options = { prefix };
+    const resources = prefix + 'resources';
+    const application = prefix + 'app_records';
+    await winner.createTable(application, {
+      value: { type: DataTypes.STRING },
+    });
+    await winner.bulkInsert(application, [{ value: 'app data' }]);
+    onTestFinished(async () => {
+      await migration.down(winner, sequelize, options);
+      await winner.dropTable(application);
+    });
+
+    const created = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    sequelize.addHook('afterQuery', async (_options, query) => {
+      const sql: unknown = Reflect.get(query, 'sql');
+      if (
+        typeof sql === 'string' &&
+        sql.startsWith('CREATE TABLE') &&
+        sql.includes(resources)
+      ) {
+        created.resolve();
+        await release.promise;
+      }
+    });
+    const create = loser.createTable.bind(loser);
+    vi.spyOn(loser, 'createTable').mockImplementation(
+      async (table, columns, tableOptions) => {
+        if (table === prefix + 'permissions') {
+          throw new Error('competing migration failed before its second table');
+        }
+        return create(table, columns, tableOptions);
+      },
+    );
+
+    const tableExists = loser.tableExists.bind(loser);
+    let successful: Promise<void> | undefined;
+    vi.spyOn(loser, 'tableExists').mockImplementation(
+      async (table, queryOptions) => {
+        const exists = await tableExists(table, queryOptions);
+        if (table === prefix + 'role_user') {
+          successful = migration.up(winner, sequelize, options);
+          await Promise.race([created.promise, successful]);
+          await winner.bulkInsert(resources, [{ name: 'winner data' }]);
+        }
+        return exists;
+      },
+    );
+
+    try {
+      await expect(migration.up(loser, competing, options)).rejects.toThrow();
+      expect(await winner.tableExists(resources)).toBe(true);
+    } finally {
+      release.resolve();
+      await successful;
+    }
+    expect(await winner.tableExists(resources)).toBe(true);
+    expect(await winner.tableExists(prefix + 'role_user')).toBe(true);
+    expect(await winner.select(null, resources)).toEqual([
+      expect.objectContaining({ name: 'winner data' }),
+    ]);
+    expect(await winner.select(null, application)).toEqual([
+      { value: 'app data' },
+    ]);
   },
 );
