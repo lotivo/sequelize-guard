@@ -7,6 +7,12 @@ import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
  * Extended NodeCache with Guard-specific methods
  */
 export class GuardCache extends NodeCache {
+  constructor(options: NodeCache.Options = {}) {
+    // Sequelize instances can retain dialect connections. Deep-cloning them
+    // traverses sockets and fails on PostgreSQL/MySQL internal properties.
+    super({ ...options, useClones: false });
+  }
+
   getRoles(): Record<number, GuardRoleModel> {
     return this.get('roles') || {};
   }

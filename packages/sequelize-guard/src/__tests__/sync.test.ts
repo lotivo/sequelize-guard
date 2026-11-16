@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SequelizeGuard } from '../index';
 import migration from '../migrations/guard-migrations';
 import type { GuardModel, GuardUserModel } from '../sequelize-models';
+import { GuardCache } from '../utils/cache';
 
 describe('Guard synchronization', () => {
   let sequelize: Sequelize;
@@ -18,6 +19,19 @@ describe('Guard synchronization', () => {
   afterEach(async () => {
     vi.restoreAllMocks();
     await sequelize.close();
+  });
+
+  it('stores Sequelize models without cloning connection internals', async () => {
+    const guard = new SequelizeGuard(sequelize);
+    await guard.ready;
+    const role = await guard.models().GuardRole.create({ name: 'reader' });
+    Object.defineProperty(role, 'transport', {
+      value: Object.freeze({ writeQueueSize: 0 }),
+      enumerable: true,
+    });
+    const cache = new GuardCache();
+    expect(() => cache.setRoles({ [role.id]: role })).not.toThrow();
+    expect(cache.getRoles()[role.id]).toBe(role);
   });
 
   it('does no database work when automatic synchronization is disabled', async () => {
