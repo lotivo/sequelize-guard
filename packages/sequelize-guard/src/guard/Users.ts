@@ -12,6 +12,7 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
    * Make/create a user
    */
   SequelizeGuard.prototype.makeUser = async function () {
+    this._assertModelBindings();
     return this._models.GuardUser.create({});
   };
 
@@ -24,6 +25,7 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
     user: GuardUserModel,
     role: string,
   ): Promise<GuardUserModel> {
+    this._assertModelBindings();
     const { role: roleModel } = await this.makeRole(role);
     await user.addRole!(roleModel.id);
     return user;
@@ -38,6 +40,7 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
     user: GuardUserModel,
     roles: string[],
   ): Promise<void> {
+    this._assertModelBindings();
     const allRoles = await this.makeRoles(roles, { all: true });
     const assignedRoles = await user.getRoles!();
     const roles2insert = lodash.differenceBy(
@@ -57,6 +60,7 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
     user: GuardUserModel,
     roles: string[],
   ): Promise<void> {
+    this._assertModelBindings();
     const rolesToRemove = await this._models.GuardRole.findAll({
       where: { name: { [Op.in]: roles } },
       useMaster: true,
@@ -71,6 +75,7 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.getUserRoles = async function (
     user: GuardUserModel,
   ): Promise<GuardRoleData[]> {
+    this._assertModelBindings();
     const roles = await user.getRoles!({ useMaster: true });
     return roles.map((role) => role.toJSON());
   };

@@ -36,7 +36,7 @@ export function extendWithPermissions(
     options: CreatePermsOptions = {},
   ): Promise<GuardPermissionModel[]> {
     const permissions = this._sanitizePermsInput(resources, actions, options);
-    return insertPermissionsToDb(this, permissions, options);
+    return insertPermissionsToDb(this as unknown as SequelizeGuard, permissions, options);
   };
 
   /**
@@ -60,7 +60,7 @@ export function extendWithPermissions(
       };
     });
 
-    return insertPermissionsToDb(this, sanitized, options);
+    return insertPermissionsToDb(this as unknown as SequelizeGuard, sanitized, options);
   };
 
   /**

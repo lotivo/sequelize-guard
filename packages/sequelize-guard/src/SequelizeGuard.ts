@@ -1,7 +1,11 @@
-import type { Sequelize, SyncOptions } from 'sequelize';
+import type { Model, Sequelize, SyncOptions } from 'sequelize';
+import { captureGuardBindings } from './core/guard-bindings';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
-import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
+import {
+  assertGuardUserAssociations,
+  setupGuardUserAssociations,
+} from './guard/GuardUserAssociations';
 import migration from './migrations/guard-migrations';
 import type {
   GuardModel,
@@ -11,6 +15,11 @@ import type {
   GuardUserModel,
 } from './sequelize-models';
 import { GuardModels, initGuardModels } from './sequelize-models';
+import {
+  getTableName,
+  ModelClassNameMap,
+} from './sequelize-models/types/ModelType';
+import { guardUserKey } from './sequelize-models/user-key';
 import { GuardOptions } from './types';
 import type {
   AddPermsToRoleResult,
@@ -30,6 +39,8 @@ import { SequelizeWithGuard } from './types/helpers';
 import type { GuardCache } from './utils/cache';
 import type { GuardUserCache } from './utils/userCache';
 
+const claimedSequelize = new WeakSet<Sequelize>();
+
 /**
  * SequelizeGuard - Authorization library for Sequelize
  * @example
@@ -47,7 +58,9 @@ import type { GuardUserCache } from './utils/userCache';
  * const canEdit = await user.can('edit blog');
  * ```
  */
-export class SequelizeGuard extends SequelizeGuardBase {
+export class SequelizeGuard<
+  TUser extends Model = GuardUserModel,
+> extends SequelizeGuardBase {
   /** Sequelize instance */
   public readonly sequelize: SequelizeWithGuard;
 
@@ -71,26 +84,91 @@ export class SequelizeGuard extends SequelizeGuardBase {
   public readonly ready: Promise<void>;
 
   private syncTask: Promise<void> = Promise.resolve();
+  /** @internal Ensure model and schema routing still match initialized bindings. */
+  readonly _assertModelBindings: () => void;
 
   /**
    * Creates a SequelizeGuard instance
    * @param sequelize - A Sequelize instance
    * @param options - Custom configuration options
    */
-  constructor(sequelize: Sequelize, options: GuardOptions = {}) {
+  constructor(
+    sequelize: Sequelize,
+    options: GuardOptions<TUser> = {},
+  ) {
     super(options);
 
+    if (claimedSequelize.has(sequelize) || 'guard' in sequelize)
+      throw new Error('This Sequelize instance already has a guard');
+    if ('GuardModels' in sequelize.models)
+      throw new Error('Sequelize model registry already defines "GuardModels"');
+    const user = this.options.UserModel;
+    guardUserKey(sequelize, this.options, options.userPk);
+    if (user) {
+      if (sequelize.models[user.name] !== user)
+        throw new Error(
+          'UserModel must be registered on this Sequelize instance',
+        );
+      if (sequelize.models.User && sequelize.models.User !== user)
+        throw new Error('Sequelize model registry already defines "User"');
+      assertGuardUserAssociations(user);
+    } else if ('User' in sequelize.models) {
+      throw new Error('Sequelize model registry already defines "User"');
+    }
+    for (const [type, name] of Object.entries(ModelClassNameMap)) {
+      if (user && name === user.name && name !== 'User')
+        throw new Error(
+          `UserModel name "${name}" is reserved for guard models`,
+        );
+      if (user && name === 'User' && name === user.name) continue;
+      if (name in sequelize.models)
+        throw new Error(`Sequelize model registry already defines "${name}"`);
+      const table = getTableName(
+        type as keyof typeof ModelClassNameMap,
+        this.options,
+      );
+      if (!table.trim() || table.includes('\0'))
+        throw new Error(`Invalid guard table name "${table}"`);
+      const userTable = user?.getTableName();
+      const userTableName =
+        typeof userTable === 'string' ? userTable : userTable?.tableName;
+      if (userTableName === table)
+        throw new Error(`Guard table "${table}" conflicts with UserModel`);
+      if (
+        Object.values(sequelize.models).some((model) => {
+          if (model === user) return false;
+          const existing = model.getTableName();
+          return (
+            (typeof existing === 'string' ? existing : existing.tableName) ===
+            table
+          );
+        })
+      )
+        throw new Error(
+          `Guard table "${table}" conflicts with an application model`,
+        );
+    }
+
+    claimedSequelize.add(sequelize);
     this.sequelize = sequelize as SequelizeWithGuard;
 
     // Initialize models
-    this._models = initGuardModels(this);
+    this._models = initGuardModels(
+      this as unknown as SequelizeGuard,
+      options.userPk,
+    );
 
     // Attach guard to sequelize instance
-    this.sequelize.guard = this;
+    this.sequelize.guard = this as unknown as SequelizeGuard;
     this.sequelize.models.GuardModels = this._models;
 
     // Setup user associations
-    this.sequelize.models.User = setupGuardUserAssociations(this);
+    setupGuardUserAssociations(this as unknown as SequelizeGuard);
+    this.sequelize.models.User ??= this._models.GuardUser;
+    this._assertModelBindings = captureGuardBindings(
+      sequelize,
+      Object.values(this._models) as GuardModel[],
+    );
 
     this.ready = this.options.sync
       ? this.sync().then(() => undefined)
@@ -111,6 +189,7 @@ export class SequelizeGuard extends SequelizeGuardBase {
       ...options,
     };
     const task = this.syncTask.then(async () => {
+      this._assertModelBindings();
       if (
         syncOptions.match &&
         !syncOptions.match.test(this.sequelize.getDatabaseName())
@@ -166,8 +245,8 @@ export class SequelizeGuard extends SequelizeGuardBase {
    * ```
    * @returns Array of models used in authorization
    */
-  models(): GuardModels {
-    return this._models;
+  models(): GuardModels<TUser> {
+    return this._models as unknown as GuardModels<TUser>;
   }
 
   /**
@@ -240,42 +319,24 @@ export class SequelizeGuard extends SequelizeGuardBase {
   ) => UnsubscribeFn;
 
   // User guard methods
-  declare makeUser: () => Promise<GuardUserModel>;
-  declare assignRole: (
-    user: GuardUserModel,
-    role: string,
-  ) => Promise<GuardUserModel>;
-  declare assignRoles: (user: GuardUserModel, roles: string[]) => Promise<void>;
-  declare rmAssignedRoles: (
-    user: GuardUserModel,
-    roles: string[],
-  ) => Promise<void>;
-  declare getUserRoles: (user: GuardUserModel) => Promise<GuardRoleData[]>;
+  declare makeUser: () => Promise<TUser>;
+  declare assignRole: (user: TUser, role: string) => Promise<TUser>;
+  declare assignRoles: (user: TUser, roles: string[]) => Promise<void>;
+  declare rmAssignedRoles: (user: TUser, roles: string[]) => Promise<void>;
+  declare getUserRoles: (user: TUser) => Promise<GuardRoleData[]>;
 
   //User permission resolution methods
-  declare userCan: (
-    user: GuardUserModel,
-    permission: string,
-  ) => Promise<boolean>;
-  declare userCant: (
-    user: GuardUserModel,
-    permission: string,
-  ) => Promise<boolean>;
+  declare userCan: (user: TUser, permission: string) => Promise<boolean>;
+  declare userCant: (user: TUser, permission: string) => Promise<boolean>;
   declare resolvePermission: (
     givenPermissions: { action: string; resource: string }[],
     wantedPermission: string,
   ) => boolean;
 
   // User role resolution methods
-  declare userHasRoles: (
-    user: GuardUserModel,
-    roles: string[],
-  ) => Promise<boolean>;
-  declare userHasAllRoles: (
-    user: GuardUserModel,
-    roles: string[],
-  ) => Promise<boolean>;
-  declare userIsA: (user: GuardUserModel, role: string) => Promise<boolean>;
+  declare userHasRoles: (user: TUser, roles: string[]) => Promise<boolean>;
+  declare userHasAllRoles: (user: TUser, roles: string[]) => Promise<boolean>;
+  declare userIsA: (user: TUser, role: string) => Promise<boolean>;
 
   // Cache
   declare resetCache: () => GuardCache;

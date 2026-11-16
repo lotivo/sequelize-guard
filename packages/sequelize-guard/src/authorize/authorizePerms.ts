@@ -17,6 +17,7 @@ export function extendWithAuthorizePerms(
     user: GuardUserModel,
     permission: string,
   ): Promise<boolean> {
+    this._assertModelBindings();
     // Read membership and policy together from the writer, never from local snapshots.
     const roles = await user.getRoles!({
       include: ['Permissions'],
