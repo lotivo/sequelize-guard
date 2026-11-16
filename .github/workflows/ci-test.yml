@@ -61,6 +61,9 @@ jobs:
         # This runs vitest with coverage enabled
         run: npx nx affected -t test:coverage --parallel=3
 
+      - name: Test docs search index
+        run: yarn nx run sequelize-guard-docs:test --skip-nx-cache
+
       - name: Check library types
         if: steps.affected.outputs.library == 'true'
         run: yarn typecheck
