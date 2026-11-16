@@ -1,29 +1,27 @@
 ---
-title: Migration
-description: Guides for migrating between major versions of Sequelize Guard
+title: Migration and recovery
 ---
 
-Find detailed guides for upgrading to the latest version of Sequelize Guard.
+This guide targets the published **6.0.2** schema and the **6.1.0 candidate**, not an in-place force-sync. Back up both policy and application data; inventory actual physical table names, custom keys, timestamp/paranoid configuration, holders and external FKs. Rehearse on a restored copy. Stop old and new policy writers and keep DDL quiescent for the entire migration/cutover.
 
-<Cards>
-  <Card title="Migration to v6" description="Complete guide for upgrading to sequelize-guard v6.x with TypeScript support" href="/docs/migration/upgrade-to-v6" />
-</Cards>
+Published options may have been ignored: `from` must describe the tables that actually exist, not merely the old configuration. Choose a wholly distinct target prefix. Match the supplied UserModel and timestamp/effective paranoid settings in both configurations. No source policy tables or IDs are changed by the copy.
 
-## What's New in v6
+```js
+await migration.upgrade(sequelize.getQueryInterface(), sequelize, {
+  from: { prefix: 'guard_', sync: false },
+  to: { prefix: 'guard_v610_', sync: false },
+  inheritExistingParents: false,
+});
+```
 
-Version 6.0 is a complete rewrite with major improvements:
+Import `migration` from `sequelize-guard` and use your configured `sequelize` connection. Use the same complete `to` configuration when starting the new Guard with `sync:false`. Do not call fresh `up` over an existing legacy namespace. The upgrade rejects overlap, noncanonical legacy role names and canonical name collisions before destination DDL. Remediate names on a backed-up offline copy while preserving IDs and reviewing all memberships; do not replace roles with newly generated IDs. Previously inert parent pointers do not automatically activate inheritance: explicitly opt into `inheritExistingParents:true` only after reviewing the graph and intended grants; validation rejects invalid graphs.
 
-- **Full TypeScript Support** - Complete rewrite in TypeScript with full type definitions
-- **Sequelize 6 Compatible** - Updated to work with Sequelize v6.x
-- **ESM & CommonJS** - Dual package support for modern and legacy projects
-- **Modern Tooling** - Built with Vite, tested with Vitest
-- **Better Type Safety** - Enhanced IntelliSense and compile-time checking
-- **99% Backward Compatible** - Minimal breaking changes from v5.x
+Verify destination counts/IDs, application FKs, expected grants, denials and committed revocation before cutover. Review stricter permission grammar; malformed grants/checks no longer authorize. Review one-parent inheritance, holder registration, soft-delete enforcement, initialization errors, return shapes, builder consumption, events and manual caches in the guides. 6.0.2 already exposed `ready`; 6.1.0 adds the explicit awaitable `sync(options)` and stronger failure handling. Node floor remains 22.17.1; Sequelize now requires `^6.37.8`.
 
-## Need Help?
+Keep the source tables and exact 6.0.2 package during the rollback window. Before any new writes, reverting workers to the old package/source namespace is possible after verifying the source snapshot. After cutover writes, restore/reconcile the matching pre-upgrade backup under an application-specific recovery plan; the copy does not synchronize later changes back. Never promise a data-preserving reverse migration after divergent writes.
 
-If you encounter any issues during migration:
+`migration.down(queryInterface, sequelize, toOptions)` drops only owned destination tables, including the built-in user table when configured. It preserves supplied application users/holders and refuses external application references or mismatched ownership/bindings. Do not remove the receipt or fabricate a complete receipt to force rollback. PostgreSQL/SQLite transactional failures can ordinarily be retried after fixing the cause. MySQL DDL implicitly commits: failed creation with failed cleanup, or interrupted rollback after receipt deletion, requires manual recovery and refuses automatic adoption/drop of remaining names. Preserve exact names, backup, errors and executed DDL; inspect all remaining tables and incoming references with DDL quiescent, back up retained data, remove only proven owned tables in junction-before-parent order, then rerun up once that namespace is empty. Preserve unrelated reused names. Restore backup when policy data must be recovered.
 
-- Check the [v6 Upgrade Guide](/docs/migration/upgrade-to-v6)
-- Review the [API Reference](/docs/api)
-- [Open an issue](https://github.com/lotivo/sequelize-guard/issues) on GitHub
+MySQL incoming-FK preflight requires visibility of referencing database metadata, not just the current schema. Use a migration account with that visibility and prevent concurrent DDL. Production permissions/schema maintenance remain application operational responsibilities.
+
+The [executable published-6.0.2 upgrade recipe](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/upgrade.mjs) creates legacy policy with the exact published package, closes its connection, copies to a distinct target prefix, verifies access/revocation and preserves application users. Its narrowly scoped legacy Lodash bridge is test compatibility glue; candidate imports remain native.

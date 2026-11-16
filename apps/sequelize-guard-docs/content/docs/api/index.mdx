@@ -1,41 +1,49 @@
 ---
-title: API Reference
-description: Complete API reference for sequelize-guard
-icon: ShieldCheck
+title: "API Reference"
 ---
 
-**sequelize-guard v6.0.1**
+Package **6.1.0**, source revision [89f2407d2440a4ecaf38d3159582965c864b25cd](https://github.com/lotivo/sequelize-guard/tree/89f2407d2440a4ecaf38d3159582965c864b25cd). Generated from this checkout; local uncommitted changes, if any, are included.
+
+**sequelize-guard v6.1.0**
 
 ***
 
-# sequelize-guard v6.0.1
+# sequelize-guard v6.1.0
 
 SequelizeGuard - Authorization Library for Sequelize
 
 ## Classes
 
-- [SequelizeGuard](./classes/SequelizeGuard.mdx)
+- [SequelizeGuard](/docs/api/classes/SequelizeGuard)
 
 ## Interfaces
 
-- [RoleCreationResult](./interfaces/RoleCreationResult.mdx)
-- [AddPermsToRoleResult](./interfaces/AddPermsToRoleResult.mdx)
-- [RemovePermsFromRoleResult](./interfaces/RemovePermsFromRoleResult.mdx)
-- [CreatePermsOptions](./interfaces/CreatePermsOptions.mdx)
-- [CreateRolesOptions](./interfaces/CreateRolesOptions.mdx)
-- [FindRolesArgs](./interfaces/FindRolesArgs.mdx)
-- [FindPermsArgs](./interfaces/FindPermsArgs.mdx)
-- [BulkPermissionInput](./interfaces/BulkPermissionInput.mdx)
-- [PermissionData](./interfaces/PermissionData.mdx)
-- [RoleData](./interfaces/RoleData.mdx)
-- [GuardOptions](./interfaces/GuardOptions.mdx)
-- [GuardInternalOptions](./interfaces/GuardInternalOptions.mdx)
+- [GuardUpgradeOptions](/docs/api/interfaces/GuardUpgradeOptions)
+- [GuardPermissionData](/docs/api/interfaces/GuardPermissionData)
+- [GuardUserMethods](/docs/api/interfaces/GuardUserMethods)
+- [RoleCreationResult](/docs/api/interfaces/RoleCreationResult)
+- [AddPermsToRoleResult](/docs/api/interfaces/AddPermsToRoleResult)
+- [RemovePermsFromRoleResult](/docs/api/interfaces/RemovePermsFromRoleResult)
+- [PolicyMutationOptions](/docs/api/interfaces/PolicyMutationOptions)
+- [UserRoleAssignment](/docs/api/interfaces/UserRoleAssignment)
+- [RoleAssignmentResult](/docs/api/interfaces/RoleAssignmentResult)
+- [CreatePermsOptions](/docs/api/interfaces/CreatePermsOptions)
+- [CreateRolesOptions](/docs/api/interfaces/CreateRolesOptions)
+- [FindRolesArgs](/docs/api/interfaces/FindRolesArgs)
+- [FindPermsArgs](/docs/api/interfaces/FindPermsArgs)
+- [BulkPermissionInput](/docs/api/interfaces/BulkPermissionInput)
+- [PermissionData](/docs/api/interfaces/PermissionData)
+- [RoleData](/docs/api/interfaces/RoleData)
+- [GuardOptions](/docs/api/interfaces/GuardOptions)
+- [GuardInternalOptions](/docs/api/interfaces/GuardInternalOptions)
 
 ## Type Aliases
 
-- [RoleCreationParam](./type-aliases/RoleCreationParam.mdx)
-- [GuardEventCallback](./type-aliases/GuardEventCallback.mdx)
-- [UnsubscribeFn](./type-aliases/UnsubscribeFn.mdx)
+- [GuardRoleData](/docs/api/type-aliases/GuardRoleData)
+- [RoleCreationParam](/docs/api/type-aliases/RoleCreationParam)
+- [GuardCreationResult](/docs/api/type-aliases/GuardCreationResult)
+- [GuardEventCallback](/docs/api/type-aliases/GuardEventCallback)
+- [UnsubscribeFn](/docs/api/type-aliases/UnsubscribeFn)
 
 ## Variables
 
@@ -43,7 +51,7 @@ SequelizeGuard - Authorization Library for Sequelize
 
 > **migration**: `object`
 
-Defined in: [migrations/guard-migrations.ts:108](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/migrations/guard-migrations.ts#L108)
+Defined in: [packages/sequelize-guard/src/migrations/guard-migrations.ts:506](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/migrations/guard-migrations.ts#L506)
 
 #### Type Declaration
 
@@ -51,7 +59,7 @@ Defined in: [migrations/guard-migrations.ts:108](https://github.com/lotivo/seque
 
 > **up**: (`queryInterface`, `_Sequelize`, `options`) => `Promise`\<`void`\>
 
-Run migrations to create Guard tables
+Create a fresh Guard schema. Application user tables must already exist.
 
 ###### Parameters
 
@@ -61,11 +69,11 @@ Run migrations to create Guard tables
 
 ###### \_Sequelize
 
-`Sequelize`
+`Sequelize` | *typeof* `Sequelize`
 
 ###### options
 
-[`GuardOptions`](./interfaces/GuardOptions.mdx) = `{}`
+[`GuardOptions`](/docs/api/interfaces/GuardOptions) = `{}`
 
 ###### Returns
 
@@ -75,7 +83,7 @@ Run migrations to create Guard tables
 
 > **down**: (`queryInterface`, `_Sequelize`, `options`) => `Promise`\<`void`\>
 
-Rollback migrations - drop Guard tables
+Drop the owned Guard tables in reverse dependency order.
 
 ###### Parameters
 
@@ -85,11 +93,60 @@ Rollback migrations - drop Guard tables
 
 ###### \_Sequelize
 
-`Sequelize`
+`Sequelize` | *typeof* `Sequelize`
 
 ###### options
 
-[`GuardOptions`](./interfaces/GuardOptions.mdx) = `{}`
+[`GuardOptions`](/docs/api/interfaces/GuardOptions) = `{}`
+
+###### Returns
+
+`Promise`\<`void`\>
+
+##### upgrade()
+
+> **upgrade**: (`queryInterface`, `_Sequelize`, `__namedParameters`) => `Promise`\<`void`\>
+
+Copy an offline installation to distinct tables, preserving the originals.
+Use the actual table names of the previous installation for `from`.
+
+###### Parameters
+
+###### queryInterface
+
+`QueryInterface`
+
+###### \_Sequelize
+
+`Sequelize` | *typeof* `Sequelize`
+
+###### \_\_namedParameters
+
+[`GuardUpgradeOptions`](/docs/api/interfaces/GuardUpgradeOptions)
+
+###### Returns
+
+`Promise`\<`void`\>
+
+##### addRoleHolders()
+
+> **addRoleHolders**: (`queryInterface`, `_Sequelize`, `options`) => `Promise`\<`void`\>
+
+Provision only newly registered holder junctions for a current Guard schema.
+
+###### Parameters
+
+###### queryInterface
+
+`QueryInterface`
+
+###### \_Sequelize
+
+`Sequelize` | *typeof* `Sequelize`
+
+###### options
+
+[`GuardOptions`](/docs/api/interfaces/GuardOptions)
 
 ###### Returns
 
@@ -99,4 +156,4 @@ Rollback migrations - drop Guard tables
 
 ### default
 
-Renames and re-exports [SequelizeGuard](./classes/SequelizeGuard.mdx)
+Renames and re-exports [SequelizeGuard](/docs/api/classes/SequelizeGuard)

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
+  cpSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -17,7 +18,14 @@ const build = path.join(root, 'build/packages/sequelize-guard');
 const consumer = realpathSync(
   mkdtempSync(path.join(tmpdir(), 'sequelize-guard-consumer-')),
 );
-const env = { ...process.env };
+const env = {
+  ...process.env,
+  // npm and native-addon lifecycle scripts use the same supported Node runtime
+  // as the import, declarations, and executable-recipe checks.
+  PATH: [path.dirname(process.execPath), process.env.PATH]
+    .filter(Boolean)
+    .join(path.delimiter),
+};
 delete env.NODE_PATH;
 delete env.NODE_OPTIONS;
 after(() => rmSync(consumer, { recursive: true, force: true }));
@@ -34,7 +42,7 @@ function packForConsumer() {
         '--pack-destination',
         consumer,
       ],
-      { encoding: 'utf8', cwd: consumer },
+      { encoding: 'utf8', cwd: consumer, env },
     ),
   );
   return path.join(consumer, packed.filename);
@@ -50,6 +58,16 @@ const manifest = JSON.parse(
 );
 const distributedFiles = [
   'package/LICENSE',
+  'package/skills/sequelize-guard/SKILL.md',
+  'package/skills/sequelize-guard/references/installed-package.mjs',
+  'package/examples/README.md',
+  'package/examples/basic.mjs',
+  'package/examples/basic.cjs',
+  'package/examples/custom-user.ts',
+  'package/examples/migrations.mjs',
+  'package/examples/authorization.mjs',
+  'package/examples/advanced.mjs',
+  'package/examples/upgrade.mjs',
   'package/README.md',
   'package/dist/cjs/index.cjs',
   'package/dist/cjs/index.cjs.map',
@@ -68,6 +86,29 @@ test('installs the exact packed files with fresh dependencies', () => {
   assert.deepEqual(list('-tzf').sort(), distributedFiles.sort());
   assert.ok(list('-tvzf').every((entry) => entry.startsWith('-')));
 
+  for (const file of [
+    'README.md',
+    'LICENSE',
+    'skills/sequelize-guard/SKILL.md',
+    'skills/sequelize-guard/references/installed-package.mjs',
+  ]) {
+    assert.equal(
+      execFileSync('tar', ['-xOzf', tarball, `package/${file}`], {
+        encoding: 'utf8',
+      }),
+      readFileSync(path.join(root, file), 'utf8'),
+      `${file} must match the frozen release source`,
+    );
+  }
+  const sourceManifest = JSON.parse(
+    readFileSync(
+      path.join(root, 'packages/sequelize-guard/package.json'),
+      'utf8',
+    ),
+  );
+  // A rehearsal RC substitutes only the version in an isolated staging copy.
+  assert.deepEqual(manifest, { ...sourceManifest, version: manifest.version });
+
   writeFileSync(
     path.join(consumer, 'package.json'),
     JSON.stringify({ name: 'sequelize-guard-consumer', private: true }),
@@ -85,6 +126,7 @@ test('installs the exact packed files with fresh dependencies', () => {
       'sequelize-guard-previous@npm:sequelize-guard@6.0.2',
       'sqlite3@6.0.1',
       'typescript@5.9.3',
+      'express@5.1.0',
       '@types/node@24.10.1',
     ],
     { cwd: consumer, env, stdio: 'inherit' },
@@ -190,83 +232,104 @@ const { default: Guard, SequelizeGuard, migration } = require('sequelize-guard')
 });
 
 test('upgrades a published 6.0.2 app with a custom user key', () => {
-  writeFileSync(
+  cpSync(
+    path.join(consumer, 'node_modules/sequelize-guard/examples/upgrade.mjs'),
     path.join(consumer, 'upgrade.mjs'),
-    `
-import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { DataTypes, Sequelize } from 'sequelize';
-import Guard, { migration } from 'sequelize-guard';
-
-// 6.0.2 relied on bundler interop for its Lodash named imports.
-const previousUrl = import.meta.resolve('sequelize-guard-previous');
-const legacyInterop = registerHooks({
-  resolve(specifier, context, nextResolve) {
-    const resolved = nextResolve(specifier, context);
-    if (specifier !== 'lodash' || context.parentURL !== previousUrl) return resolved;
-    const bridge = 'import lodash from ' + JSON.stringify(resolved.url) +
-      '; export const { includes, uniq, differenceBy, concat, find, filter, intersectionBy, without, merge, values } = lodash;';
-    return { url: 'data:text/javascript,' + encodeURIComponent(bridge), shortCircuit: true };
-  },
-});
-const previous = await import('sequelize-guard-previous').finally(() => legacyInterop.deregister());
-
-function connect() {
-  const sequelize = new Sequelize({ dialect: 'sqlite', storage: 'application.sqlite', logging: false });
-  const Account = sequelize.define('Account', {
-    accountKey: { type: DataTypes.STRING, primaryKey: true, field: 'account_key' },
-    displayName: { type: DataTypes.STRING, allowNull: false },
-  }, { tableName: 'accounts' });
-  return { sequelize, Account, options: { sync: false, UserModel: Account, userPk: 'accountKey' } };
-}
-
-{
-  const { sequelize, Account, options } = connect();
-  const from = { ...options, prefix: 'legacy_' };
-  try {
-    await Account.sync();
-    await previous.migration.up(sequelize.getQueryInterface(), sequelize, from);
-    const guard = new previous.default(sequelize, from);
-    await guard.ready;
-    const user = await Account.create({ accountKey: 'account-A', displayName: 'Alex' });
-    await guard.allow('reader', 'read', 'document');
-    await user.assignRole('reader');
-    assert.equal(await user.can('read document'), true);
-  } finally {
-    await sequelize.close();
-  }
-}
-
-{
-  const { sequelize, Account, options } = connect();
-  const query = sequelize.getQueryInterface();
-  const from = { ...options, prefix: 'legacy_' };
-  const to = { ...options, prefix: 'current_' };
-  try {
-    const legacyMemberships = await query.select(null, 'legacy_role_user');
-    assert.equal(legacyMemberships.length, 1);
-    await migration.upgrade(query, sequelize, { from, to });
-    const guard = new Guard(sequelize, to);
-    await guard.ready;
-    const user = await Account.findByPk('account-A', { rejectOnEmpty: true });
-    assert.equal(user.displayName, 'Alex');
-    assert.equal(await user.can('read document'), true);
-    assert.deepEqual(await guard.assignRolesToUsers([user], ['editor']), { assigned: 1 });
-    await guard.allow('editor', 'edit', 'document');
-    assert.equal(await user.can('edit document'), true);
-    await user.rmAssignedRoles(['reader']);
-    assert.equal(await user.can('read document'), false);
-    assert.deepEqual(await query.select(null, 'legacy_role_user'), legacyMemberships);
-  } finally {
-    await sequelize.close();
-  }
-}
-`,
   );
   execFileSync(process.execPath, ['upgrade.mjs'], {
     cwd: consumer,
     env,
     stdio: 'inherit',
+  });
+});
+
+// Execute the same files referenced by the human documentation from a clean
+// installation, so workspace imports cannot conceal missing package exports.
+test('documentation recipes run against the installed archive', () => {
+  cpSync(
+    path.join(consumer, 'node_modules/sequelize-guard/examples'),
+    path.join(consumer, 'examples'),
+    {
+      recursive: true,
+    },
+  );
+  for (const packedPath of distributedFiles.filter((file) =>
+    file.startsWith('package/examples/'),
+  )) {
+    const relativePath = packedPath.slice('package/'.length);
+    assert.equal(
+      readFileSync(
+        path.join(consumer, 'node_modules/sequelize-guard', relativePath),
+        'utf8',
+      ),
+      readFileSync(path.join(root, relativePath), 'utf8'),
+      `${relativePath} must match the shared documentation source`,
+    );
+  }
+  writeFileSync(
+    path.join(consumer, 'examples/package.json'),
+    JSON.stringify({ type: 'module' }),
+  );
+  for (const recipe of [
+    'basic.mjs',
+    'basic.cjs',
+    'migrations.mjs',
+    'authorization.mjs',
+    'advanced.mjs',
+  ]) {
+    execFileSync(process.execPath, [path.join('examples', recipe)], {
+      cwd: consumer,
+      env,
+      stdio: 'inherit',
+    });
+  }
+  execFileSync(
+    process.execPath,
+    [
+      'node_modules/typescript/bin/tsc',
+      '--strict',
+      '--outDir',
+      'examples/.compiled',
+      '--skipLibCheck',
+      'false',
+      '--target',
+      'ES2022',
+      '--module',
+      'NodeNext',
+      '--moduleResolution',
+      'NodeNext',
+      'examples/custom-user.ts',
+    ],
+    { cwd: consumer, env, stdio: 'inherit' },
+  );
+  execFileSync(process.execPath, ['examples/.compiled/custom-user.js'], {
+    cwd: consumer,
+    env,
+    stdio: 'inherit',
+  });
+});
+
+test('installed portable skill detects the consumer package without repository access', () => {
+  const packageRoot = path.join(consumer, 'node_modules/sequelize-guard');
+  const detection = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [
+        path.join(
+          packageRoot,
+          'skills/sequelize-guard/references/installed-package.mjs',
+        ),
+      ],
+      { cwd: consumer, env, encoding: 'utf8' },
+    ),
+  );
+  assert.deepEqual(detection, {
+    name: 'sequelize-guard',
+    version: manifest.version,
+    sequelize: manifest.peerDependencies.sequelize,
+    root: packageRoot,
+    examples: path.join(packageRoot, 'examples'),
+    skill: path.join(packageRoot, 'skills/sequelize-guard/SKILL.md'),
   });
 });
 

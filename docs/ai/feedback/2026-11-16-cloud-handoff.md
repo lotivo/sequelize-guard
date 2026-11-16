@@ -1,5 +1,7 @@
 # Cloud Codex handoff — 16 November 2026
 
+> Historical handoff/plan. Cloud continuation preserved this history, completed the implementation on the maintainer-renamed `fix/pre-release-hardening` branch, and records current state in [final acceptance](./2026-11-16-final-acceptance.md). The old branch name and failing-test counts below describe the transfer checkpoint.
+
 ## Start here
 
 Continue the pre-release improvement work in `lotivo/sequelize-guard` on **`pvaghela/release-cloud-handoff`**, targeting `master`. The maintainer paused local implementation to sleep and requested this separate remote branch with all existing work. The local goal remains paused; this document transfers context for a separately started cloud task. Do not depend on the original chat, temporary worktrees or local services.

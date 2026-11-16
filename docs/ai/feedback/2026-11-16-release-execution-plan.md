@@ -1,5 +1,7 @@
 # Release improvement execution plan
 
+> Historical handoff/plan. Cloud continuation preserved this history, completed the implementation on the maintainer-renamed `fix/pre-release-hardening` branch, and records current state in [final acceptance](./2026-11-16-final-acceptance.md). The old branch name and failing-test counts below describe the transfer checkpoint.
+
 The orchestrator owns integration, scheduling, design decisions, cross-category review and the final PR. Category agents use GPT-6.1 Sol with medium reasoning, as requested. The complete scope is the [52-item release checklist](./2026-11-16-release-readiness-checklist.md).
 
 ## Paused handoff — 16 November 2026

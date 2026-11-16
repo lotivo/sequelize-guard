@@ -1,43 +1,19 @@
 ---
-title: Caching and Revocation
-description: Understand database-backed authorization and the limits of legacy cache APIs.
-icon: Database
+title: Caches and operational limits
 ---
 
-## Authorization reads current database state
+Authorization never uses a policy cache: reads go to the writer. `getCache()`/`resetCache()` expose local snapshots (cached roles are models, cached permissions are plain data), which can become stale across workers. Do not use them to decide access. Role snapshots have no background timer.
 
-`user.can()`, `user.cant()`, role checks, and their corresponding `guard` methods read from the database on each call. `guard.getUserRoles(user)` also reads current membership. Permission checks load membership and permissions together in one query. These reads use Sequelize's writer connection (`useMaster: true`) so a read replica's lag cannot preserve a revoked grant.
+`const cache = guard.getUserCache()` gives an optional manual NodeCache. Keep the reference and call `cache.close()` when finished; resets reuse one sweeper. Its TTL/expiry notifications do not revoke persisted privileges. Guard never closes application Sequelize connections.
 
-After a revocation has committed, a check started outside an older transaction snapshot observes it on every guard instance connected to that database. No process-local cache reset or TTL expiry is required. Database errors reject the check; the library never substitutes a previous allow result. Applications must handle rejection by preventing the protected operation.
+There is no promised maximum policy size or universal latency bound. Checks project relevant grants with indexed writer queries but still validate full ancestor lineage; wide/deep policies consume database, CPU and memory. Benchmark representative workloads with `node --expose-gc scripts/benchmark-authorization.mjs`, monitor writer load and provision pools. Stored malformed grants are ignored; database errors reject. Do not infer cross-operation atomicity or guaranteed expiry from cache settings.
 
-```typescript
-await guard.ready;
-await guard.allow('reader', 'read', 'document');
-const user = await guard.makeUser();
-await user.assignRole('reader');
+Authentication belongs to your application. Resolve the actor from a verified session or credential verifier, then map that trusted principal to a persisted user or registered holder. Never authenticate an arbitrary `x-user-id`, body ID, query ID or unsigned JWT claim. Keep acting identity and target identity separate. Protect every policy mutation with dedicated administrative authorization, validate input and enforce tenant/object scope. Cookie-authenticated writes also require application CSRF protection.
 
-await user.can('read document'); // true
-await user.rmAssignedRoles(['reader']);
-await user.can('read document'); // false
-await user.isA('reader'); // false
-```
+Return 401 for absent/invalid identity, 403 for authenticated denial, and a sanitized 5xx for identity/database failures; never execute the protected action on those paths. Authorization database failures reject rather than returning a policy denial. Follow the [executable HTTP integration](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/examples/authorization.mjs), including its injected verified-session dependency and real Guard tests.
 
-The same behavior applies when another worker removes the membership or permission, or when Sequelize writes update the association tables directly. Deleting a role causes subsequent authorization checks to deny its permissions.
+Wildcards are broad privileges: grant them only deliberately. Permissions are allow-only; the deprecated stored `allow` field does not implement deny rules. Soft-deleted users/holders lose access. Add application object/tenant checks where coarse role permissions are insufficient.
 
-## Consistency boundaries
+Authorization reads current writer-backed database state and never trusts the manual cache. A check already in flight or an older database transaction can see earlier state. A successful check and a subsequent business operation are not automatically atomic. Plan writer capacity and coordinate business consistency explicitly. Events are best-effort in-process notifications, not durable audit records. Applications own durable committed audit history and persisted expiry enforcement; timers do not provide reliable privilege expiration across restarts/workers.
 
-A check already reading before a revocation commits can still return the earlier result. That result is not saved for later checks. Authorization and the subsequent application operation are not one atomic transaction: applications requiring that guarantee must coordinate both with their database transaction and locking strategy. An existing transaction snapshot can retain older data according to its isolation level.
-
-Permission removal currently matches the complete action bundle originally granted. For example, remove `['read', 'edit']` together if they were granted together for a resource. Removing only `'edit'` from that bundle is a separate known limitation; do not assume it succeeded. Check `permsRemoved` and the resulting authorization. Action-level removal semantics are tracked in the maintenance plan.
-
-## Compatibility with existing cache configuration
-
-`userCache` remains accepted for compatibility but is deprecated: it no longer caches user membership or authorization, whether it is `true` or `false`. `userCacheTtl` controls entries that callers manually place in `guard.getUserCache()`; it does not delay revocation. There is no supported nested `cache: { enabled, ttl }` option.
-
-The existing `getCache()`, `resetCache()`, `getUserCache()` and `resetUserCache()` APIs remain available. The role/permission cache still supports legacy administrative lookups and event snapshots. `resetCache()` clears the snapshot; the next awaited `getCache()` reloads it from the writer connection. Concurrent readers share initialization, failed loads reject and can be retried, and `sync()` reloads the snapshot after synchronizing tables. These snapshots can still be stale across workers or concurrent policy writes. Do not use them, `getRole()` or `allRoles()` as authorization decisions. Use the authorization methods above.
-
-## Performance
-
-Each authorization call now requires a database read. This trades the old cache-only performance for current revocation behavior. Measure database latency and load before increasing traffic. Avoid caching the resulting boolean in application code unless the application explicitly accepts the resulting revocation delay.
-
-The application still owns authentication and authorization of role/permission administration. Use a principal established by verified authentication; do not treat a user ID from an unverified request header as proof of identity.
+[Report vulnerabilities privately](https://github.com/lotivo/sequelize-guard/security/advisories/new), with package/Node/Sequelize/dialect versions and a private minimal reproduction. Exclude secrets and customer data. See [SECURITY.md](https://github.com/lotivo/sequelize-guard/blob/fix/pre-release-hardening/SECURITY.md) for release support and dependency exposure limits.

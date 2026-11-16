@@ -1,0 +1,32 @@
+---
+title: "Interface: PolicyMutationOptions"
+---
+
+[**sequelize-guard v6.1.0**](/docs/api)
+
+***
+
+[sequelize-guard v6.1.0](/docs/api) / PolicyMutationOptions
+
+# Interface: PolicyMutationOptions
+
+Defined in: [packages/sequelize-guard/src/types/api.ts:37](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L37)
+
+Options for a policy mutation.
+
+## Extended by
+
+- [`CreatePermsOptions`](/docs/api/interfaces/CreatePermsOptions)
+- [`CreateRolesOptions`](/docs/api/interfaces/CreateRolesOptions)
+
+## Properties
+
+### transaction?
+
+> `optional` **transaction**: `Transaction`
+
+Defined in: [packages/sequelize-guard/src/types/api.ts:43](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L43)
+
+An outermost transaction on the guard's Sequelize instance. Await queries
+and mutations on this transaction sequentially. The guard uses a savepoint
+and suppresses its events. Callers own notifications after commit.

@@ -2,25 +2,45 @@
 title: "Interface: CreatePermsOptions"
 ---
 
-[**sequelize-guard v6.0.1**](../index.mdx)
+[**sequelize-guard v6.1.0**](/docs/api)
 
 ***
 
-[sequelize-guard](../index.mdx) / CreatePermsOptions
+[sequelize-guard v6.1.0](/docs/api) / CreatePermsOptions
 
 # Interface: CreatePermsOptions
 
-Defined in: [types/api.ts:36](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/api.ts#L36)
+Defined in: [packages/sequelize-guard/src/types/api.ts:60](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L60)
 
 Options for creating permissions
 
+## Extends
+
+- [`PolicyMutationOptions`](/docs/api/interfaces/PolicyMutationOptions)
+
 ## Properties
+
+### transaction?
+
+> `optional` **transaction**: `Transaction`
+
+Defined in: [packages/sequelize-guard/src/types/api.ts:43](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L43)
+
+An outermost transaction on the guard's Sequelize instance. Await queries
+and mutations on this transaction sequentially. The guard uses a savepoint
+and suppresses its events. Callers own notifications after commit.
+
+#### Inherited from
+
+[`PolicyMutationOptions`](/docs/api/interfaces/PolicyMutationOptions).[`transaction`](/docs/api/interfaces/PolicyMutationOptions#transaction)
+
+***
 
 ### name?
 
 > `optional` **name**: `string`
 
-Defined in: [types/api.ts:37](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/api.ts#L37)
+Defined in: [packages/sequelize-guard/src/types/api.ts:61](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L61)
 
 ***
 
@@ -28,7 +48,7 @@ Defined in: [types/api.ts:37](https://github.com/lotivo/sequelize-guard/blob/ecc
 
 > `optional` **names**: `string`[]
 
-Defined in: [types/api.ts:38](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/api.ts#L38)
+Defined in: [packages/sequelize-guard/src/types/api.ts:62](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L62)
 
 ***
 
@@ -36,7 +56,7 @@ Defined in: [types/api.ts:38](https://github.com/lotivo/sequelize-guard/blob/ecc
 
 > `optional` **all**: `boolean`
 
-Defined in: [types/api.ts:39](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/api.ts#L39)
+Defined in: [packages/sequelize-guard/src/types/api.ts:63](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L63)
 
 ***
 
@@ -44,4 +64,4 @@ Defined in: [types/api.ts:39](https://github.com/lotivo/sequelize-guard/blob/ecc
 
 > `optional` **json**: `boolean`
 
-Defined in: [types/api.ts:40](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/api.ts#L40)
+Defined in: [packages/sequelize-guard/src/types/api.ts:64](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L64)

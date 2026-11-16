@@ -25,6 +25,8 @@ Implementation order remains: repair B/C/F failures and ownership/binding/regran
 - Physical PostgreSQL standby verification passed on Node 22. Full PostgreSQL/MySQL migration and holder suites passed on both runtime lines; final evidence will be refreshed if implementation changes.
 - Category H performance regressions, E documentation/examples and G packaged AI support remain in progress. These checks do not yet certify final archive/docs/release acceptance.
 
+Additional checks: Node 24 physical standby harness passed. SHA-256-verified actionlint 1.7.12 accepted all three workflows; all 22 workflow shell blocks passed `bash -n`. Release metadata unit tests passed on both pinned runtimes. A fresh Yarn audit reported the same two assessed advisory identities (minimatch GHSA-g3hv-75wg-m249 and Sequelize's UUID GHSA-w5hq-g745-h8pq), 16 moderate dependency paths, zero high/critical paths; the earlier dependency assessment's exposure analysis remains applicable. Yarn's workspace development labels are not used to classify runtime exposure.
+
 ## Remote delivery
 
 Initial Git pushes returned HTTP 403 despite read-only repository metadata reporting account push permission. The maintainer restored cloud GitHub access during this chat. A subsequent push succeeded: `fix/pre-release-hardening` now tracks `origin/fix/pre-release-hardening` at safety checkpoint `d8282c1`. No agent changed repository/npm settings. The original handoff branch remains preserved.

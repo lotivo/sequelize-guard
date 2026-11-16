@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { Sequelize } from 'sequelize';
+import { DataTypes, Sequelize } from 'sequelize';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { cpus, totalmem } from 'node:os';
 import Guard from '../build/packages/sequelize-guard/dist/esm/index.esm.js';
 
 const accessChecks = 200;
@@ -57,7 +60,17 @@ async function measure(operation, runs, exercise) {
 }
 
 try {
-  const guard = new Guard(sequelize);
+  const Team = sequelize.define('BenchmarkTeam', {
+    teamKey: { type: DataTypes.STRING, primaryKey: true },
+    name: { type: DataTypes.STRING, allowNull: false },
+  });
+  const Organization = sequelize.define('BenchmarkOrganization', {
+    name: { type: DataTypes.STRING, allowNull: false },
+  });
+  await Promise.all([Team.sync(), Organization.sync()]);
+  const guard = new Guard(sequelize, {
+    roleHolders: { team: Team, organization: Organization },
+  });
   await guard.ready;
   const roles = Array.from(
     { length: roleCount },
@@ -120,11 +133,27 @@ try {
     }),
   ];
 
+  const malformedUser = await guard.makeUser();
+  const { permissions: malformed } = await guard.allow(
+    'malformed',
+    'read',
+    'Asset',
+  );
+  await malformed[0].update({
+    action: JSON.stringify([
+      ...Array.from({ length: 10_000 }, (_, i) => `action-${i}`),
+      '*',
+      null,
+    ]),
+  });
+  await guard.assignRole(malformedUser, 'malformed');
+
   const checks = [
     ['direct exact allow', users[0], 'read team-7-asset-63', true],
     ['direct deny', users[0], 'read missing-asset', false],
     ['wide policy deny', wideUser, 'read missing-asset', false],
     ['inherited wildcard allow', inheritedUser, 'read new-asset', true],
+    ['large malformed grant deny', malformedUser, 'read Asset', false],
   ];
   for (const [label, user, request, allowed] of checks) {
     for (let index = 0; index < 30; index++) {
@@ -143,7 +172,23 @@ try {
         dialect: sequelize.getDialect(),
         platform: process.platform,
         architecture: process.arch,
-        users: users.length + 2,
+        cpuModel: cpus()[0]?.model,
+        logicalCpus: cpus().length,
+        systemMemoryGiB: Number((totalmem() / 1024 ** 3).toFixed(2)),
+        artifactSha256: createHash('sha256')
+          .update(
+            readFileSync(
+              new URL(
+                '../build/packages/sequelize-guard/dist/esm/index.esm.js',
+                import.meta.url,
+              ),
+            ),
+          )
+          .digest('hex'),
+        notes:
+          'Sequential in-memory SQLite checks; includes schema binding validation. Heap is sampled between runs, not an allocation or RSS peak. No service latency or concurrent throughput claim.',
+        users: users.length + 3,
+        registeredHolderModels: 2,
         roleCount,
         resourcesPerRole,
         actionsPerResource: actions.length,

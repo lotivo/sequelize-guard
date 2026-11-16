@@ -1,3 +1,5 @@
+> **Historical internal design report.** This records an earlier TypeScript migration and is not current public API, compatibility or release guidance. Use the [current guide](https://sequelize-guard.js.org/docs/guide) and [shared executable recipes](../../../examples/README.md).
+
 # TypeScript Migration Summary - Internal Documentation
 
 **Date**: November 15, 2025  

@@ -51,7 +51,17 @@
     "dist",
     "types",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "skills/sequelize-guard/SKILL.md",
+    "skills/sequelize-guard/references/installed-package.mjs",
+    "examples/README.md",
+    "examples/basic.mjs",
+    "examples/basic.cjs",
+    "examples/custom-user.ts",
+    "examples/migrations.mjs",
+    "examples/authorization.mjs",
+    "examples/advanced.mjs",
+    "examples/upgrade.mjs"
   ],
   "publishConfig": {
     "access": "public",

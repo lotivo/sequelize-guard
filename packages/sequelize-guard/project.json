@@ -15,12 +15,22 @@
       "{workspaceRoot}/tsconfig.json",
       "{workspaceRoot}/tsconfig.eslint.json",
       "{workspaceRoot}/README.md",
-      "{workspaceRoot}/LICENSE"
+      "{workspaceRoot}/LICENSE",
+      "{workspaceRoot}/skills/sequelize-guard/**/*",
+      "{workspaceRoot}/examples/**/*",
+      "{workspaceRoot}/scripts/test-ai-guidance.mjs",
+      "{workspaceRoot}/scripts/check-docs.mjs",
+      "{workspaceRoot}/apps/sequelize-guard-docs/content/docs/**/*",
+      "{workspaceRoot}/apps/sequelize-guard-docs/src/lib/ai-discovery.mjs",
+      "{workspaceRoot}/apps/sequelize-guard-docs/src/app/llms*/**/*",
+      "{workspaceRoot}/apps/sequelize-guard-docs/source.config.ts"
     ]
   },
   "targets": {
     "test:package": {
-      "dependsOn": ["build"]
+      "dependsOn": [
+        "build"
+      ]
     }
   }
 }

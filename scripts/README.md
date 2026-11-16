@@ -1,85 +1,11 @@
-# Scripts
+# Repository scripts
 
-This directory contains utility scripts for the sequelize-guard project.
+Use Node 22 (minimum 22.17.1) or 24 and the pinned Yarn 1.22.22. Install development dependencies with `yarn install --frozen-lockfile` before setting production mode.
 
-## test-package.mjs
+`yarn build` creates the candidate package. `yarn test:package` packs that build and installs its exact archive with fresh registry dependencies in an isolated temporary consumer; it does not rely on workspace dependency symlinks. Tests exercise native ESM/CommonJS, strict TypeScript NodeNext import/require and Bundler resolution, actual published 6.0.2 migration, package contents and the canonical `examples/` recipes. Registry access and native SQLite support are required. The legacy 6.0.2 fixture has a narrowly scoped Lodash interop bridge; candidate imports remain native.
 
-Run `yarn test:package` to build and check the actual npm tarball in a temporary
-consumer directory. The checks exercise native Node ESM and CommonJS imports,
-SQLite authorization, and strict TypeScript consumers using NodeNext and Bundler
-resolution. They also check that tests and coverage files are not shipped.
+For an already built archive, run `RELEASE_TARBALL=/absolute/path/candidate.tgz RELEASE_VERSION=6.1.0 node --test scripts/test-package.mjs`. This tests the supplied archive without rebuilding or replacing its release version. Stable/prerelease rehearsals must use the actual corresponding archive/version and preserve its digest.
 
-The library is extracted from `npm pack`; dependencies reuse the workspace's
-locked installations through symlinks, so the checks need no registry access.
-Temporary files are removed after the checks. CI runs them on Node 22.17.1 and
-24.x. Releases run `node --test scripts/test-package.mjs` after setting the tag
-version, so the check does not rebuild and overwrite the release version.
+`yarn docs:generate` runs local TypeDoc from the exact checkout, sets the displayed version from the package manifest and removes stale API artifacts. `DOCS_SOURCE_REVISION` identifies the checked-out release revision for source links. Run `node scripts/check-docs.mjs`, docs lint and docs build afterward. See [documentation automation](../docs/DOCS_AUTOMATION.md).
 
-The library's Nx inputs include this script and its shared build/CI files. Root
-Yarn commands remain convenient wrappers; `nx.includedScripts: []` keeps Nx from
-scheduling those wrappers alongside the underlying package targets.
-
-## generate-api-docs.mjs
-
-Automatically generates API documentation from TypeScript source code.
-
-### Usage
-
-```bash
-# Run manually
-yarn docs:generate
-
-# Or run directly
-node scripts/generate-api-docs.mjs
-```
-
-### What it does
-
-1. Runs TypeDoc to extract API information from TypeScript source code
-2. Generates markdown documentation in the `api` folder
-3. Renames `README.md` to `index.mdx` for Fumadocs compatibility
-4. Adds frontmatter to the generated documentation
-5. Outputs to `apps/sequelize-guard-docs/content/docs/api/`
-
-### Automated Process
-
-This script is automatically run after each release via GitHub Actions:
-
-1. **Release workflow** (`release.yml`) publishes to npm
-2. **Update docs workflow** (`update-docs.yml`) is triggered
-3. API documentation is generated
-4. A pull request is created with the updated documentation
-
-### Manual Updates
-
-If you need to manually update the API documentation:
-
-```bash
-# 1. Make sure dependencies are installed
-yarn install
-
-# 2. Generate the documentation
-yarn docs:generate
-
-# 3. Review the changes
-git diff apps/sequelize-guard-docs/content/docs/api/
-
-# 4. Commit if satisfied
-git add apps/sequelize-guard-docs/content/docs/api/
-git commit -m "docs: update API documentation"
-```
-
-## Customizing the Output
-
-To customize the generated API documentation, edit `scripts/generate-api-docs.mjs`:
-
-- Modify the `generateMDX()` function to change the output format
-- Update the TypeDoc configuration in `typedoc.json`
-- Adjust the frontmatter or content structure as needed
-
-## Dependencies
-
-- **typedoc**: Extracts API information from TypeScript
-- **typedoc-plugin-markdown**: Generates markdown output from TypeDoc
-
-These are installed as dev dependencies in the root `package.json`.
+`node --expose-gc scripts/benchmark-authorization.mjs` measures the built package on a disposable database. Measurements are environment-specific, not latency/capacity guarantees. Real-dialect and standby tests use the isolated URLs/service setup described in the repository workflows; never supply production credentials.

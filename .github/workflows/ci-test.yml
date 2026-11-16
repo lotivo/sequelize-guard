@@ -44,7 +44,9 @@ jobs:
       - run: corepack yarn install --frozen-lockfile
 
       - name: Check workflow metadata
-        run: node --test scripts/release-metadata.test.mjs
+        run: |
+          node --test scripts/release-metadata.test.mjs scripts/test-ai-guidance.mjs
+          node scripts/check-docs.mjs
 
       - run: corepack yarn lint
       - run: corepack yarn typecheck
@@ -55,6 +57,12 @@ jobs:
         run: |
           corepack yarn workspace sequelize-guard-docs lint
           corepack yarn workspace sequelize-guard-docs build
+          (cd apps/sequelize-guard-docs && exec node ../../node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3197) > "$RUNNER_TEMP/guard-docs.log" 2>&1 &
+          docs_pid=$!
+          trap 'kill "$docs_pid"' EXIT
+          kill -0 "$docs_pid"
+          DOCS_BASE_URL=http://127.0.0.1:3197 node --test scripts/test-ai-guidance.mjs
+          kill -0 "$docs_pid"
 
       - name: Report coverage
         if: matrix.node-version == '24.15.0' && inputs.release-version == ''

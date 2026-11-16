@@ -2,25 +2,45 @@
 title: "Interface: CreateRolesOptions"
 ---
 
-[**sequelize-guard v6.0.1**](../index.mdx)
+[**sequelize-guard v6.1.0**](/docs/api)
 
 ***
 
-[sequelize-guard](../index.mdx) / CreateRolesOptions
+[sequelize-guard v6.1.0](/docs/api) / CreateRolesOptions
 
 # Interface: CreateRolesOptions
 
-Defined in: [types/api.ts:46](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/api.ts#L46)
+Defined in: [packages/sequelize-guard/src/types/api.ts:70](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L70)
 
 Options for creating roles
 
+## Extends
+
+- [`PolicyMutationOptions`](/docs/api/interfaces/PolicyMutationOptions)
+
 ## Properties
+
+### transaction?
+
+> `optional` **transaction**: `Transaction`
+
+Defined in: [packages/sequelize-guard/src/types/api.ts:43](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L43)
+
+An outermost transaction on the guard's Sequelize instance. Await queries
+and mutations on this transaction sequentially. The guard uses a savepoint
+and suppresses its events. Callers own notifications after commit.
+
+#### Inherited from
+
+[`PolicyMutationOptions`](/docs/api/interfaces/PolicyMutationOptions).[`transaction`](/docs/api/interfaces/PolicyMutationOptions#transaction)
+
+***
 
 ### json?
 
 > `optional` **json**: `boolean`
 
-Defined in: [types/api.ts:47](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/api.ts#L47)
+Defined in: [packages/sequelize-guard/src/types/api.ts:71](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L71)
 
 ***
 
@@ -28,4 +48,4 @@ Defined in: [types/api.ts:47](https://github.com/lotivo/sequelize-guard/blob/ecc
 
 > `optional` **all**: `boolean`
 
-Defined in: [types/api.ts:48](https://github.com/lotivo/sequelize-guard/blob/ecc63e3560c6e84ae64359413e59fb8116935cc8/packages/sequelize-guard/src/types/api.ts#L48)
+Defined in: [packages/sequelize-guard/src/types/api.ts:72](https://github.com/lotivo/sequelize-guard/blob/89f2407d2440a4ecaf38d3159582965c864b25cd/packages/sequelize-guard/src/types/api.ts#L72)
