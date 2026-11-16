@@ -24,12 +24,14 @@ export function extendWithAuthorizePerms(
     user: Model,
     permission: string,
   ): Promise<boolean> {
-    if (!parsePermissionRequest(permission)) return false;
+    const requested = parsePermissionRequest(permission);
+    if (!requested) return false;
 
     const permissions = await readMemberPermissions(
       this,
       userMemberships(this),
       getPolicyUser(this, user),
+      requested.resource,
     );
     return this.resolvePermission(permissions, permission);
   };

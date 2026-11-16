@@ -130,3 +130,51 @@ it('keeps assignment query count constant within a chunk of new roles and users'
   };
   expect(await countQueries(2)).toBe(await countQueries(64));
 });
+
+it('returns zero for empty assignments and preserves existing membership', async () => {
+  const { guard } = await setup();
+  const user = await guard.makeUser();
+  await guard.assignRole(user, 'reader');
+
+  await expect(guard.assignRolesToUsers([], ['unrequested'])).resolves.toEqual({
+    assigned: 0,
+  });
+  await expect(guard.assignUserRoles([])).resolves.toEqual({ assigned: 0 });
+  await expect(guard.assignRolesToUsers([user], [])).resolves.toEqual({
+    assigned: 0,
+  });
+  await expect(guard.rmAssignedRoles(user, [])).resolves.toBeUndefined();
+  expect(await guard.userIsA(user, 'reader')).toBe(true);
+  expect(await guard.getRole('unrequested')).toBeNull();
+});
+
+it('keeps authorization correct past multiple membership batches and large stored action sets', async () => {
+  const { guard } = await setup();
+  const user = await guard.makeUser();
+  const roles = Array.from({ length: 480 }, (_, index) => `group-${index}`);
+  const actions = Array.from(
+    { length: 2_500 },
+    (_, index) => `action-${index}`,
+  );
+  const resource = "Asset'$holderId";
+  const { permissions } = await guard.allow('group-479', actions, resource);
+  const [permission] = permissions;
+
+  await expect(guard.assignRolesToUsers([user], roles)).resolves.toEqual({
+    assigned: roles.length,
+  });
+  await expect(guard.assignRolesToUsers([user], roles)).resolves.toEqual({
+    assigned: 0,
+  });
+  expect(await guard.getUserRoles(user)).toHaveLength(roles.length);
+  expect(await guard.userHasAllRoles(user, roles)).toBe(true);
+  expect(await guard.userCan(user, `action-2499 ${resource}`)).toBe(true);
+  expect(await guard.userCan(user, `action-2500 ${resource}`)).toBe(false);
+  expect(
+    await guard.userCan(user, `action-2499 ${resource.toLowerCase()}`),
+  ).toBe(false);
+
+  await permission.update({ action: JSON.stringify([...actions, '*', 0]) });
+  expect(await guard.userCan(user, `action-2499 ${resource}`)).toBe(false);
+  expect(await guard.userCan(user, `ungranted ${resource}`)).toBe(false);
+});

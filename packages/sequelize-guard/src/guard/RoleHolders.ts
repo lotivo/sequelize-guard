@@ -55,11 +55,13 @@ export function extendWithRoleHolders(
     holder: Model,
     permission: string,
   ) {
-    if (!parsePermissionRequest(permission)) return false;
+    const requested = parsePermissionRequest(permission);
+    if (!requested) return false;
     const grants = await readMemberPermissions(
       this,
       holderMemberships(this, holder),
       holder,
+      requested.resource,
     );
     return this.resolvePermission(grants, permission);
   };
