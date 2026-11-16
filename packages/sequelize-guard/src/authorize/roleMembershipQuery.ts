@@ -146,8 +146,8 @@ export async function readMemberPermissions(
     WHERE ${permission.active}
       AND ${permission.column('resource')} IN ($resource, '*')
       AND ${permission.column('id')} IN (
-      SELECT ${link.column('permission_id')} FROM valid_roles
-      JOIN ${link.table} ON ${link.column('role_id')} = valid_roles.role_id AND ${link.active}
+      SELECT ${link.column('permission_id')} FROM ${link.table}
+      WHERE ${link.active} AND ${link.column('role_id')} IN (SELECT role_id FROM valid_roles)
     )
   `,
     {
