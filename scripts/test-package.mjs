@@ -18,20 +18,15 @@ const build = path.join(root, 'build/packages/sequelize-guard');
 const consumer = mkdtempSync(path.join(tmpdir(), 'sequelize-guard-consumer-'));
 after(() => rmSync(consumer, { recursive: true, force: true }));
 
-const [packed] = JSON.parse(
-  execFileSync(
-    'npm',
-    [
-      'pack',
-      build,
-      '--json',
-      '--ignore-scripts',
-      '--pack-destination',
-      consumer,
-    ],
-    { encoding: 'utf8', cwd: consumer },
-  ),
+const packOutput = execFileSync(
+  'npm',
+  ['pack', build, '--json', '--ignore-scripts', '--pack-destination', consumer],
+  { encoding: 'utf8', cwd: consumer },
 );
+// npm 12 keys pack results by package name. Earlier versions use an array.
+const packages = Object.values(JSON.parse(packOutput));
+assert.equal(packages.length, 1, 'Expected npm pack to create one tarball');
+const [packed] = packages;
 const installed = path.join(consumer, 'node_modules/sequelize-guard');
 mkdirSync(installed, { recursive: true });
 execFileSync('tar', [
