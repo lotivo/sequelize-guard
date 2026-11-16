@@ -14,6 +14,8 @@ The generated source and assertions are retained alongside this report. The pare
 
 Final artifact verification: the packaging equality check detected two guidance edits newer than the original evaluation archive (explicit Express install dependency and lowercase `sequelize` in migration prose). The final archive was rebuilt as SHA-256 `609653bef29e45f36d017163ac59cabcb851fd597687f89169e7e5c1c791301c`. The parent installed that exact replacement and reran all generated integrations unchanged: four Node 22 tests passed, and the Node 24 strict TypeScript compilation/runtime assertions passed. This final run validates the generated code against the final package; it does not pretend the original agents saw later prose.
 
+After PR review clarified incremental holder registration and expanded the advanced recipe, the stable archive became SHA-256 `f2fc46e48840c05c7b424c9a320648611cd5db7ce28cf505ec3c2d4fbdb1f9b6`. All retained integration tests and strict custom-user compilation/runtime assertions were rerun unchanged and passed against that exact replacement. The original independent trials remain the agent-behavior evidence; these later executions verify compatibility with the final reviewed archive.
+
 To reproduce the generated integrations, copy this directory to a disposable directory outside the repository, install the exact candidate archive plus `sequelize@6.37.8 sqlite3@6.0.1 typescript@5.9.3 @types/node@24.10.1` in that directory, then run:
 
 ```sh

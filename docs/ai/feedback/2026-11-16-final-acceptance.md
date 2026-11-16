@@ -70,7 +70,7 @@ Test names in this table refer to `packages/sequelize-guard/src/__tests__`; pack
 | I4 | Verified | Pinned actions, narrow permissions and static checks; all eight GitHub CI jobs pass at c187433 in run 43785554785. |
 | I5 | Verified | exact stable/RC archive checks, checksum tamper rejection and publication recovery documentation; nothing published. |
 | I6 | Verified | maintainer-selected6.1.0, immutable6.0.2, root changelog and explicit policy/schema/offline rollback compatibility notes. |
-| I7 | Pending hosted CI/PR | Local full matrix and independent safety reviews pass; final PR review and GitHub-hosted acceptance remain pending. |
+| I7 | Verified | Local full matrix, separate safety reviews, clean second PR review and all eight hosted CI jobs at reviewed source 3b36466 pass. |
 
 ## Operational limits
 
@@ -82,4 +82,8 @@ MySQL interrupted nontransactional rollback/failed cleanup can require manual op
 
 Post-PR round 1 used three independent Sol/medium reviewers for security, schema and release/docs. Security and release reviews found no actionable issue. Schema review identified one P2 documentation contradiction: incremental `addRoleHolders` accepts only new registrations, while the guide implied repeating existing ones. Commit `0c24659` corrects the guide and API comment and expands the packed advanced recipe to preserve existing membership/inheritance across a separate deployment connection while adding a new holder. It rejects repeated registration, proves same-ID isolation and preserves application tables on rollback. Runtime behavior is unchanged. Updated exact archives and the second review round follow this correction.
 
-The user caps post-PR review/fix rounds at three. Do not mark I3 complete from the maintainer confirmation alone or claim an authorized release.
+Post-PR round 2 at `3b36466` is clean. Separate schema and release/docs reviewers confirmed the registration finding is resolved, the generated API source revision matches the implementation, the recipe preserves existing memberships/inherited grants and isolates the new holder, and the revised archives match source and pass all four fresh-consumer runs (10/10 each). No additional actionable findings were identified; no third review round is needed. No runtime behavior changed during PR review, only migration API prose and the executable recipe. The retained independent-agent integrations were also rerun successfully against the corrected stable archive.
+
+[Corrected-head hosted CI](https://github.com/lotivo/sequelize-guard/actions/runs/43786195505) passed all eight jobs at reviewed source `3b36466`. The final bookkeeping commit only records these results, checklist status and evaluation history; it does not alter implementation, packaged content, executable recipes or rendered documentation. I3 remains the only unchecked item because private npm registration was not independently inspected and no publication was authorized. GitHub comments contained Vercel/Coveralls status reports and no Codex findings.
+
+The user caps post-PR review/fix rounds at three. Work stops after the clean second round and final hosted validation; no merge is performed. Do not mark I3 complete from the maintainer confirmation alone or claim an authorized release.

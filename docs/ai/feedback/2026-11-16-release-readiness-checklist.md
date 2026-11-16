@@ -2,7 +2,7 @@
 
 Prepared on 16 November 2026 against merged `master` at `95d94a1`.
 
-Cloud continuation now targets `fix/pre-release-hardening` after the maintainer requested a clearer PR branch name. [Final per-item evidence](./2026-11-16-final-acceptance.md) records actual validation. Checked items have local implementation/verification evidence; I3 retains a private publishing-configuration limitation, and I4/I7 await hosted CI/final PR review. No publication is authorized.
+Cloud continuation now targets `fix/pre-release-hardening` after the maintainer requested a clearer PR branch name. [Final per-item evidence](./2026-11-16-final-acceptance.md) records actual validation. Checked items have local implementation/verification evidence; I3 retains a private publishing-configuration limitation; hosted CI and the final two-round PR review have passed. No publication is authorized.
 
 This is the consolidated list of work to consider before the next release, without excluding large changes. It includes confirmed defects, verification gaps, the original feature roadmap, documentation, AI support and release operations. It is a plan, not a claim that the unchecked work is implemented or that every investigation will find a defect.
 
@@ -149,7 +149,7 @@ These features require design and migration review before implementation. Their 
 
 - [x] **I6 — Prepare upgrade notes and choose the release version. Required decision.** Compare the new package with the latest published release, including Node/Sequelize minimums, authoritative authorization reads, startup/error behavior, schema changes and added features. **Done:** choose the semantic version from the actual compatibility impact, document migrations and operational costs, and reconcile stale manifest/version statements.
 
-- [ ] **I7 — Complete release-candidate acceptance. Release gate.** Exercise a clean new app and an upgraded existing app, review all remaining findings, and independently review security/schema changes. **Done:** the exact release commit passes the supported CI/dialect/consumer matrix, remaining limitations are explicit, and no unresolved issue can silently grant unintended access or lose data.
+- [x] **I7 — Complete release-candidate acceptance. Release gate.** Exercise a clean new app and an upgraded existing app, review all remaining findings, and independently review security/schema changes. **Done:** the exact release commit passes the supported CI/dialect/consumer matrix, remaining limitations are explicit, and no unresolved issue can silently grant unintended access or lose data.
 
 ## Implementation order and release decision
 

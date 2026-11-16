@@ -13,7 +13,7 @@ The maintainer subsequently requested a clearer PR branch name. The working bran
 
 ## Acceptance status
 
-The handoff's 223 passing / three failing SQLite tests are historical. Final acceptance is pending. No additional checklist item is certified by this initial progress record.
+This file preserves progress snapshots. For the latest per-item status, PR review and final validation, read [final acceptance](./2026-11-16-final-acceptance.md). The handoff's 223 passing / three failing SQLite tests are historical; final local checks now pass 252 tests on both Node lines.
 
 Implementation order remains: repair B/C/F failures and ownership/binding/regrant contracts; independent review; H contract/consumer acceptance; E human documentation and executable examples; G packaged guidance and real independent agent evaluations; integrated matrix and one PR.
 
@@ -30,3 +30,5 @@ Additional checks: Node 24 physical standby harness passed. SHA-256-verified act
 ## Remote delivery
 
 Initial Git pushes returned HTTP 403 despite read-only repository metadata reporting account push permission. The maintainer restored cloud GitHub access during this chat. A subsequent push succeeded: `fix/pre-release-hardening` now tracks `origin/fix/pre-release-hardening` at safety checkpoint `d8282c1`. No agent changed repository/npm settings. The original handoff branch remains preserved.
+
+[PR #49](https://github.com/lotivo/sequelize-guard/pull/49) contains the complete work on the renamed branch. All initial hosted CI jobs passed; post-PR review found and corrected one incremental-holder documentation issue. The second review round is clean. Disposable database containers were removed after verification. The PR remains unmerged and nothing was published.
