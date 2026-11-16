@@ -148,15 +148,24 @@ export function canonicalPermissionActions(
   return [...new Set(values)].sort();
 }
 
+export function permissionResources(resources: string | string[]): string[] {
+  const values = typeof resources === 'string' ? [resources] : resources;
+  if (!Array.isArray(values) || !values.length) {
+    throw new TypeError('At least one permission resource is required');
+  }
+  const snapshot = Array.from(values);
+  if (!snapshot.every(isPermissionToken)) {
+    throw new TypeError('Permission resources must be non-empty tokens');
+  }
+  return snapshot;
+}
+
 export function permissionInputs(
   resources: string | string[],
   actions: string | string[],
   options: CreatePermsOptions = {},
 ): PermissionDefinition[] {
-  const values = typeof resources === 'string' ? [resources] : resources;
-  if (!Array.isArray(values) || !values.length) {
-    throw new TypeError('At least one permission resource is required');
-  }
+  const values = permissionResources(resources);
   validateNames(values.length, options);
   const actionSet = canonicalPermissionActions(actions);
   return Array.from(values, (resource, index) =>

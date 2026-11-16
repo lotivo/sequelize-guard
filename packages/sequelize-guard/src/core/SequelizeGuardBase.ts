@@ -1,9 +1,8 @@
 import { EventEmitter } from 'events';
-import lodash from 'lodash';
-import { defaultOptions } from '../constants';
 import { GuardInternalOptions, GuardOptions } from '../types';
 import { GuardCache } from '../utils/cache';
 import { GuardUserCache } from '../utils/userCache';
+import { resolveGuardOptions } from './guard-options';
 
 export abstract class SequelizeGuardBase {
   /** Guard configuration options */
@@ -31,12 +30,7 @@ export abstract class SequelizeGuardBase {
   public _userCache?: GuardUserCache;
 
   constructor(options: GuardOptions = {}) {
-    this.options = lodash.merge(
-      {},
-      defaultOptions,
-      options,
-    ) as GuardInternalOptions;
-    this.options.roleHolders = Object.freeze({ ...options.roleHolders });
+    this.options = resolveGuardOptions(options);
     this._ee = new EventEmitter();
   }
 
