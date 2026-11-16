@@ -178,3 +178,32 @@ it('keeps authorization correct past multiple membership batches and large store
   expect(await guard.userCan(user, `action-2499 ${resource}`)).toBe(false);
   expect(await guard.userCan(user, `ungranted ${resource}`)).toBe(false);
 });
+
+it('reactivates an archived legacy membership only when explicitly reassigned', async () => {
+  const sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: ':memory:',
+    logging: false,
+  });
+  onTestFinished(() => sequelize.close());
+  const guard = new SequelizeGuard(sequelize, {
+    timestamps: true,
+    paranoid: true,
+  });
+  await guard.ready;
+  const user = await guard.makeUser();
+  await guard.allow('reader', 'read', 'article');
+  await guard.assignRole(user, 'reader');
+  const { RoleUser } = guard.models();
+  await RoleUser.destroy({ where: { user_id: user.id } });
+  expect(await RoleUser.count({ paranoid: false })).toBe(1);
+  await expect(guard.userCan(user, 'read article')).resolves.toBe(false);
+  await expect(guard.assignRolesToUsers([user], ['reader'])).resolves.toEqual({
+    assigned: 1,
+  });
+  await expect(guard.assignRolesToUsers([user], ['reader'])).resolves.toEqual({
+    assigned: 0,
+  });
+  await expect(guard.userCan(user, 'read article')).resolves.toBe(true);
+  expect(await RoleUser.count({ paranoid: false })).toBe(1);
+});

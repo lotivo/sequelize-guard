@@ -6,11 +6,11 @@ import {
   guardUserMethods,
 } from './guard/GuardUserAssociations';
 import migration, {
+  provisionGuardSchema,
   verifyOwnedGuardTables,
 } from './migrations/guard-migrations';
 import {
   assertOwnedOrEmptySchema,
-  createGuardSyncReceipt,
   guardOwnership,
   ownershipPattern,
 } from './migrations/guard-ownership';
@@ -225,15 +225,19 @@ export class SequelizeGuard<
         this.options,
         syncOptions,
       );
-      if (!receipt)
-        await createGuardSyncReceipt(this.sequelize, this.options, syncOptions);
       // Drop junction tables before the tables they reference.
       const policyModels = models.slice(1);
       const suppliedUser = this.options.UserModel;
       const requestedSync = syncOptions.force
         ? { ...syncOptions, force: false }
         : syncOptions;
-      if (syncOptions.force) {
+      if (!receipt) {
+        if (suppliedUser) await this._models.GuardUser.sync(syncOptions);
+        await provisionGuardSchema(this.sequelize.getQueryInterface(), this.options, {
+          logging: syncOptions.logging,
+          benchmark: syncOptions.benchmark,
+        });
+      } else if (syncOptions.force) {
         await verifyOwnedGuardTables(
           this.sequelize.getQueryInterface(),
           this.options,
@@ -244,6 +248,7 @@ export class SequelizeGuard<
         }
       }
       for (const model of policyModels) {
+        if (model === suppliedUser && !receipt) continue;
         await model.sync(model === suppliedUser ? syncOptions : requestedSync);
       }
       this.resetCache();

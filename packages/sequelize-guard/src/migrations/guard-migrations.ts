@@ -41,17 +41,17 @@ import { guardColumns } from './guard-schema';
 import { createMigrationTable } from './guard-table-ddl';
 import { copyGuardTables, type GuardUpgradeOptions } from './guard-upgrade';
 
-type MigrationQueries = Pick<QueryOptions, 'transaction' | 'useMaster'>;
+type MigrationQueries = Pick<QueryOptions, 'transaction' | 'useMaster' | 'logging' | 'benchmark'>;
 
 export const migrationOrder = {
   up: [
-    BaseModelType.RoleHierarchy,
     BaseModelType.Resources,
     BaseModelType.Permissions,
     BaseModelType.Roles,
     BaseModelType.Users,
     AssociationModelType.RolePermission,
     AssociationModelType.RoleUser,
+    BaseModelType.RoleHierarchy,
   ],
   down: [
     AssociationModelType.RoleUser,
@@ -212,6 +212,7 @@ async function createTables(
   await assertCreatableHolderTables(queryInterface, holders, queryOptions);
 
   for (const { type, table } of tables) {
+    if (type === BaseModelType.RoleHierarchy) continue;
     const collation =
       type === AssociationModelType.RoleUser && options.UserModel
         ? options.UserModel.options
@@ -228,15 +229,34 @@ async function createTables(
       queryOptions,
       created,
     );
-    if (type === BaseModelType.RoleHierarchy) {
-      await queryInterface.bulkInsert(
-        table,
-        [ownershipRow(sequelize, options)],
-        queryOptions,
-      );
-    }
   }
   await createHolderTables(queryInterface, holders, queryOptions, created);
+}
+
+async function createOwnershipReceipt(
+  queryInterface: QueryInterface,
+  options: GuardInternalOptions,
+  queryOptions: MigrationQueries,
+  created: TableName[],
+): Promise<void> {
+  const { sequelize } = queryInterface;
+  const table = guardTable(sequelize, options, BaseModelType.RoleHierarchy);
+  await createMigrationTable(queryInterface, table, guardColumns(sequelize, options).role_hierarchy, queryOptions);
+  created.push(table);
+  await queryInterface.bulkInsert(table, [ownershipRow(sequelize, options)], queryOptions);
+}
+
+export async function provisionGuardSchema(
+  queryInterface: QueryInterface,
+  options: GuardInternalOptions,
+  logging: Pick<QueryOptions, 'logging' | 'benchmark'> = {},
+): Promise<void> {
+  const { sequelize } = queryInterface;
+  await withMigration(sequelize, queryInterface, async (queryOptions, created) => {
+    const writer = { ...logging, ...queryOptions };
+    await createTables(queryInterface, sequelize, options, writer, created);
+    await createOwnershipReceipt(queryInterface, options, writer, created);
+  });
 }
 
 /** Create a fresh Guard schema. Application user tables must already exist. */
@@ -245,11 +265,7 @@ async function up(
   _Sequelize: Sequelize | typeof Sequelize,
   options: GuardOptions = {},
 ): Promise<void> {
-  const { sequelize } = queryInterface;
-  const resolved = resolveGuardOptions(options);
-  await withMigration(sequelize, queryInterface, (queryOptions, created) =>
-    createTables(queryInterface, sequelize, resolved, queryOptions, created),
-  );
+  await provisionGuardSchema(queryInterface, resolveGuardOptions(options));
 }
 
 /** Drop the owned Guard tables in reverse dependency order. */
@@ -396,6 +412,7 @@ async function upgrade(
         created,
       );
       await copy();
+      await createOwnershipReceipt(queryInterface, target, queryOptions, created);
     },
   );
 }

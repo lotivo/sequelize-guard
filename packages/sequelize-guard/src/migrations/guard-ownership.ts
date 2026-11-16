@@ -8,11 +8,9 @@ import {
   quoteGuardTable,
   storageTableKey,
 } from '../sequelize-models/guard-tables';
-import { getRoleHierarchySchema } from '../sequelize-models/GuardRoleHierarchy';
 import { BaseModelType } from '../sequelize-models/types/ModelType';
 import { guardUserKey } from '../sequelize-models/user-key';
 import type { GuardInternalOptions } from '../types';
-import { createExclusiveMigrationTable } from './guard-table-ddl';
 
 type TableEntry = [type: string, physicalName: string];
 
@@ -167,39 +165,6 @@ export async function assertOwnedOrEmptySchema(
     }
   }
   return null;
-}
-
-export async function createGuardSyncReceipt(
-  sequelize: Sequelize,
-  options: GuardInternalOptions,
-  queryOptions: QueryOptions,
-): Promise<void> {
-  const query = sequelize.getQueryInterface();
-  const table = guardTable(sequelize, options, BaseModelType.RoleHierarchy);
-  const createReceipt = async (active: QueryOptions) => {
-    await createExclusiveMigrationTable(
-      query,
-      table,
-      getRoleHierarchySchema(),
-      active,
-    );
-    try {
-      await query.bulkInsert(table, [ownershipRow(sequelize, options)], active);
-    } catch (error) {
-      if (['mysql', 'mariadb'].includes(sequelize.getDialect())) {
-        // MySQL commits creates implicitly. Only this call's successful CREATE may be undone.
-        await query.dropTable(table, active);
-      }
-      throw error;
-    }
-  };
-  if (['mysql', 'mariadb'].includes(sequelize.getDialect())) {
-    await createReceipt(queryOptions);
-  } else {
-    await sequelize.transaction((transaction) =>
-      createReceipt({ ...queryOptions, transaction }),
-    );
-  }
 }
 
 export function ownershipRow(

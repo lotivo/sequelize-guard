@@ -21,6 +21,11 @@ export interface PolicyMutation {
 
 export const policyBatchSize = 200;
 
+export function canArchiveLinks(model: ModelStatic<Model>): boolean {
+  const { timestamps, paranoid, deletedAt } = model.options;
+  return Boolean(timestamps && paranoid && deletedAt !== false);
+}
+
 const activeCallerTransactions = new WeakSet<Transaction>();
 const sqliteTransactions = new WeakMap<Sequelize, Promise<unknown>>();
 

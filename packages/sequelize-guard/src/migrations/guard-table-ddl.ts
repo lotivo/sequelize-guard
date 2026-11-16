@@ -44,20 +44,6 @@ export async function createMigrationTable(
   options: QueryInterfaceCreateTableOptions,
 ): Promise<void> {
   const { sequelize } = queryInterface;
-  if (!['mysql', 'mariadb'].includes(sequelize.getDialect())) {
-    await queryInterface.createTable(table, columns, options);
-    return;
-  }
-  await createExclusiveMigrationTable(queryInterface, table, columns, options);
-}
-
-export async function createExclusiveMigrationTable(
-  queryInterface: QueryInterface,
-  table: TableName,
-  columns: ModelAttributes,
-  options: QueryInterfaceCreateTableOptions,
-): Promise<void> {
-  const { sequelize } = queryInterface;
   const generator = queryInterface.queryGenerator as DdlGenerators;
   const attributes = Object.fromEntries(
     Object.entries(columns).map(([name, column]) => [
@@ -83,7 +69,7 @@ export async function createExclusiveMigrationTable(
       'Cannot make the Sequelize CREATE TABLE statement exclusive',
     );
   }
-  // Cleanup may only record a creation that the server actually performed.
+  // The ownership receipt may claim only tables whose CREATE actually succeeded.
   await sequelize.query(
     'CREATE TABLE ' + statement.slice(conditional.length),
     options,
