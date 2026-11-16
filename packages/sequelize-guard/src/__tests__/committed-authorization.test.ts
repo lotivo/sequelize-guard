@@ -256,4 +256,39 @@ describe('committed authorization on in-memory SQLite', () => {
     await write;
     expect(await user.isA!('reader')).toBe(true);
   });
+
+  it('ends all nested savepoints when an outer savepoint is released', async () => {
+    const { sequelize, user } = await fixture();
+    expect(await user.isA!('reader')).toBe(true);
+    await sequelize.query('SAVEPOINT outer_policy');
+    await sequelize.query('SAVEPOINT inner_policy');
+    await sequelize.query('RELEASE SAVEPOINT outer_policy');
+    await expect(user.isA!('reader')).resolves.toBe(true);
+    await sequelize.query('BEGIN');
+    await sequelize.query('ROLLBACK');
+  });
+
+  it('keeps the nearest duplicate savepoint after rollback-to and release', async () => {
+    const { sequelize, user } = await fixture();
+    expect(await user.isA!('reader')).toBe(true);
+    await sequelize.query('SAVEPOINT "Same"');
+    await sequelize.query('SAVEPOINT "Same"');
+    await sequelize.query('ROLLBACK TO SAVEPOINT "Same"');
+    await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
+    await sequelize.query('RELEASE SAVEPOINT "Same"');
+    await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
+    await sequelize.query('RELEASE SAVEPOINT "Same"');
+    await expect(user.isA!('reader')).resolves.toBe(true);
+  });
+
+  it('discards inner scopes on rollback-to while keeping the outer scope', async () => {
+    const { sequelize, user } = await fixture();
+    expect(await user.isA!('reader')).toBe(true);
+    await sequelize.query('SAVEPOINT outer_policy');
+    await sequelize.query('SAVEPOINT inner_policy');
+    await sequelize.query('ROLLBACK TO SAVEPOINT outer_policy');
+    await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
+    await sequelize.query('RELEASE SAVEPOINT outer_policy');
+    await expect(user.isA!('reader')).resolves.toBe(true);
+  });
 });

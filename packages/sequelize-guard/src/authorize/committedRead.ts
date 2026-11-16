@@ -4,7 +4,7 @@ import type { Sequelize, Transaction } from 'sequelize';
 export class CommittedReadBarrier {
   private active = 0;
   private revision = 0;
-  private sqlActive = 0;
+  private readonly sqlScopes: Array<string | null> = [];
   private probed = false;
   private probeTask?: Promise<void>;
   private readonly pendingQueries = new Set<Promise<unknown>>();
@@ -90,37 +90,55 @@ export class CommittedReadBarrier {
     const statement = sql
       .replace(/^(?:\s|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)+/, '')
       .trim();
-    const begins = /^(?:BEGIN|START\s+TRANSACTION|SAVEPOINT)\b/i.test(
+    const beginsTransaction = /^(?:BEGIN|START\s+TRANSACTION)\b/i.test(
       statement,
     );
+    const savepoint = /^SAVEPOINT\s+([\s\S]+)/i.exec(statement);
+    const begins = beginsTransaction || Boolean(savepoint);
     // sqlite3 can accept a line-comment-only first statement without running
     // the control SQL after it. Never clear uncertainty from a commented end.
     const closing = sql.trim();
-    const releases = /^RELEASE\b/i.test(closing);
+    const release = /^RELEASE(?:\s+SAVEPOINT)?\s+([\s\S]+)/i.exec(closing);
+    const rollbackTo =
+      /^ROLLBACK(?:\s+TRANSACTION)?\s+TO(?:\s+SAVEPOINT)?\s+([\s\S]+)/i.exec(
+        closing,
+      );
     const ends =
       /^(?:COMMIT|END)\b/i.test(closing) ||
-      (/^ROLLBACK\b/i.test(closing) &&
-        !/^ROLLBACK(?:\s+TRANSACTION)?\s+TO\b/i.test(closing));
+      (/^ROLLBACK\b/i.test(closing) && !rollbackTo);
     if (begins) {
-      this.sqlActive++;
+      this.sqlScopes.push(savepoint ? savepointName(savepoint[1]) : null);
       this.active++;
       this.revision++;
     }
     try {
       const value = await run();
-      const count = ends ? this.sqlActive : releases && this.sqlActive ? 1 : 0;
-      for (let i = 0; i < count; i++) {
-        this.sqlActive--;
-        this.finish();
+      if (ends) {
+        this.dropScopesFrom(0);
+      } else if (release) {
+        const name = savepointName(release[1]);
+        const index = name === null ? -1 : this.sqlScopes.lastIndexOf(name);
+        if (index >= 0) this.dropScopesFrom(index);
+      } else if (rollbackTo) {
+        const name = savepointName(rollbackTo[1]);
+        const index = name === null ? -1 : this.sqlScopes.lastIndexOf(name);
+        if (index >= 0) this.dropScopesFrom(index + 1);
       }
       return value;
     } catch (error) {
       if (begins) {
-        this.sqlActive--;
+        this.sqlScopes.pop();
         this.finish();
       }
       // A failed COMMIT leaves the connection's state uncertain.
       throw error;
+    }
+  }
+
+  private dropScopesFrom(index: number): void {
+    while (this.sqlScopes.length > index) {
+      this.sqlScopes.pop();
+      this.finish();
     }
   }
 
@@ -175,4 +193,17 @@ export class CommittedReadBarrier {
       throw new Error('Authorization read overlaps a SQLite transaction');
     return value;
   }
+}
+
+function savepointName(value: string): string | null {
+  const input = value.trim();
+  const quoted = /^"((?:[^"]|"")*)"/.exec(input);
+  if (quoted) return quoted[1].replace(/""/g, '"').toLowerCase();
+  const single = /^'((?:[^']|'')*)'/.exec(input);
+  if (single) return single[1].replace(/''/g, "'").toLowerCase();
+  const backtick = /^`((?:[^`]|``)*)`/.exec(input);
+  if (backtick) return backtick[1].replace(/``/g, '`').toLowerCase();
+  const bracket = /^\[([^\]]+)\]/.exec(input);
+  if (bracket) return bracket[1].toLowerCase();
+  return /^([^\s;]+)/.exec(input)?.[1]?.toLowerCase() ?? null;
 }
