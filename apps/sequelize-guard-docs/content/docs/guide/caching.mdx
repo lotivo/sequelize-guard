@@ -36,6 +36,8 @@ Permission removal currently matches the complete action bundle originally grant
 
 The existing `getCache()`, `resetCache()`, `getUserCache()` and `resetUserCache()` APIs remain available. The role/permission cache still supports legacy administrative lookups and event snapshots. `resetCache()` clears the snapshot; the next awaited `getCache()` reloads it from the writer connection. Concurrent readers share initialization, failed loads reject and can be retried, and `sync()` reloads the snapshot after synchronizing tables. These snapshots can still be stale across workers or concurrent policy writes. Do not use them, `getRole()` or `allRoles()` as authorization decisions. Use the authorization methods above.
 
+Cached roles retain their Sequelize model identity within a guard instance. Treat objects returned from the administrative cache as read-only; mutating them can change later cached lookups until the snapshot is refreshed.
+
 ## Performance
 
 Each authorization call now requires a database read. This trades the old cache-only performance for current revocation behavior. Measure database latency and load before increasing traffic. Avoid caching the resulting boolean in application code unless the application explicitly accepts the resulting revocation delay.

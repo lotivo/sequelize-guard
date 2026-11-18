@@ -27,6 +27,26 @@ async function up(
     ...(opts.paranoid && timestamps.paranoid),
   };
 
+  const tableNames: Parameters<typeof getTableName>[0][] = [
+    'resources',
+    'permissions',
+    'roles',
+    ...(!opts.UserModel ? (['users'] as const) : []),
+    'role_permission',
+    'role_user',
+  ];
+  if (
+    (
+      await Promise.all(
+        tableNames.map(async (name) =>
+          queryInterface.tableExists(getTableName(name, opts)),
+        ),
+      )
+    ).some(Boolean)
+  ) {
+    throw new Error('Guard migration target table already exists');
+  }
+
   // Create all guard tables
   await queryInterface.createTable(getTableName('resources', opts), {
     ...schemas.resources,
@@ -74,6 +94,61 @@ async function down(
   options: GuardOptions = {},
 ): Promise<void> {
   const opts = lodash.merge({}, defaultOptions, options);
+
+  const definitions: [Parameters<typeof getTableName>[0], string[]][] = [
+    ['resources', ['id', 'name', 'description']],
+    [
+      'permissions',
+      ['id', 'name', 'description', 'resource', 'action', 'allow'],
+    ],
+    ['roles', ['id', 'name', 'description', 'parent_id']],
+    ['users', ['id']],
+    ['role_permission', ['id', 'role_id', 'permission_id']],
+    ['role_user', ['id', 'role_id', 'user_id']],
+  ];
+  if (opts.UserModel) definitions.splice(3, 1);
+  const tables = definitions.map(([name]) => getTableName(name, opts));
+  const present = await Promise.all(
+    tables.map(async (table) => queryInterface.tableExists(table)),
+  );
+  if (present.some(Boolean)) {
+    if (present.some((exists) => !exists)) {
+      throw new Error('Incomplete legacy Guard schema; refusing rollback');
+    }
+    for (const [index, [, required]] of definitions.entries()) {
+      const columns = await queryInterface.describeTable(tables[index]);
+      const dateColumns = [
+        ...(opts.timestamps ? ['createdAt', 'updatedAt'] : []),
+        ...(opts.paranoid ? ['deletedAt'] : []),
+      ];
+      const valid =
+        required.every((name) => {
+          const column = columns[name];
+          if (!column) return false;
+          return [
+            'id',
+            'role_id',
+            'user_id',
+            'permission_id',
+            'parent_id',
+            'allow',
+          ].includes(name)
+            ? /INT/i.test(column.type)
+            : /CHAR|TEXT|CITEXT/i.test(column.type);
+        }) &&
+        columns.id.primaryKey &&
+        dateColumns.every((name) => {
+          const snake = name.replace(
+            /[A-Z]/g,
+            (letter) => `_${letter.toLowerCase()}`,
+          );
+          return Boolean(columns[name] || columns[snake]);
+        });
+      if (!valid) {
+        throw new Error('Incompatible legacy Guard table; refusing rollback');
+      }
+    }
+  }
 
   await queryInterface.dropTable(getTableName('role_user', opts));
   await queryInterface.dropTable(getTableName('role_permission', opts));

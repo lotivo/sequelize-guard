@@ -1,0 +1,14 @@
+---
+title: Published 6.x database compatibility
+description: Using databases created by the published 6.0.3 package
+---
+
+Databases created by the npm-published `sequelize-guard@6.0.3` package can be opened by this 6.x line without an offline schema conversion. This includes both `guard.sync()` and static migration tables, built-in or supplied user models, and timestamp and paranoid columns. Sequelize 6 remains the supported peer version.
+
+The published migration used `created_at`, `updated_at`, and `deleted_at` columns; published model sync used `createdAt`, `updatedAt`, and `deletedAt`. The guard detects either layout and maps its model fields to the existing columns. It preserves the original IDs, data, and role `parent_id` values. A legacy `parent_id` is stored data only; it does not grant inherited permissions.
+
+With `sync: false`, `await guard.ready` makes no database queries. Prepare the tables with your existing migration first. The guard checks the existing layout when the first policy operation runs. With the default automatic sync, it checks before changing tables. An incomplete or structurally incompatible set of same-name Guard tables is rejected before sync can create or drop tables.
+
+The structural check cannot establish who created a table that happens to have the same shape. Keep ordinary application migrations responsible for production schema changes. Explicit `guard.sync({ force: true })` and `guard.sync({ alter: true })` retain their existing destructive behavior, including for a supplied `UserModel`; use them only against a database you control. Do not use migration rollback as a cleanup mechanism for unrelated tables.
+
+Roll out a new package version while keeping the same 6.x schema and configuration on all application instances. Policy writes and a later protected application operation are separate database actions; concurrent changes can race, and this compatibility support adds no transaction or cache coordination. Coordinate schema migrations and policy writers at the application level.

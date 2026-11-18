@@ -2,6 +2,10 @@ import type { Sequelize, SyncOptions } from 'sequelize';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
 import { setupGuardUserAssociations } from './guard/GuardUserAssociations';
+import {
+  inspectLegacySchema,
+  installLegacyCompatibility,
+} from './guard/legacy-schema';
 import migration from './migrations/guard-migrations';
 import type {
   GuardModel,
@@ -71,6 +75,7 @@ export class SequelizeGuard extends SequelizeGuardBase {
   public readonly ready: Promise<void>;
 
   private syncTask: Promise<void> = Promise.resolve();
+  private readonly completedSyncModels = new Set<string>();
 
   /**
    * Creates a SequelizeGuard instance
@@ -91,6 +96,11 @@ export class SequelizeGuard extends SequelizeGuardBase {
 
     // Setup user associations
     this.sequelize.models.User = setupGuardUserAssociations(this);
+    installLegacyCompatibility(
+      this.sequelize,
+      this._models,
+      Boolean(this.options.UserModel),
+    );
 
     this.ready = this.options.sync
       ? this.sync().then(() => undefined)
@@ -140,12 +150,22 @@ export class SequelizeGuard extends SequelizeGuardBase {
           'sync schema must match the schema already bound to every guard model',
         );
       }
+      await inspectLegacySchema(
+        this.sequelize,
+        this._models,
+        Boolean(this.options.UserModel),
+        this.completedSyncModels,
+      );
       // Drop junction tables before the tables they reference.
       if (syncOptions.force) {
         for (const model of [...models].reverse())
           await model.drop(syncOptions);
       }
-      for (const model of models) await model.sync(syncOptions);
+      const names = Object.keys(this._models);
+      for (const [index, model] of models.entries()) {
+        await model.sync(syncOptions);
+        this.completedSyncModels.add(names[index]);
+      }
       this.resetCache();
       await this.getCache();
       return this;
