@@ -1,5 +1,27 @@
 import type { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
 
+/** Plain permission attributes returned by `json: true`. */
+export type GuardPermissionData = Pick<
+  GuardPermissionModel,
+  'id' | 'name' | 'description' | 'resource' | 'action' | 'allow'
+>;
+
+/** Result format for literal or dynamic creation options. */
+export type GuardCreationResult<
+  TOptions,
+  TModel,
+  TData,
+  TDefault = TModel,
+> = TOptions extends undefined
+  ? TDefault[]
+  : 'json' extends keyof TOptions
+    ? TOptions extends { json: true }
+      ? TData[]
+      : TOptions extends { json: false }
+        ? TModel[]
+        : TModel[] | TData[]
+    : TModel[];
+
 /**
  * Result from role creation
  */
