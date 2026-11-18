@@ -26,6 +26,7 @@ export class GuardCache extends NodeCache {
   async getRolesWithPerms(
     guard: SequelizeGuard,
   ): Promise<Record<number, GuardRoleModel>> {
+    guard._assertModelBindings();
     const cRoles = lodash.values(this.getRoles());
     const r2Fetch = cRoles
       .filter((role) => !role.Permissions)
@@ -110,7 +111,7 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.resetCache = function (): GuardCache {
     if (!this._cache) {
       this._cache = new GuardCache();
-      bindGuardListeners(this);
+      bindGuardListeners(this as unknown as SequelizeGuard);
     }
     this._cache.flushAll();
     this._cacheReady = undefined;
@@ -121,6 +122,7 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
    * Get or create cache instance
    */
   SequelizeGuard.prototype.getCache = async function (): Promise<GuardCache> {
+    this._assertModelBindings();
     const cache = this._cache ?? this.resetCache();
     if (!this._cacheReady) {
       const initialization = Promise.resolve()
