@@ -92,7 +92,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           # Uses the tag name for the release title
           name: Release ${{ github.ref_name }}
