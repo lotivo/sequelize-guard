@@ -202,7 +202,7 @@ const { default: Guard, SequelizeGuard, migration } = require('sequelize-guard')
 
 const typedConsumer = `
 import Guard, { SequelizeGuard, migration, type GuardOptions } from 'sequelize-guard';
-import { Sequelize } from 'sequelize';
+import { Sequelize, Model, DataTypes, type InferAttributes, type InferCreationAttributes } from 'sequelize';
 export async function useGuard(sequelize: Sequelize, options: GuardOptions) {
   const guard: SequelizeGuard = new Guard(sequelize, options);
   await guard.ready;
@@ -236,6 +236,25 @@ export async function useGuard(sequelize: Sequelize, options: GuardOptions) {
   await cache.getRoles()[1].save();
   await migration.up(sequelize.getQueryInterface(), sequelize);
   return { synced, allowed };
+}
+
+class Account extends Model<InferAttributes<Account>, InferCreationAttributes<Account>> {
+  declare accountKey: string;
+  declare requiredName: string;
+}
+export function typedCustomUser(sequelize: Sequelize) {
+  const UserModel = sequelize.define<Account>('Account', {
+    accountKey: { type: DataTypes.STRING, primaryKey: true },
+    requiredName: { type: DataTypes.STRING, allowNull: false },
+  });
+  const guard = new Guard(sequelize, { UserModel, userPk: 'accountKey', sync: false });
+  const account = guard.models().GuardUser.build({ accountKey: 'a', requiredName: 'Alice' });
+  const key: string = account.accountKey;
+  // @ts-expect-error Custom user fields remain required.
+  guard.models().GuardUser.build({ accountKey: 'a' });
+  // @ts-expect-error Guard methods require this UserModel's instance type.
+  guard.userCan({} as Model, 'read document');
+  return { guard, account, key };
 }
 `;
 for (const [extension, module, moduleResolution] of [

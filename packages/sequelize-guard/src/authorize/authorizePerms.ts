@@ -21,7 +21,7 @@ export function extendWithAuthorizePerms(
     const requested = parseRequest(permission);
     if (!requested) return false;
     // Keep the membership and matching grants in one writer-backed read.
-    const roles = await this.committedReads.read(() =>
+    const roles = await this._readCommitted(() =>
       user.getRoles!({
         include: [
           {
