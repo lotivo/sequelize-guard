@@ -23,7 +23,8 @@
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "echo 'No tests configured for sequelize-guard-docs'"
+        "cwd": "apps/sequelize-guard-docs",
+        "command": "node --test src/lib/search-index.test.mjs"
       }
     },
     "test:coverage": {

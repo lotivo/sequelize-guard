@@ -1,5 +1,13 @@
-import { DataTypes, Sequelize } from 'sequelize';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DataTypes, Model, Sequelize } from 'sequelize';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+  vi,
+} from 'vitest';
 import { SequelizeGuard } from '../index';
 import migration from '../migrations/guard-migrations';
 import type { GuardModel, GuardUserModel } from '../sequelize-models';
@@ -38,6 +46,46 @@ describe('Guard synchronization', () => {
     const query = vi.spyOn(sequelize, 'query');
     const guard = new SequelizeGuard(sequelize, { sync: false });
     await guard.ready;
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('retains the original bindings if validating the full legacy layout fails', async () => {
+    const query = sequelize.getQueryInterface();
+    await migration.up(query, sequelize, { timestamps: true });
+    await query.renameColumn('guard_role_user', 'updated_at', 'unexpected_at');
+    const guard = new SequelizeGuard(sequelize, {
+      sync: false,
+      timestamps: true,
+    });
+    await guard.ready;
+
+    await expect(guard.findRoles()).rejects.toThrow(
+      'Incompatible legacy Guard table',
+    );
+    expect(guard.models().GuardRole.rawAttributes.createdAt?.field).toBe(
+      'createdAt',
+    );
+  });
+
+  it('acknowledges verified legacy timestamp bindings and still rejects later drift', async () => {
+    await migration.up(sequelize.getQueryInterface(), sequelize, {
+      timestamps: true,
+    });
+    const guard = new SequelizeGuard(sequelize, {
+      sync: false,
+      timestamps: true,
+    });
+    await guard.ready;
+    await expect(guard.findRoles()).resolves.toEqual([]);
+    expect(guard.models().GuardRole.rawAttributes.createdAt?.field).toBe(
+      'created_at',
+    );
+
+    const query = vi.spyOn(sequelize, 'query');
+    const timestamp = guard.models().GuardRole.rawAttributes.createdAt;
+    if (!timestamp) throw new Error('missing fixture timestamp attribute');
+    timestamp.field = 'createdAt';
+    await expect(guard.findRoles()).rejects.toThrow('binding changed');
     expect(query).not.toHaveBeenCalled();
   });
 
@@ -124,6 +172,230 @@ describe('Guard synchronization', () => {
     );
     expect(create).not.toHaveBeenCalled();
     expect(await query.showAllTables()).toEqual(['guard_roles']);
+  });
+
+  it('rejects duplicate guards and registry conflicts without replacing models', async () => {
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await guard.ready;
+    expect(() => new SequelizeGuard(sequelize, { sync: false })).toThrow(
+      'already has a guard',
+    );
+    expect(sequelize.models.GuardModels).toBe(guard.models());
+    delete (sequelize as Sequelize & { guard?: SequelizeGuard }).guard;
+    expect(() => new SequelizeGuard(sequelize, { sync: false })).toThrow(
+      'already has a guard',
+    );
+    await sequelize.authenticate();
+  });
+
+  it('rejects invalid options and model collisions before defining guard models', () => {
+    expect(
+      () => new SequelizeGuard(sequelize, { primaryKey: 'other', sync: false }),
+    ).toThrow('primaryKey');
+    expect(sequelize.models.GuardRole).toBeUndefined();
+    sequelize.define(
+      'ApplicationRole',
+      { name: DataTypes.STRING },
+      { tableName: 'guard_roles' },
+    );
+    expect(() => new SequelizeGuard(sequelize, { sync: false })).toThrow(
+      'conflicts',
+    );
+    expect(sequelize.models.GuardRole).toBeUndefined();
+  });
+
+  it('rejects invalid custom users before creating guard models or associations', async () => {
+    const foreign = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+    });
+    try {
+      const UserModel = foreign.define('ForeignUser', {
+        key: { type: DataTypes.STRING, primaryKey: true },
+      });
+      expect(
+        () =>
+          new SequelizeGuard(sequelize, {
+            sync: false,
+            UserModel,
+          }),
+      ).toThrow('this Sequelize instance');
+      expect(sequelize.models.GuardRole).toBeUndefined();
+      const local = sequelize.define('LocalUser', {
+        key: { type: DataTypes.STRING, primaryKey: true },
+      });
+      expect(
+        () =>
+          new SequelizeGuard(sequelize, {
+            sync: false,
+            UserModel: local,
+            userPk: 'wrong',
+          }),
+      ).toThrow('primary key');
+      expect(sequelize.models.GuardRole).toBeUndefined();
+    } finally {
+      await foreign.close();
+    }
+  });
+
+  it('rejects a custom user method collision before adding associations', () => {
+    const UserModel = sequelize.define('Account', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+    });
+    Object.defineProperty(UserModel.prototype, 'getRoles', {
+      value: () => [],
+      configurable: true,
+    });
+    expect(
+      () => new SequelizeGuard(sequelize, { sync: false, UserModel }),
+    ).toThrow('getRoles');
+    expect(UserModel.associations.Roles).toBeUndefined();
+    expect(sequelize.models.GuardRole).toBeUndefined();
+  });
+
+  it('binds a string custom user key to the junction and forwards explicit sync options', async () => {
+    class Account extends Model {
+      declare accountKey: string;
+    }
+    const UserModel = sequelize.define<Account>('Account', {
+      accountKey: {
+        type: DataTypes.STRING,
+        primaryKey: true,
+        field: 'account_key',
+      },
+    });
+    const guard = new SequelizeGuard(sequelize, {
+      sync: false,
+      UserModel,
+      userPk: 'accountKey',
+    });
+    expectTypeOf(guard.models().GuardUser).toEqualTypeOf<typeof UserModel>();
+    expectTypeOf(guard.userCan).parameter(0).toEqualTypeOf<Account>();
+    await guard.ready;
+    const sync = vi.spyOn(UserModel, 'sync');
+    await guard.sync({ alter: true });
+    expect(sync).toHaveBeenCalledWith(expect.objectContaining({ alter: true }));
+    expect(guard.models().RoleUser.getAttributes().user_id.type).toBeInstanceOf(
+      DataTypes.STRING,
+    );
+    await guard.allow('reader', 'read', 'document');
+    const account = await UserModel.create({ accountKey: 'alice' });
+    await guard.assignRole(account, 'reader');
+    await expect(guard.userCan(account, 'read document')).resolves.toBe(true);
+    await guard.sync({ force: true });
+    expect(sync).toHaveBeenCalledWith(expect.objectContaining({ force: true }));
+    await sequelize.authenticate();
+  });
+
+  it('rejects changed model bindings before destructive sync or SQL', async () => {
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    const query = vi.spyOn(sequelize, 'query');
+    guard.models().GuardRole.options.tableName = 'wrong_table';
+    await expect(guard.sync({ force: true })).rejects.toThrow(
+      'binding changed',
+    );
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('rejects direct permission reads and writes after a model binding changes, before SQL', async () => {
+    const guard = new SequelizeGuard(sequelize);
+    await guard.ready;
+    const query = vi.spyOn(sequelize, 'query');
+    Object.defineProperty(guard.models().GuardPermission, 'tableName', {
+      value: 'redirected_permissions',
+      configurable: true,
+    });
+    await expect(guard.findPerms()).rejects.toThrow('binding changed');
+    await expect(guard.createPerms('document', 'read')).rejects.toThrow(
+      'binding changed',
+    );
+    await expect(
+      guard.createPermsBulk([{ resource: 'document', actions: 'read' }]),
+    ).rejects.toThrow('binding changed');
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('rejects direct role reads and deletion after a model binding changes, before SQL', async () => {
+    const guard = new SequelizeGuard(sequelize);
+    await guard.ready;
+    const user = await guard.makeUser();
+    const query = vi.spyOn(sequelize, 'query');
+    Object.defineProperty(guard.models().GuardRole, 'tableName', {
+      value: 'redirected_roles',
+      configurable: true,
+    });
+    await expect(guard.findRoles()).rejects.toThrow('binding changed');
+    await expect(guard.allRoles()).rejects.toThrow('binding changed');
+    await expect(guard.getRole('reader')).rejects.toThrow('binding changed');
+    await expect(guard.makeRole('reader')).rejects.toThrow('binding changed');
+    await expect(guard.makeRoles(['reader'])).rejects.toThrow(
+      'binding changed',
+    );
+    await expect(user.roles!()).rejects.toThrow('binding changed');
+    await expect(guard.deleteRoles('reader')).rejects.toThrow(
+      'binding changed',
+    );
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('rejects a replaced model collection entry before the first SQLite authorization query', async () => {
+    const replacement = sequelize.define('UnrelatedRole', {});
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await guard.ready;
+    Reflect.set(guard.models(), 'GuardRole', replacement);
+    const query = vi.spyOn(sequelize, 'query');
+    await expect(guard.findRoles()).rejects.toThrow('registry binding changed');
+    await expect(guard.createPerms('document', 'read')).rejects.toThrow(
+      'registry binding changed',
+    );
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('rechecks the model binding after entering the committed read barrier', async () => {
+    const replacement = sequelize.define('UnrelatedRole', {});
+    const guard = new SequelizeGuard(sequelize);
+    await guard.ready;
+    const query = vi.spyOn(sequelize, 'query');
+    const pending = guard.findRoles();
+    Reflect.set(guard.models(), 'GuardRole', replacement);
+    await expect(pending).rejects.toThrow('registry binding changed');
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('allows an application model with the guard table name in another schema', async () => {
+    await sequelize.close();
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+      define: { schema: 'tenant' },
+    });
+    sequelize.define(
+      'OtherRole',
+      { value: DataTypes.STRING },
+      { schema: 'other', tableName: 'guard_roles' },
+    );
+    expect(() => new SequelizeGuard(sequelize, { sync: false })).not.toThrow();
+  });
+
+  it('rejects an application model with the guard table name in the same schema', async () => {
+    await sequelize.close();
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+      define: { schema: 'tenant' },
+    });
+    sequelize.define(
+      'OtherRole',
+      { value: DataTypes.STRING },
+      { schema: 'tenant', tableName: 'guard_roles' },
+    );
+    expect(() => new SequelizeGuard(sequelize, { sync: false })).toThrow(
+      'conflicts',
+    );
+    expect(sequelize.models.GuardRole).toBeUndefined();
   });
 
   it('awaits all guard models and forwards sync options without syncing unrelated models', async () => {

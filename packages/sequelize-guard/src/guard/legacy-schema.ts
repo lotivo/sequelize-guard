@@ -1,68 +1,71 @@
-import type { Model, ModelStatic, Sequelize } from 'sequelize';
+import type { Model, ModelStatic, QueryOptions, Sequelize } from 'sequelize';
+import {
+  legacyTimestampFields,
+  type LegacyTimestampAttribute,
+  type LegacyTimestampMapping,
+} from '../core/guard-bindings';
 import type { GuardModels } from '../sequelize-models';
 
-const timestampNames = ['createdAt', 'updatedAt', 'deletedAt'] as const;
+export interface LegacySchemaOptions {
+  suppliedUser: boolean;
+  acceptTimestamps: (mappings: LegacyTimestampMapping[]) => void;
+  completedSyncModels: ReadonlySet<string>;
+}
+
+function isLegacyTimestamp(
+  attribute: string,
+): attribute is LegacyTimestampAttribute {
+  return Object.hasOwn(legacyTimestampFields, attribute);
+}
 
 /** Check legacy table structure before sync can alter any existing table. */
 export async function inspectLegacySchema(
   sequelize: Sequelize,
   models: GuardModels,
-  suppliedUser: boolean,
-  completedSyncModels: ReadonlySet<string> = new Set(),
+  { suppliedUser, acceptTimestamps, completedSyncModels }: LegacySchemaOptions,
 ): Promise<boolean> {
   const query = sequelize.getQueryInterface();
+  const readOptions: QueryOptions = { useMaster: true, transaction: null };
   const entries = (
     Object.entries(models) as [string, ModelStatic<Model>][]
   ).filter(([name]) => !suppliedUser || name !== 'GuardUser');
+  const tables = entries.map(([name, model]) => ({
+    name,
+    model,
+    table: model.getTableName(),
+  }));
   const present = await Promise.all(
-    entries.map(async ([, model]) => query.tableExists(model.getTableName())),
+    tables.map(({ table }) => query.tableExists(table, readOptions)),
   );
-  if (!present.some(Boolean)) return false;
+  if (!present.some(Boolean)) {
+    acceptTimestamps([]);
+    return false;
+  }
   if (
     present.some((exists) => !exists) &&
     present.some(
-      (exists, index) => exists && !completedSyncModels.has(entries[index][0]),
+      (exists, index) => exists && !completedSyncModels.has(tables[index].name),
     )
   ) {
     throw new Error('Incomplete legacy Guard schema; refusing synchronization');
   }
 
-  // All six legacy tables exist. Check required columns before Sequelize.sync
-  // gets a chance to mutate a coincidentally named application table.
-  for (const [index, [, model]] of entries.entries()) {
+  const mappings: LegacyTimestampMapping[] = [];
+  for (const [index, { model, table }] of tables.entries()) {
     if (!present[index]) continue;
-    const columns = await query.describeTable(model.getTableName());
-    const tableName = model.getTableName();
-    const tableLabel =
-      typeof tableName === 'string' ? tableName : tableName.tableName;
-    for (const [attributeName, attribute] of Object.entries(
-      model.getAttributes(),
-    )) {
+    const columns = await query.describeTable(table, readOptions);
+    const tableLabel = typeof table === 'string' ? table : table.tableName;
+    for (const [name, attribute] of Object.entries(model.getAttributes())) {
+      let field = attribute.field ?? name;
       if (
-        timestampNames.includes(
-          attributeName as (typeof timestampNames)[number],
-        )
+        isLegacyTimestamp(name) &&
+        field === name &&
+        !Object.hasOwn(columns, field) &&
+        Object.hasOwn(columns, legacyTimestampFields[name])
       ) {
-        const snake = attributeName.replace(
-          /[A-Z]/g,
-          (letter) => `_${letter.toLowerCase()}`,
-        );
-        const field = columns[attributeName] ? attributeName : snake;
-        if (!columns[field]) {
-          throw new Error(
-            `Incompatible legacy Guard table ${tableLabel}: missing ${attributeName}`,
-          );
-        }
-        if (field !== attributeName) {
-          // Published migrations used snake_case while published sync used camelCase.
-          model.rawAttributes[attributeName].field = field;
-          (
-            model as ModelStatic<Model> & { refreshAttributes(): void }
-          ).refreshAttributes();
-        }
-        continue;
+        field = legacyTimestampFields[name];
+        mappings.push({ model, attribute: name });
       }
-      const field = attribute.field ?? attributeName;
       const column = columns[field];
       if (!column || (attribute.primaryKey && !column.primaryKey)) {
         throw new Error(
@@ -73,7 +76,8 @@ export async function inspectLegacySchema(
       if (
         (/^INTEGER/.test(expected) && !/INT/i.test(column.type)) ||
         (/^(VARCHAR|STRING|TEXT)/.test(expected) &&
-          !/CHAR|TEXT|CITEXT/i.test(column.type))
+          !/CHAR|TEXT|CITEXT/i.test(column.type)) ||
+        (isLegacyTimestamp(name) && !/^(DATE|TIMESTAMP)/i.test(column.type))
       ) {
         throw new Error(
           `Incompatible legacy Guard table ${tableLabel}: invalid ${field} type`,
@@ -81,6 +85,8 @@ export async function inspectLegacySchema(
       }
     }
   }
+  // Apply the plan only after every existing table and column has passed.
+  acceptTimestamps(mappings);
   return true;
 }
 
@@ -88,11 +94,11 @@ export async function inspectLegacySchema(
 export function installLegacyCompatibility(
   sequelize: Sequelize,
   models: GuardModels,
-  suppliedUser: boolean,
+  options: LegacySchemaOptions,
 ): void {
   let inspection: Promise<boolean> | undefined;
   const ensure = async () => {
-    inspection ??= inspectLegacySchema(sequelize, models, suppliedUser);
+    inspection ??= inspectLegacySchema(sequelize, models, options);
     try {
       if (!(await inspection)) inspection = undefined;
     } catch (error) {
@@ -104,7 +110,7 @@ export function installLegacyCompatibility(
     string,
     ModelStatic<Model>,
   ][]) {
-    if (suppliedUser && name === 'GuardUser') continue;
+    if (options.suppliedUser && name === 'GuardUser') continue;
     model.addHook('beforeFind', ensure);
     model.addHook('beforeCreate', ensure);
     model.addHook('beforeBulkCreate', ensure);
