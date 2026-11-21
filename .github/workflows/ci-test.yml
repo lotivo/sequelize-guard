@@ -22,12 +22,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'yarn' # Automatic caching for Yarn
@@ -40,17 +40,14 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Derive Nx SHAs
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@v5
 
       - name: Detect if library is affected
         id: affected
         run: |
-          AFFECTED=$(yarn --silent nx show projects --affected)
-          if echo "$AFFECTED" | grep -xq "sequelize-guard"; then
-            echo "library=true" >> $GITHUB_OUTPUT
-          else
-            echo "library=false" >> $GITHUB_OUTPUT
-          fi
+          affected_projects=$(yarn --silent nx show projects --affected --json)
+          library_affected=$(node -p 'JSON.parse(process.argv[1]).includes("sequelize-guard")' "$affected_projects")
+          printf 'library=%s\n' "$library_affected" >> "$GITHUB_OUTPUT"
 
       - name: Run lint
         # This runs lint with eslint
@@ -58,8 +55,12 @@ jobs:
 
       - name: Run tests and generate coverage
         if: steps.affected.outputs.library == 'true'
-        # This runs vitest with coverage enabled
-        run: npx nx affected -t test:coverage --parallel=3
+        run: |
+          yarn nx run sequelize-guard:test:coverage --skip-nx-cache
+          test -s packages/sequelize-guard/coverage/lcov.info
+
+      - name: Test docs search index
+        run: yarn nx run sequelize-guard-docs:test --skip-nx-cache
 
       - name: Check library types
         if: steps.affected.outputs.library == 'true'
@@ -70,6 +71,8 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           base-path: packages/sequelize-guard
+          file: packages/sequelize-guard/coverage/lcov.info
+          format: lcov
 
       - name: Build the library
         run: npx nx affected -t build --parallel=3
@@ -77,3 +80,49 @@ jobs:
       - name: Test packed package consumers
         if: steps.affected.outputs.library == 'true'
         run: yarn test:package
+
+  authorization-dialects:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.17.1, 24.15.0]
+        dialect: [postgres, mysql]
+    services:
+      postgres:
+        image: ${{ matrix.dialect == 'postgres' && 'postgres:17' || '' }}
+        env:
+          POSTGRES_DB: guard_test
+          POSTGRES_PASSWORD: guard-test
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d guard_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+        ports: ['5432/tcp']
+      mysql:
+        image: ${{ matrix.dialect == 'mysql' && 'mysql:8.4' || '' }}
+        env:
+          MYSQL_DATABASE: guard_test
+          MYSQL_ROOT_PASSWORD: guard-test
+          MYSQL_ROOT_HOST: '%'
+        options: >-
+          --health-cmd "mysql -h 127.0.0.1 -uroot -pguard-test -e 'SELECT 1' guard_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+        ports: ['3306/tcp']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: yarn
+      - run: corepack enable
+      - run: yarn install --frozen-lockfile
+      - name: Test writer-backed authorization
+        env:
+          SEQUELIZE_GUARD_TEST_DATABASE_URL: >-
+            ${{ matrix.dialect == 'postgres'
+                && format('postgresql://postgres:guard-test@127.0.0.1:{0}/guard_test', job.services.postgres.ports['5432'])
+                || format('mysql://root:guard-test@127.0.0.1:{0}/guard_test', job.services.mysql.ports['3306']) }}
+        run: ./node_modules/.bin/vitest run --config packages/sequelize-guard/vitest.dialects.config.mts authorization-dialects.integration.ts
+      - name: Verify stale physical PostgreSQL standby
+        if: matrix.dialect == 'postgres'
+        run: bash scripts/test-guard-replication.sh

@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["vite.config.mts", "src/**/*"],
+  "include": ["vite.config.mts", "vitest.dialects.config.mts", "src/**/*"],
   "compilerOptions": {}
 }
