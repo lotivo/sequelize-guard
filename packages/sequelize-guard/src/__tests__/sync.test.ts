@@ -9,7 +9,9 @@ import {
   vi,
 } from 'vitest';
 import { SequelizeGuard } from '../index';
+import migration from '../migrations/guard-migrations';
 import type { GuardModel, GuardUserModel } from '../sequelize-models';
+import { GuardCache } from '../utils/cache';
 
 describe('Guard synchronization', () => {
   let sequelize: Sequelize;
@@ -27,11 +29,163 @@ describe('Guard synchronization', () => {
     await sequelize.close();
   });
 
+  it('stores Sequelize models without cloning connection internals', async () => {
+    const guard = new SequelizeGuard(sequelize);
+    await guard.ready;
+    const role = await guard.models().GuardRole.create({ name: 'reader' });
+    Object.defineProperty(role, 'transport', {
+      value: Object.freeze({ writeQueueSize: 0 }),
+      enumerable: true,
+    });
+    const cache = new GuardCache();
+    expect(() => cache.setRoles({ [role.id]: role })).not.toThrow();
+    expect(cache.getRoles()[role.id]).toBe(role);
+  });
+
   it('does no database work when automatic synchronization is disabled', async () => {
     const query = vi.spyOn(sequelize, 'query');
     const guard = new SequelizeGuard(sequelize, { sync: false });
     await guard.ready;
     expect(query).not.toHaveBeenCalled();
+  });
+
+  it('retains the original bindings if validating the full legacy layout fails', async () => {
+    const query = sequelize.getQueryInterface();
+    await migration.up(query, sequelize, { timestamps: true });
+    await query.renameColumn('guard_role_user', 'updated_at', 'unexpected_at');
+    const guard = new SequelizeGuard(sequelize, {
+      sync: false,
+      timestamps: true,
+    });
+    await guard.ready;
+
+    await expect(guard.findRoles()).rejects.toThrow(
+      'Incompatible legacy Guard table',
+    );
+    expect(guard.models().GuardRole.rawAttributes.createdAt?.field).toBe(
+      'createdAt',
+    );
+  });
+
+  it('acknowledges verified legacy timestamp bindings and still rejects later drift', async () => {
+    await migration.up(sequelize.getQueryInterface(), sequelize, {
+      timestamps: true,
+    });
+    const guard = new SequelizeGuard(sequelize, {
+      sync: false,
+      timestamps: true,
+    });
+    await guard.ready;
+    await expect(guard.findRoles()).resolves.toEqual([]);
+    expect(guard.models().GuardRole.rawAttributes.createdAt?.field).toBe(
+      'created_at',
+    );
+
+    const query = vi.spyOn(sequelize, 'query');
+    const timestamp = guard.models().GuardRole.rawAttributes.createdAt;
+    if (!timestamp) throw new Error('missing fixture timestamp attribute');
+    timestamp.field = 'createdAt';
+    await expect(guard.findRoles()).rejects.toThrow('binding changed');
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('allows retrying an interrupted sync while ordinary reads reject the partial layout', async () => {
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await guard.ready;
+    vi.spyOn(guard.models().GuardUser, 'sync').mockRejectedValueOnce(
+      new Error('interrupted sync'),
+    );
+    await expect(guard.sync()).rejects.toThrow('interrupted sync');
+    await expect(guard.findRoles()).rejects.toThrow(
+      'Incomplete legacy Guard schema',
+    );
+    await expect(guard.sync()).resolves.toBe(guard);
+    await expect(guard.findRoles()).resolves.toEqual([]);
+  });
+
+  it('refuses a partial same-name schema before creating or dropping tables', async () => {
+    const query = sequelize.getQueryInterface();
+    await query.createTable('guard_roles', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+      name: { type: DataTypes.STRING },
+    });
+    await query.bulkInsert('guard_roles', [
+      { id: 41, name: 'application data' },
+    ]);
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await guard.ready;
+    await expect(guard.getRole('reader')).rejects.toThrow(
+      'Incomplete legacy Guard schema',
+    );
+    const drop = vi.spyOn(query, 'dropTable');
+    const sync = vi.spyOn(guard.models().GuardResource, 'sync');
+    await expect(guard.sync({ force: true })).rejects.toThrow(
+      'Incomplete legacy Guard schema',
+    );
+    expect(drop).not.toHaveBeenCalled();
+    expect(sync).not.toHaveBeenCalled();
+    expect(await query.showAllTables()).toEqual(['guard_roles']);
+    expect(await query.select(null, 'guard_roles')).toEqual([
+      { id: 41, name: 'application data' },
+    ]);
+  });
+
+  it('refuses coincidentally named unrelated tables before destructive sync', async () => {
+    const query = sequelize.getQueryInterface();
+    for (const name of [
+      'guard_resources',
+      'guard_permissions',
+      'guard_roles',
+      'guard_users',
+      'guard_role_permission',
+      'guard_role_user',
+    ]) {
+      await query.createTable(name, {
+        id: { type: DataTypes.INTEGER, primaryKey: true },
+        payload: { type: DataTypes.STRING },
+      });
+    }
+    await query.bulkInsert('guard_roles', [{ id: 41, payload: 'keep' }]);
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    const drop = vi.spyOn(query, 'dropTable');
+    await expect(guard.sync({ force: true })).rejects.toThrow(
+      'Incompatible legacy Guard table',
+    );
+    expect(drop).not.toHaveBeenCalled();
+    expect(await query.select(null, 'guard_roles')).toEqual([
+      { id: 41, payload: 'keep' },
+    ]);
+  });
+
+  it('refuses rollback of a partial legacy schema without dropping its tables', async () => {
+    const query = sequelize.getQueryInterface();
+    await query.createTable('guard_roles', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+      payload: DataTypes.STRING,
+    });
+    await query.bulkInsert('guard_roles', [{ id: 41, payload: 'keep' }]);
+    const drop = vi.spyOn(query, 'dropTable');
+    await expect(migration.down(query, sequelize)).rejects.toThrow(
+      'Incomplete legacy Guard schema',
+    );
+    expect(drop).not.toHaveBeenCalled();
+    expect(await query.select(null, 'guard_roles')).toEqual([
+      { id: 41, payload: 'keep' },
+    ]);
+  });
+
+  it('refuses migration creation around an existing same-name table', async () => {
+    const query = sequelize.getQueryInterface();
+    await query.createTable('guard_roles', {
+      id: { type: DataTypes.INTEGER, primaryKey: true },
+      payload: DataTypes.STRING,
+    });
+    const create = vi.spyOn(query, 'createTable');
+    await expect(migration.up(query, sequelize)).rejects.toThrow(
+      'Guard migration target table already exists',
+    );
+    expect(create).not.toHaveBeenCalled();
+    expect(await query.showAllTables()).toEqual(['guard_roles']);
   });
 
   it('rejects duplicate guards and registry conflicts without replacing models', async () => {
@@ -189,7 +343,9 @@ describe('Guard synchronization', () => {
     await expect(guard.allRoles()).rejects.toThrow('binding changed');
     await expect(guard.getRole('reader')).rejects.toThrow('binding changed');
     await expect(guard.makeRole('reader')).rejects.toThrow('binding changed');
-    await expect(guard.makeRoles(['reader'])).rejects.toThrow('binding changed');
+    await expect(guard.makeRoles(['reader'])).rejects.toThrow(
+      'binding changed',
+    );
     await expect(user.roles!()).rejects.toThrow('binding changed');
     await expect(guard.deleteRoles('reader')).rejects.toThrow(
       'binding changed',

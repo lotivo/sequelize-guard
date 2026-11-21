@@ -13,6 +13,11 @@ import {
   assertGuardUserAssociations,
   setupGuardUserAssociations,
 } from './guard/GuardUserAssociations';
+import {
+  inspectLegacySchema,
+  installLegacyCompatibility,
+  type LegacySchemaOptions,
+} from './guard/legacy-schema';
 import migration from './migrations/guard-migrations';
 import type {
   GuardModel,
@@ -118,6 +123,8 @@ export class SequelizeGuard<
   public readonly ready: Promise<void>;
 
   private syncTask: Promise<void> = Promise.resolve();
+  private readonly completedSyncModels = new Set<string>();
+  private readonly legacySchema: LegacySchemaOptions;
   /** @internal Ensure model and schema routing still match initialized bindings. */
   readonly _assertModelBindings: () => void;
 
@@ -201,7 +208,7 @@ export class SequelizeGuard<
     const modelNames = Object.keys(boundModels) as (keyof GuardModels)[];
     const models = modelNames.map((name) => boundModels[name]);
     const boundUser = boundModels.GuardUser;
-    const assertBindings = captureGuardBindings(sequelize, models);
+    const bindings = captureGuardBindings(sequelize, models);
     this._assertModelBindings = () => {
       if (
         this._models !== boundModels ||
@@ -213,8 +220,21 @@ export class SequelizeGuard<
           'Guard model registry binding changed after initialization',
         );
       }
-      assertBindings();
+      bindings.assert();
     };
+
+    this.legacySchema = {
+      suppliedUser: Boolean(this.options.UserModel),
+      acceptTimestamps: (mappings) => {
+        this._assertModelBindings();
+        bindings.acceptLegacyTimestamps(mappings);
+      },
+      completedSyncModels: this.completedSyncModels,
+    };
+    installLegacyCompatibility(this.sequelize, this._models, {
+      ...this.legacySchema,
+      completedSyncModels: new Set(),
+    });
 
     this.ready = this.options.sync
       ? this.sync().then(() => undefined)
@@ -274,12 +294,23 @@ export class SequelizeGuard<
           'sync schema must match the schema already bound to every guard model',
         );
       }
+      await inspectLegacySchema(
+        this.sequelize,
+        this._models,
+        this.legacySchema,
+      );
       // Drop junction tables before the tables they reference.
       if (syncOptions.force) {
         for (const model of [...models].reverse())
           await model.drop(syncOptions);
       }
-      for (const model of models) await model.sync(syncOptions);
+      const names = Object.keys(this._models);
+      for (const [index, model] of models.entries()) {
+        await model.sync(syncOptions);
+        this.completedSyncModels.add(names[index]);
+      }
+      // Keep progress only when a sync is interrupted partway through.
+      this.completedSyncModels.clear();
       this.resetCache();
       await this.getCache();
       return this;
