@@ -111,7 +111,13 @@ export function extendWithPermissions(
       cond.where = { [Op.or]: wheres };
     }
 
-    const perms = await this._models.GuardPermission.findAll(cond);
+    const perms = await this.committedReads.read(() =>
+      this._models.GuardPermission.findAll({
+        ...cond,
+        useMaster: true,
+        transaction: null,
+      }),
+    );
     return perms;
   };
 
