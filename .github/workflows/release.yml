@@ -82,7 +82,7 @@ jobs:
 
       - name: Upload NPM Debug Log on Failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           # This name is what the file will be called when you download it
           name: npm-debug-log
