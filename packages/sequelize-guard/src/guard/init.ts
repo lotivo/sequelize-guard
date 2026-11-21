@@ -1,4 +1,4 @@
-import type { SequelizeGuardType } from '../SequelizeGuard';
+import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
 import type { AddPermsToRoleResult } from '../types';
 import { GuardControl } from './GuardControl';
 
@@ -13,7 +13,7 @@ export function extendWithGuardControl(
    * Start new guard statement
    */
   SequelizeGuard.prototype.init = function (): GuardControl {
-    return new GuardControl(this);
+    return new GuardControl(this as unknown as SequelizeGuard);
   };
 
   /**

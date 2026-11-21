@@ -13,8 +13,8 @@ jobs:
   pack:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24.15.0
           cache: yarn
@@ -33,6 +33,30 @@ jobs:
           path: ${{ runner.temp }}/package/*.tgz
           if-no-files-found: error
 
+      - name: Rehearse tag-versioned packed checks
+        env:
+          RELEASE_VERSION: 0.0.0-release-rehearsal
+        run: |
+          (cd build/packages/sequelize-guard && npm version --no-git-tag-version --allow-same-version -- "$RELEASE_VERSION")
+          node --test scripts/test-package.mjs
+
+          expect_manifest_failure() {
+            local message="$1"
+            shift
+            local log="$RUNNER_TEMP/release-package-check.log"
+            if "$@" node --test --test-name-pattern 'archive has the exact' scripts/test-package.mjs > "$log" 2>&1; then
+              cat "$log"
+              echo "Expected packed manifest validation to fail"
+              return 1
+            fi
+            cat "$log"
+            grep -Fq "$message" "$log"
+          }
+          expect_manifest_failure "Packed manifest version differs" env -u RELEASE_VERSION
+          expect_manifest_failure "Packed manifest version differs" env RELEASE_VERSION=0.0.0-wrong-tag
+          (cd build/packages/sequelize-guard && npm pkg set description='Unexpected archive description')
+          expect_manifest_failure "Packed manifest metadata differs" env
+
   consumers:
     needs: pack
     runs-on: ubuntu-latest
@@ -40,8 +64,8 @@ jobs:
       matrix:
         node-version: [22.17.1, 24.15.0]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
       - uses: actions/download-artifact@v4

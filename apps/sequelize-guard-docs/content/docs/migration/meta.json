@@ -1,5 +1,5 @@
 {
   "root": false,
   "defaultOpen": true,
-  "pages": ["upgrade-to-v6"]
+  "pages": ["upgrade-to-v6", "published-6x-compatibility"]
 }

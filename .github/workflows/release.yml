@@ -12,7 +12,7 @@ jobs:
     environment: npm-publish
     permissions:
       contents: write # Required to create the GitHub Release
-      id-token: write # Required for actions/setup-node to authenticate with npm
+      id-token: write # Required for npm trusted publishing via OIDC
 
     strategy:
       matrix:
@@ -21,16 +21,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'yarn' # Automatic caching for Yarn
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Enable pinned Yarn version
         run: corepack enable
@@ -60,19 +59,16 @@ jobs:
         run: yarn build
 
       - name: Set Version from Tag
+        id: stage_version
         working-directory: ./build/packages/sequelize-guard
         run: |
-          # 1. Strip the 'v' prefix from the tag (v1.0.5 -> 1.0.5)
-          VERSION=${{ github.ref_name }}
-          VERSION=${VERSION#v}
-
-          echo "Setting package version to $VERSION"
-
-          # 2. Update package.json without creating a git commit/tag
-          # Even if you use Yarn, 'npm version' is the safest tool for this specific task
-          npm version $VERSION --no-git-tag-version
+          version="${GITHUB_REF_NAME#v}"
+          npm version --no-git-tag-version --allow-same-version -- "$version"
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
 
       - name: Test release package consumers
+        env:
+          RELEASE_VERSION: ${{ steps.stage_version.outputs.version }}
         run: node --test scripts/test-package.mjs
 
       - name: Publish to NPM
