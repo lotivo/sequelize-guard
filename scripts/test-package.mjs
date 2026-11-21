@@ -69,17 +69,24 @@ test('archive has the exact distributable files and documented declarations', ()
       .split('\n');
   assert.deepEqual(list('-tzf').sort(), expectedFiles.sort());
   assert.ok(list('-tvzf').every((entry) => entry.startsWith('-')));
-  assert.deepEqual(
-    manifest,
-    JSON.parse(
-      readFileSync(
-        path.join(root, 'packages/sequelize-guard/package.json'),
-        'utf8',
-      ),
+  const expectedManifest = JSON.parse(
+    readFileSync(
+      path.join(root, 'packages/sequelize-guard/package.json'),
+      'utf8',
     ),
   );
-  if (process.env.RELEASE_VERSION)
-    assert.equal(manifest.version, process.env.RELEASE_VERSION);
+  expectedManifest.version =
+    process.env.RELEASE_VERSION ?? expectedManifest.version;
+  assert.equal(
+    manifest.version,
+    expectedManifest.version,
+    'Packed manifest version differs from the expected version',
+  );
+  assert.deepEqual(
+    manifest,
+    expectedManifest,
+    'Packed manifest metadata differs from the expected metadata',
+  );
   for (const extension of ['d.ts', 'd.cts']) {
     const text = execFileSync(
       'tar',
