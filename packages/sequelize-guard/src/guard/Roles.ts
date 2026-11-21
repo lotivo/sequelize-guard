@@ -6,7 +6,7 @@ import {
   InferAttributes,
   InferCreationAttributes,
 } from 'sequelize';
-import type { GuardRoleModel } from '../sequelize-models';
+import type { GuardRoleData, GuardRoleModel } from '../sequelize-models';
 import type { SequelizeGuardType } from '../SequelizeGuard';
 import type {
   RoleCreationResult,
@@ -18,6 +18,7 @@ import type {
   UnsubscribeFn,
   GuardEventCallback,
   RoleCreationParam,
+  GuardCreationResult,
 } from '../types';
 
 /**
@@ -37,15 +38,8 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     if (!role) throw new Error('Role must be string with length not zero');
 
     const roleData = makeRoleData(role);
-    const cache = await this.getCache();
-    const roles = Object.values(cache.getRoles());
-    const existingRole = lodash.find<GuardRoleModel>(roles, roleData);
-
-    if (existingRole) {
-      return { role: existingRole, created: false };
-    }
-
     const [createdRole, created] = await this._models.GuardRole.findOrCreate({
+      useMaster: true,
       where: {
         name: roleData.name,
       },
@@ -64,16 +58,17 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
    * @param roles
    * @param options
    */
-  SequelizeGuard.prototype.makeRoles = async function (
-    roles: RoleCreationParam[],
-    options: CreateRolesOptions = { json: true },
-  ): Promise<GuardRoleModel[]> {
+  SequelizeGuard.prototype.makeRoles = async function <
+    TOptions extends [options?: CreateRolesOptions],
+  >(roles: RoleCreationParam[], ...[givenOptions]: TOptions) {
     this._assertModelBindings();
+    const options = givenOptions ?? { json: true };
     const sanitizedRoles = sanitizeRolesInput(roles);
     let roles2insert = [...sanitizedRoles];
 
-    const cache = await this.getCache();
-    const existRoles = Object.values(cache.getRoles());
+    const existRoles = await this._models.GuardRole.findAll({
+      useMaster: true,
+    });
     const rNames = existRoles.map((d) => d.name);
     const toRemove = roles2insert.filter((r) => rNames.indexOf(r.name) >= 0);
     roles2insert = roles2insert.filter((r) => rNames.indexOf(r.name) < 0);
@@ -95,10 +90,20 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
       const existingFiltered = lodash.filter(existRoles, (r) =>
         toRemove.map((t) => t.name).includes(r.name),
       );
-      result = lodash.concat(existingFiltered, result);
+      result = lodash.concat(
+        options.json
+          ? existingFiltered.map((role) => role.toJSON())
+          : existingFiltered,
+        result,
+      );
     }
 
-    return result;
+    return result as GuardCreationResult<
+      TOptions[0],
+      GuardRoleModel,
+      GuardRoleData,
+      GuardRoleData
+    >;
   };
 
   /**
@@ -133,9 +138,9 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.allRoles = async function (): Promise<
     GuardRoleModel[]
   > {
-    this._assertModelBindings();
-    const cache = await this.getCache();
-    return Object.values(cache.getRoles());
+    return this._readCommitted(() =>
+      this._models.GuardRole.findAll({ useMaster: true, transaction: null }),
+    );
   };
 
   /**
@@ -145,12 +150,13 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.getRole = async function (
     role: string,
   ): Promise<GuardRoleModel | null> {
-    this._assertModelBindings();
-    const cache = await this.getCache();
-    const roles = Object.values(cache.getRoles()).filter(
-      (r) => r.name === role.toLowerCase(),
+    return this._readCommitted(() =>
+      this._models.GuardRole.findOne({
+        where: { name: role.toLowerCase() },
+        useMaster: true,
+        transaction: null,
+      }),
     );
-    return roles.length ? roles[0] : null;
   };
 
   /**
@@ -160,7 +166,6 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.findRoles = async function (
     args: FindRolesArgs = {},
   ): Promise<GuardRoleModel[]> {
-    this._assertModelBindings();
     const wheres: WhereOptions<InferAttributes<GuardRoleModel>>[] = [];
     const cond: FindOptions<InferAttributes<GuardRoleModel>> = { where: {} };
 
@@ -186,7 +191,13 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
       cond.include = 'Parent';
     }
 
-    const roles = await this._models.GuardRole.findAll(cond);
+    const roles = await this._readCommitted(() =>
+      this._models.GuardRole.findAll({
+        ...cond,
+        useMaster: true,
+        transaction: null,
+      }),
+    );
     return roles;
   };
 

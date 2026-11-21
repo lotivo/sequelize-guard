@@ -179,15 +179,45 @@ describe('Guard synchronization', () => {
   it('rejects direct role reads and deletion after a model binding changes, before SQL', async () => {
     const guard = new SequelizeGuard(sequelize);
     await guard.ready;
+    const user = await guard.makeUser();
     const query = vi.spyOn(sequelize, 'query');
     Object.defineProperty(guard.models().GuardRole, 'tableName', {
       value: 'redirected_roles',
       configurable: true,
     });
     await expect(guard.findRoles()).rejects.toThrow('binding changed');
+    await expect(guard.allRoles()).rejects.toThrow('binding changed');
+    await expect(guard.getRole('reader')).rejects.toThrow('binding changed');
+    await expect(guard.makeRole('reader')).rejects.toThrow('binding changed');
+    await expect(guard.makeRoles(['reader'])).rejects.toThrow('binding changed');
+    await expect(user.roles!()).rejects.toThrow('binding changed');
     await expect(guard.deleteRoles('reader')).rejects.toThrow(
       'binding changed',
     );
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('rejects a replaced model collection entry before the first SQLite authorization query', async () => {
+    const replacement = sequelize.define('UnrelatedRole', {});
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await guard.ready;
+    Reflect.set(guard.models(), 'GuardRole', replacement);
+    const query = vi.spyOn(sequelize, 'query');
+    await expect(guard.findRoles()).rejects.toThrow('registry binding changed');
+    await expect(guard.createPerms('document', 'read')).rejects.toThrow(
+      'registry binding changed',
+    );
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('rechecks the model binding after entering the committed read barrier', async () => {
+    const replacement = sequelize.define('UnrelatedRole', {});
+    const guard = new SequelizeGuard(sequelize);
+    await guard.ready;
+    const query = vi.spyOn(sequelize, 'query');
+    const pending = guard.findRoles();
+    Reflect.set(guard.models(), 'GuardRole', replacement);
+    await expect(pending).rejects.toThrow('registry binding changed');
     expect(query).not.toHaveBeenCalled();
   });
 

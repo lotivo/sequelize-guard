@@ -70,7 +70,9 @@ export function setupGuardUserAssociations(
   (GuardUser.prototype as GuardUserModel).roles = function (
     this: GuardUserModel,
   ) {
-    return this.getRoles!();
+    return guard._readCommitted(() =>
+      this.getRoles!({ useMaster: true, transaction: null }),
+    );
   };
 
   (GuardUser.prototype as GuardUserModel).assignRoles = function (

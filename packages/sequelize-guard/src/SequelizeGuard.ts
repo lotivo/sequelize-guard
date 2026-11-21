@@ -5,6 +5,7 @@ import type {
   SyncOptions,
   TableName,
 } from 'sequelize';
+import { CommittedReadBarrier } from './authorize/committedRead';
 import { captureGuardBindings } from './core/guard-bindings';
 import { SequelizeGuardBase } from './core/SequelizeGuardBase';
 import type { GuardControl } from './guard/GuardControl';
@@ -34,7 +35,9 @@ import type {
   CreateRolesOptions,
   FindPermsArgs,
   FindRolesArgs,
+  GuardCreationResult,
   GuardEventCallback,
+  GuardPermissionData,
   PermissionData,
   RemovePermsFromRoleResult,
   RoleCreationParam,
@@ -97,6 +100,9 @@ export class SequelizeGuard<
    * Guard models - internal use only
    */
   public _models!: GuardModels;
+
+  /** @internal */
+  public readonly committedReads: CommittedReadBarrier;
 
   /**
    * Automatic startup completion, including model sync and cache initialization.
@@ -176,6 +182,7 @@ export class SequelizeGuard<
 
     claimedSequelize.add(sequelize);
     this.sequelize = sequelize as SequelizeWithGuard;
+    this.committedReads = new CommittedReadBarrier(sequelize);
 
     // Initialize models
     this._models = initGuardModels(
@@ -190,14 +197,37 @@ export class SequelizeGuard<
     // Setup user associations
     setupGuardUserAssociations(this as unknown as SequelizeGuard);
     this.sequelize.models.User ??= this._models.GuardUser;
-    this._assertModelBindings = captureGuardBindings(
-      sequelize,
-      Object.values(this._models) as GuardModel[],
-    );
+    const boundModels = this._models;
+    const modelNames = Object.keys(boundModels) as (keyof GuardModels)[];
+    const models = modelNames.map((name) => boundModels[name]);
+    const boundUser = boundModels.GuardUser;
+    const assertBindings = captureGuardBindings(sequelize, models);
+    this._assertModelBindings = () => {
+      if (
+        this._models !== boundModels ||
+        this.sequelize.models.GuardModels !== boundModels ||
+        this.sequelize.models.User !== boundUser ||
+        modelNames.some((name, index) => boundModels[name] !== models[index])
+      ) {
+        throw new Error(
+          'Guard model registry binding changed after initialization',
+        );
+      }
+      assertBindings();
+    };
 
     this.ready = this.options.sync
       ? this.sync().then(() => undefined)
       : Promise.resolve();
+  }
+
+  /** @internal Validate routing immediately before dispatching a committed read. */
+  async _readCommitted<T>(query: () => Promise<T>): Promise<T> {
+    this._assertModelBindings();
+    return this.committedReads.read(() => {
+      this._assertModelBindings();
+      return query();
+    });
   }
 
   /**
@@ -289,15 +319,21 @@ export class SequelizeGuard<
   ) => Promise<AddPermsToRoleResult>;
 
   // Permission guard methods
-  declare createPerms: (
+  /** Create permission bundles. `json: true` returns plain data. */
+  declare createPerms: <TOptions extends [options?: CreatePermsOptions]>(
     resources: string | string[],
     actions: string | string[],
-    options?: CreatePermsOptions,
-  ) => Promise<GuardPermissionModel[]>;
-  declare createPermsBulk: (
+    ...options: TOptions
+  ) => Promise<
+    GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
+  >;
+  /** Create bundles with separate resources and actions. `json: true` returns plain data. */
+  declare createPermsBulk: <TOptions extends [options?: CreatePermsOptions]>(
     permissions: BulkPermissionInput[],
-    options?: CreatePermsOptions,
-  ) => Promise<GuardPermissionModel[]>;
+    ...options: TOptions
+  ) => Promise<
+    GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
+  >;
   declare findPerms: (args?: FindPermsArgs) => Promise<GuardPermissionModel[]>;
   declare onPermsCreated: (
     cb: GuardEventCallback<GuardPermissionModel[]>,
@@ -316,10 +352,18 @@ export class SequelizeGuard<
 
   // Role guard methods
   declare makeRole: (role: RoleCreationParam) => Promise<RoleCreationResult>;
-  declare makeRoles: (
+  /** Create roles. Omitted options return plain data; explicit options default to models. */
+  declare makeRoles: <TOptions extends [options?: CreateRolesOptions]>(
     roles: RoleCreationParam[],
-    options?: CreateRolesOptions,
-  ) => Promise<GuardRoleModel[]>;
+    ...options: TOptions
+  ) => Promise<
+    GuardCreationResult<
+      TOptions[0],
+      GuardRoleModel,
+      GuardRoleData,
+      GuardRoleData
+    >
+  >;
   declare deleteRoles: (
     roles: string | RoleCreationParam[] | GuardRoleModel[],
   ) => Promise<number>;

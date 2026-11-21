@@ -14,6 +14,8 @@ import type {
   BulkPermissionInput,
   PermissionData,
   GuardEventCallback,
+  GuardCreationResult,
+  GuardPermissionData,
   UnsubscribeFn,
 } from '../types';
 
@@ -30,18 +32,27 @@ export function extendWithPermissions(
    * @param actions
    * @param options
    */
-  SequelizeGuard.prototype.createPerms = async function (
+  SequelizeGuard.prototype.createPerms = async function <
+    TOptions extends [options?: CreatePermsOptions],
+  >(
     resources: string | string[],
     actions: string | string[],
-    options: CreatePermsOptions = {},
-  ): Promise<GuardPermissionModel[]> {
+    ...[options]: TOptions
+  ) {
     this._assertModelBindings();
-    const permissions = this._sanitizePermsInput(resources, actions, options);
+    const resolved = options ?? {};
+    const permissions = this._sanitizePermsInput(resources, actions, resolved);
     return insertPermissionsToDb(
       this as unknown as SequelizeGuard,
       permissions,
-      options,
-    );
+      resolved,
+    ) as Promise<
+      GuardCreationResult<
+        TOptions[0],
+        GuardPermissionModel,
+        GuardPermissionData
+      >
+    >;
   };
 
   /**
@@ -49,10 +60,9 @@ export function extendWithPermissions(
    * @param permissions
    * @param options
    */
-  SequelizeGuard.prototype.createPermsBulk = async function (
-    permissions: BulkPermissionInput[],
-    options: CreatePermsOptions = {},
-  ): Promise<GuardPermissionModel[]> {
+  SequelizeGuard.prototype.createPermsBulk = async function <
+    TOptions extends [options?: CreatePermsOptions],
+  >(permissions: BulkPermissionInput[], ...[options]: TOptions) {
     this._assertModelBindings();
     const sanitized = permissions.map((p) => {
       let _acts: string[] = [];
@@ -69,8 +79,14 @@ export function extendWithPermissions(
     return insertPermissionsToDb(
       this as unknown as SequelizeGuard,
       sanitized,
-      options,
-    );
+      options ?? {},
+    ) as Promise<
+      GuardCreationResult<
+        TOptions[0],
+        GuardPermissionModel,
+        GuardPermissionData
+      >
+    >;
   };
 
   /**
@@ -80,7 +96,6 @@ export function extendWithPermissions(
   SequelizeGuard.prototype.findPerms = async function (
     args: FindPermsArgs = {},
   ): Promise<GuardPermissionModel[]> {
-    this._assertModelBindings();
     const wheres: WhereOptions<InferAttributes<GuardPermissionModel>>[] = [];
     const cond: FindOptions<InferAttributes<GuardPermissionModel>> = {
       where: {},
@@ -106,7 +121,13 @@ export function extendWithPermissions(
       cond.where = { [Op.or]: wheres };
     }
 
-    const perms = await this._models.GuardPermission.findAll(cond);
+    const perms = await this._readCommitted(() =>
+      this._models.GuardPermission.findAll({
+        ...cond,
+        useMaster: true,
+        transaction: null,
+      }),
+    );
     return perms;
   };
 

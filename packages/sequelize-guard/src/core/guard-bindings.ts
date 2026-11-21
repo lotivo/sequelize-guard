@@ -6,12 +6,20 @@ export function captureGuardBindings(
   models: ModelStatic<Model>[],
 ): () => void {
   const routing = () => {
-    const options = (sequelize as Sequelize & { readonly options: Options })
-      .options;
+    const options = (
+      sequelize as Sequelize & {
+        readonly options: Options & {
+          searchPath?: string;
+          dialectOptions?: { prependSearchPath?: boolean };
+        };
+      }
+    ).options;
     const define = options.define as Record<string, unknown> | undefined;
     return JSON.stringify([
       options.schema,
       options.quoteIdentifiers,
+      options.searchPath,
+      options.dialectOptions?.prependSearchPath,
       ...[
         'schema',
         'schemaDelimiter',

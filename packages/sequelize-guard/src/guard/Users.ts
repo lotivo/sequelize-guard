@@ -75,8 +75,9 @@ export function extendWithUsers(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.getUserRoles = async function (
     user: GuardUserModel,
   ): Promise<GuardRoleData[]> {
-    this._assertModelBindings();
-    const roles = await user.getRoles!({ useMaster: true });
+    const roles = await this._readCommitted(() =>
+      user.getRoles!({ useMaster: true, transaction: null }),
+    );
     return roles.map((role) => role.toJSON());
   };
 }

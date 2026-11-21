@@ -2,6 +2,7 @@ import lodash from 'lodash';
 import NodeCache from 'node-cache';
 import { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
 import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
+import type { GuardPermissionData } from '../types';
 
 /**
  * Extended NodeCache with Guard-specific methods
@@ -11,7 +12,8 @@ export class GuardCache extends NodeCache {
     return this.get('roles') || {};
   }
 
-  getPerms(): Record<number, GuardPermissionModel> {
+  /** Cached permissions are plain attribute data. */
+  getPerms(): Record<number, GuardPermissionData> {
     return this.get('perms') || {};
   }
 
@@ -19,7 +21,7 @@ export class GuardCache extends NodeCache {
     return this.set('roles', roles);
   }
 
-  setPerms(perms: Record<number, GuardPermissionModel>): boolean {
+  setPerms(perms: Record<number, GuardPermissionData>): boolean {
     return this.set('perms', perms);
   }
 
@@ -36,10 +38,14 @@ export class GuardCache extends NodeCache {
       return this.getRoles();
     }
 
-    const roles = await guard.models().GuardRole.findAll({
-      where: { id: r2Fetch },
-      include: 'Permissions',
-    });
+    const roles = await guard._readCommitted(() =>
+      guard.models().GuardRole.findAll({
+        where: { id: r2Fetch },
+        include: 'Permissions',
+        useMaster: true,
+        transaction: null,
+      }),
+    );
 
     const mappedRoles = mappedRolesToIds(roles);
     const roles2Save = {
@@ -58,15 +64,15 @@ export class GuardCache extends NodeCache {
  */
 function mappedPermsToIds(
   objects: GuardPermissionModel[],
-): Record<number, GuardPermissionModel> {
-  const mappedObj: Record<number, GuardPermissionModel> = {};
+): Record<number, GuardPermissionData> {
+  const mappedObj: Record<number, GuardPermissionData> = {};
 
   if (!objects) {
     return mappedObj;
   }
 
   objects.forEach((obj) => {
-    mappedObj[obj['id']] = obj.toJSON ? obj.toJSON() : obj;
+    mappedObj[obj['id']] = obj.toJSON<GuardPermissionData>();
   });
 
   return mappedObj;
@@ -127,17 +133,23 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
     if (!this._cacheReady) {
       const initialization = Promise.resolve()
         .then(async () => {
-          const roles = await this.models().GuardRole.findAll({
-            include: 'Permissions',
-            useMaster: true,
-          });
-
-          const mappedRoles = mappedRolesToIds(roles);
-
-          const perms = await this.models().GuardPermission.findAll({
-            useMaster: true,
-          });
-          const mappedPerms = mappedPermsToIds(perms);
+          const { mappedRoles, mappedPerms } = await this._readCommitted(
+            async () => {
+              const roles = await this.models().GuardRole.findAll({
+                include: 'Permissions',
+                useMaster: true,
+                transaction: null,
+              });
+              const perms = await this.models().GuardPermission.findAll({
+                useMaster: true,
+                transaction: null,
+              });
+              return {
+                mappedRoles: mappedRolesToIds(roles),
+                mappedPerms: mappedPermsToIds(perms),
+              };
+            },
+          );
 
           // A reset supersedes an in-flight snapshot.
           if (this._cacheReady !== initialization) return this.getCache();
