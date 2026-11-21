@@ -6,7 +6,7 @@ import {
   InferAttributes,
   InferCreationAttributes,
 } from 'sequelize';
-import type { GuardRoleModel } from '../sequelize-models';
+import type { GuardRoleData, GuardRoleModel } from '../sequelize-models';
 import type { SequelizeGuardType } from '../SequelizeGuard';
 import type {
   RoleCreationResult,
@@ -18,6 +18,7 @@ import type {
   UnsubscribeFn,
   GuardEventCallback,
   RoleCreationParam,
+  GuardCreationResult,
 } from '../types';
 
 /**
@@ -56,10 +57,10 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
    * @param roles
    * @param options
    */
-  SequelizeGuard.prototype.makeRoles = async function (
-    roles: RoleCreationParam[],
-    options: CreateRolesOptions = { json: true },
-  ): Promise<GuardRoleModel[]> {
+  SequelizeGuard.prototype.makeRoles = async function <
+    TOptions extends [options?: CreateRolesOptions],
+  >(roles: RoleCreationParam[], ...[givenOptions]: TOptions) {
+    const options = givenOptions ?? { json: true };
     const sanitizedRoles = sanitizeRolesInput(roles);
     let roles2insert = [...sanitizedRoles];
 
@@ -87,10 +88,20 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
       const existingFiltered = lodash.filter(existRoles, (r) =>
         toRemove.map((t) => t.name).includes(r.name),
       );
-      result = lodash.concat(existingFiltered, result);
+      result = lodash.concat(
+        options.json
+          ? existingFiltered.map((role) => role.toJSON())
+          : existingFiltered,
+        result,
+      );
     }
 
-    return result;
+    return result as GuardCreationResult<
+      TOptions[0],
+      GuardRoleModel,
+      GuardRoleData,
+      GuardRoleData
+    >;
   };
 
   /**

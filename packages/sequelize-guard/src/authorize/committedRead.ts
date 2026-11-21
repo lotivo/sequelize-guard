@@ -88,12 +88,12 @@ export class CommittedReadBarrier {
 
   private async observeSql<T>(sql: string, run: () => Promise<T>): Promise<T> {
     const statement = sql
-      .replace(/^(?:\s|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)+/, '')
+      .replace(/^(?:;|\s|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)+/, '')
       .trim();
     const beginsTransaction = /^(?:BEGIN|START\s+TRANSACTION)\b/i.test(
       statement,
     );
-    const savepoint = /^SAVEPOINT\s+([\s\S]+)/i.exec(statement);
+    const savepoint = /^SAVEPOINT\b([\s\S]*)/i.exec(statement);
     const begins = beginsTransaction || Boolean(savepoint);
     // sqlite3 can accept a line-comment-only first statement without running
     // the control SQL after it. Never clear uncertainty from a commented end.
@@ -105,7 +105,9 @@ export class CommittedReadBarrier {
       );
     const ends =
       /^(?:COMMIT|END)\b/i.test(closing) ||
-      (/^ROLLBACK\b/i.test(closing) && !rollbackTo);
+      // Only a whole-transaction rollback clears uncertainty. A rollback
+      // to a savepoint can contain comments between its SQL tokens.
+      /^ROLLBACK(?:\s+TRANSACTION)?\s*;?\s*$/i.test(closing);
     if (begins) {
       this.sqlScopes.push(savepoint ? savepointName(savepoint[1]) : null);
       this.active++;
@@ -196,7 +198,9 @@ export class CommittedReadBarrier {
 }
 
 function savepointName(value: string): string | null {
-  const input = value.trim();
+  const input = value
+    .replace(/^(?:\s|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)+/, '')
+    .trim();
   const quoted = /^"((?:[^"]|"")*)"/.exec(input);
   if (quoted) return quoted[1].replace(/""/g, '"').toLowerCase();
   const single = /^'((?:[^']|'')*)'/.exec(input);

@@ -201,12 +201,12 @@ describe('committed authorization on in-memory SQLite', () => {
       .GuardUser.build({ id: 1 }, { isNewRecord: false });
     expect(await user.isA!('reader')).toBe(false);
 
-    await rawQuery('/* pending grant */ SAVEPOINT outer_policy');
+    await rawQuery('/* pending grant */ SAVEPOINT /* scope */ outer_policy');
     await rawQuery(
       'INSERT INTO guard_role_user (role_id, user_id) VALUES (1, 1)',
     );
     await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
-    await rawQuery('ROLLBACK TRANSACTION TO SAVEPOINT outer_policy');
+    await rawQuery('ROLLBACK TRANSACTION /* partial */ TO SAVEPOINT outer_policy');
     await expect(user.isA!('reader')).rejects.toThrow(/SQLite transaction/);
     await rawQuery('RELEASE SAVEPOINT outer_policy');
     expect(await user.isA!('reader')).toBe(false);

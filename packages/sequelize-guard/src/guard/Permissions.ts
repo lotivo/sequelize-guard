@@ -14,6 +14,8 @@ import type {
   BulkPermissionInput,
   PermissionData,
   GuardEventCallback,
+  GuardCreationResult,
+  GuardPermissionData,
   UnsubscribeFn,
 } from '../types';
 
@@ -30,13 +32,22 @@ export function extendWithPermissions(
    * @param actions
    * @param options
    */
-  SequelizeGuard.prototype.createPerms = async function (
+  SequelizeGuard.prototype.createPerms = async function <
+    TOptions extends [options?: CreatePermsOptions],
+  >(
     resources: string | string[],
     actions: string | string[],
-    options: CreatePermsOptions = {},
-  ): Promise<GuardPermissionModel[]> {
-    const permissions = this._sanitizePermsInput(resources, actions, options);
-    return insertPermissionsToDb(this, permissions, options);
+    ...[options]: TOptions
+  ) {
+    const resolved = options ?? {};
+    const permissions = this._sanitizePermsInput(resources, actions, resolved);
+    return insertPermissionsToDb(this, permissions, resolved) as Promise<
+      GuardCreationResult<
+        TOptions[0],
+        GuardPermissionModel,
+        GuardPermissionData
+      >
+    >;
   };
 
   /**
@@ -44,10 +55,9 @@ export function extendWithPermissions(
    * @param permissions
    * @param options
    */
-  SequelizeGuard.prototype.createPermsBulk = async function (
-    permissions: BulkPermissionInput[],
-    options: CreatePermsOptions = {},
-  ): Promise<GuardPermissionModel[]> {
+  SequelizeGuard.prototype.createPermsBulk = async function <
+    TOptions extends [options?: CreatePermsOptions],
+  >(permissions: BulkPermissionInput[], ...[options]: TOptions) {
     const sanitized = permissions.map((p) => {
       let _acts: string[] = [];
       if (typeof p.actions === 'string') _acts = [p.actions];
@@ -60,7 +70,13 @@ export function extendWithPermissions(
       };
     });
 
-    return insertPermissionsToDb(this, sanitized, options);
+    return insertPermissionsToDb(this, sanitized, options ?? {}) as Promise<
+      GuardCreationResult<
+        TOptions[0],
+        GuardPermissionModel,
+        GuardPermissionData
+      >
+    >;
   };
 
   /**

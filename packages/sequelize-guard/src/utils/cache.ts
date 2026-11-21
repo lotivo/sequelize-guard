@@ -2,6 +2,7 @@ import lodash from 'lodash';
 import NodeCache from 'node-cache';
 import { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
 import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
+import type { GuardPermissionData } from '../types';
 
 /**
  * Extended NodeCache with Guard-specific methods
@@ -11,7 +12,8 @@ export class GuardCache extends NodeCache {
     return this.get('roles') || {};
   }
 
-  getPerms(): Record<number, GuardPermissionModel> {
+  /** Cached permissions are plain attribute data. */
+  getPerms(): Record<number, GuardPermissionData> {
     return this.get('perms') || {};
   }
 
@@ -19,7 +21,7 @@ export class GuardCache extends NodeCache {
     return this.set('roles', roles);
   }
 
-  setPerms(perms: Record<number, GuardPermissionModel>): boolean {
+  setPerms(perms: Record<number, GuardPermissionData>): boolean {
     return this.set('perms', perms);
   }
 
@@ -61,15 +63,15 @@ export class GuardCache extends NodeCache {
  */
 function mappedPermsToIds(
   objects: GuardPermissionModel[],
-): Record<number, GuardPermissionModel> {
-  const mappedObj: Record<number, GuardPermissionModel> = {};
+): Record<number, GuardPermissionData> {
+  const mappedObj: Record<number, GuardPermissionData> = {};
 
   if (!objects) {
     return mappedObj;
   }
 
   objects.forEach((obj) => {
-    mappedObj[obj['id']] = obj.toJSON ? obj.toJSON() : obj;
+    mappedObj[obj['id']] = obj.toJSON<GuardPermissionData>();
   });
 
   return mappedObj;

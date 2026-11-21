@@ -20,7 +20,9 @@ import type {
   CreateRolesOptions,
   FindPermsArgs,
   FindRolesArgs,
+  GuardCreationResult,
   GuardEventCallback,
+  GuardPermissionData,
   PermissionData,
   RemovePermsFromRoleResult,
   RoleCreationParam,
@@ -190,15 +192,21 @@ export class SequelizeGuard extends SequelizeGuardBase {
   ) => Promise<AddPermsToRoleResult>;
 
   // Permission guard methods
-  declare createPerms: (
+  /** Create permission bundles. `json: true` returns plain data. */
+  declare createPerms: <TOptions extends [options?: CreatePermsOptions]>(
     resources: string | string[],
     actions: string | string[],
-    options?: CreatePermsOptions,
-  ) => Promise<GuardPermissionModel[]>;
-  declare createPermsBulk: (
+    ...options: TOptions
+  ) => Promise<
+    GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
+  >;
+  /** Create bundles with separate resources and actions. `json: true` returns plain data. */
+  declare createPermsBulk: <TOptions extends [options?: CreatePermsOptions]>(
     permissions: BulkPermissionInput[],
-    options?: CreatePermsOptions,
-  ) => Promise<GuardPermissionModel[]>;
+    ...options: TOptions
+  ) => Promise<
+    GuardCreationResult<TOptions[0], GuardPermissionModel, GuardPermissionData>
+  >;
   declare findPerms: (args?: FindPermsArgs) => Promise<GuardPermissionModel[]>;
   declare onPermsCreated: (
     cb: GuardEventCallback<GuardPermissionModel[]>,
@@ -217,10 +225,18 @@ export class SequelizeGuard extends SequelizeGuardBase {
 
   // Role guard methods
   declare makeRole: (role: RoleCreationParam) => Promise<RoleCreationResult>;
-  declare makeRoles: (
+  /** Create roles. Omitted options return plain data; explicit options default to models. */
+  declare makeRoles: <TOptions extends [options?: CreateRolesOptions]>(
     roles: RoleCreationParam[],
-    options?: CreateRolesOptions,
-  ) => Promise<GuardRoleModel[]>;
+    ...options: TOptions
+  ) => Promise<
+    GuardCreationResult<
+      TOptions[0],
+      GuardRoleModel,
+      GuardRoleData,
+      GuardRoleData
+    >
+  >;
   declare deleteRoles: (
     roles: string | RoleCreationParam[] | GuardRoleModel[],
   ) => Promise<number>;
