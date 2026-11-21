@@ -89,6 +89,20 @@ describe('Guard synchronization', () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it('allows retrying an interrupted sync while ordinary reads reject the partial layout', async () => {
+    const guard = new SequelizeGuard(sequelize, { sync: false });
+    await guard.ready;
+    vi.spyOn(guard.models().GuardUser, 'sync').mockRejectedValueOnce(
+      new Error('interrupted sync'),
+    );
+    await expect(guard.sync()).rejects.toThrow('interrupted sync');
+    await expect(guard.findRoles()).rejects.toThrow(
+      'Incomplete legacy Guard schema',
+    );
+    await expect(guard.sync()).resolves.toBe(guard);
+    await expect(guard.findRoles()).resolves.toEqual([]);
+  });
+
   it('refuses a partial same-name schema before creating or dropping tables', async () => {
     const query = sequelize.getQueryInterface();
     await query.createTable('guard_roles', {

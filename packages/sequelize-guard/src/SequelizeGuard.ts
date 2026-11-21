@@ -231,7 +231,10 @@ export class SequelizeGuard<
       },
       completedSyncModels: this.completedSyncModels,
     };
-    installLegacyCompatibility(this.sequelize, this._models, this.legacySchema);
+    installLegacyCompatibility(this.sequelize, this._models, {
+      ...this.legacySchema,
+      completedSyncModels: new Set(),
+    });
 
     this.ready = this.options.sync
       ? this.sync().then(() => undefined)
