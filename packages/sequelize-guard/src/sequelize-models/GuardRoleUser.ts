@@ -7,13 +7,14 @@ import {
   ModelStatic,
 } from 'sequelize';
 import { GuardRoleModel, GuardRoleModelStatic } from './GuardRole';
-import { GuardUserModel, GuardUserModelStatic } from './GuardUser';
+import { GuardUserModelStatic } from './GuardUser';
 import {
   AssociationModelType,
   getTableName,
   ModelClassNameMap,
 } from './types/ModelType';
 import { GuardModelInitParams, SequelizeModelClass } from './types/types';
+import type { UserKey } from './user-key';
 import { modelOptions } from './utils';
 
 /**
@@ -22,7 +23,7 @@ import { modelOptions } from './utils';
 export interface RoleUserModel extends SequelizeModelClass<RoleUserModel> {
   id: CreationOptional<number>;
   role_id: ForeignKey<GuardRoleModel['id']>;
-  user_id: ForeignKey<GuardUserModel['id']>;
+  user_id: ForeignKey<string | number>;
 }
 
 export type GuardRoleUserModelStatic = ModelStatic<RoleUserModel>;
@@ -33,6 +34,7 @@ export const initGuardRoleUser = (
     GuardRole: GuardRoleModelStatic;
     GuardUser: GuardUserModelStatic;
   },
+  userKey: UserKey,
 ): GuardRoleUserModelStatic => {
   const { sequelize, options } = params;
   const { GuardRole, GuardUser } = models;
@@ -51,8 +53,9 @@ export const initGuardRoleUser = (
     },
     userReference: {
       model: GuardUser,
-      key: options.userPk,
+      key: userKey.column,
     },
+    userType: userKey.type,
   });
 
   // Define RoleUser junction model
@@ -72,15 +75,21 @@ export const initGuardRoleUser = (
 
   // Set up Role-User many-to-many association
   GuardRole.belongsToMany(GuardUser, {
-    through: RoleUser,
+    through: { model: RoleUser, unique: false },
+    constraints: false,
     as: 'Users',
     foreignKey: roleColId,
+    otherKey: userColId,
+    targetKey: userKey.attribute,
   });
 
   GuardUser.belongsToMany(GuardRole, {
-    through: RoleUser,
+    through: { model: RoleUser, unique: false },
+    constraints: false,
     as: 'Roles',
     foreignKey: userColId,
+    otherKey: roleColId,
+    sourceKey: userKey.attribute,
   });
 
   return RoleUser;
@@ -89,8 +98,9 @@ export const initGuardRoleUser = (
 export const getGuardRoleUserSchema = (params?: {
   roleReference?: ModelAttributeColumnReferencesOptions;
   userReference?: ModelAttributeColumnReferencesOptions;
+  userType?: UserKey['type'];
 }) => {
-  const { roleReference, userReference } = params || {};
+  const { roleReference, userReference, userType } = params || {};
 
   const schema: ModelAttributes<RoleUserModel> = {
     id: {
@@ -105,7 +115,7 @@ export const getGuardRoleUserSchema = (params?: {
       onDelete: 'cascade',
     },
     user_id: {
-      type: DataTypes.INTEGER,
+      type: userType || DataTypes.INTEGER,
       allowNull: false,
       references: userReference,
       onDelete: 'cascade',

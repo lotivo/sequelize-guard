@@ -34,6 +34,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     role: RoleCreationParam,
     description?: string,
   ): Promise<RoleCreationResult> {
+    this._assertModelBindings();
     if (!role) throw new Error('Role must be string with length not zero');
 
     const roleData = makeRoleData(role);
@@ -60,6 +61,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.makeRoles = async function <
     TOptions extends [options?: CreateRolesOptions],
   >(roles: RoleCreationParam[], ...[givenOptions]: TOptions) {
+    this._assertModelBindings();
     const options = givenOptions ?? { json: true };
     const sanitizedRoles = sanitizeRolesInput(roles);
     let roles2insert = [...sanitizedRoles];
@@ -111,6 +113,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.deleteRoles = async function (
     roles: string | RoleCreationParam[] | GuardRoleModel[],
   ): Promise<number> {
+    this._assertModelBindings();
     const sanitizedRoles = sanitizeRolesInput(roles);
     const rolesToDelete = await this._models.GuardRole.findAll({
       where: { name: { [Op.in]: sanitizedRoles.map((role) => role.name) } },
@@ -135,7 +138,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.allRoles = async function (): Promise<
     GuardRoleModel[]
   > {
-    return this.committedReads.read(() =>
+    return this._readCommitted(() =>
       this._models.GuardRole.findAll({ useMaster: true, transaction: null }),
     );
   };
@@ -147,7 +150,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.getRole = async function (
     role: string,
   ): Promise<GuardRoleModel | null> {
-    return this.committedReads.read(() =>
+    return this._readCommitted(() =>
       this._models.GuardRole.findOne({
         where: { name: role.toLowerCase() },
         useMaster: true,
@@ -188,7 +191,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
       cond.include = 'Parent';
     }
 
-    const roles = await this.committedReads.read(() =>
+    const roles = await this._readCommitted(() =>
       this._models.GuardRole.findAll({
         ...cond,
         useMaster: true,
@@ -209,6 +212,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     actions: string | string[],
     resources: string | string[],
   ): Promise<AddPermsToRoleResult> {
+    this._assertModelBindings();
     const perms = await this.createPerms(resources, actions, {
       all: true,
     });
@@ -245,6 +249,7 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
     actions: string | string[],
     resources: string | string[],
   ): Promise<RemovePermsFromRoleResult> {
+    this._assertModelBindings();
     const perms2rmIn = this._sanitizePermsInput(resources, actions);
 
     const { role: roleModel } = await this.makeRole(role);

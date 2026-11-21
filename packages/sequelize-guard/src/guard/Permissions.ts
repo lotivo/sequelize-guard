@@ -39,9 +39,14 @@ export function extendWithPermissions(
     actions: string | string[],
     ...[options]: TOptions
   ) {
+    this._assertModelBindings();
     const resolved = options ?? {};
     const permissions = this._sanitizePermsInput(resources, actions, resolved);
-    return insertPermissionsToDb(this, permissions, resolved) as Promise<
+    return insertPermissionsToDb(
+      this as unknown as SequelizeGuard,
+      permissions,
+      resolved,
+    ) as Promise<
       GuardCreationResult<
         TOptions[0],
         GuardPermissionModel,
@@ -58,6 +63,7 @@ export function extendWithPermissions(
   SequelizeGuard.prototype.createPermsBulk = async function <
     TOptions extends [options?: CreatePermsOptions],
   >(permissions: BulkPermissionInput[], ...[options]: TOptions) {
+    this._assertModelBindings();
     const sanitized = permissions.map((p) => {
       let _acts: string[] = [];
       if (typeof p.actions === 'string') _acts = [p.actions];
@@ -70,7 +76,11 @@ export function extendWithPermissions(
       };
     });
 
-    return insertPermissionsToDb(this, sanitized, options ?? {}) as Promise<
+    return insertPermissionsToDb(
+      this as unknown as SequelizeGuard,
+      sanitized,
+      options ?? {},
+    ) as Promise<
       GuardCreationResult<
         TOptions[0],
         GuardPermissionModel,
@@ -111,7 +121,7 @@ export function extendWithPermissions(
       cond.where = { [Op.or]: wheres };
     }
 
-    const perms = await this.committedReads.read(() =>
+    const perms = await this._readCommitted(() =>
       this._models.GuardPermission.findAll({
         ...cond,
         useMaster: true,

@@ -8,6 +8,12 @@ import type { GuardPermissionData } from '../types';
  * Extended NodeCache with Guard-specific methods
  */
 export class GuardCache extends NodeCache {
+  constructor(options: NodeCache.Options = {}) {
+    // Sequelize instances can retain dialect connections. Deep-cloning them
+    // traverses sockets and fails on PostgreSQL/MySQL internal properties.
+    super({ ...options, useClones: false });
+  }
+
   getRoles(): Record<number, GuardRoleModel> {
     return this.get('roles') || {};
   }
@@ -28,6 +34,7 @@ export class GuardCache extends NodeCache {
   async getRolesWithPerms(
     guard: SequelizeGuard,
   ): Promise<Record<number, GuardRoleModel>> {
+    guard._assertModelBindings();
     const cRoles = lodash.values(this.getRoles());
     const r2Fetch = cRoles
       .filter((role) => !role.Permissions)
@@ -37,7 +44,7 @@ export class GuardCache extends NodeCache {
       return this.getRoles();
     }
 
-    const roles = await guard.committedReads.read(() =>
+    const roles = await guard._readCommitted(() =>
       guard.models().GuardRole.findAll({
         where: { id: r2Fetch },
         include: 'Permissions',
@@ -116,7 +123,7 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.resetCache = function (): GuardCache {
     if (!this._cache) {
       this._cache = new GuardCache();
-      bindGuardListeners(this);
+      bindGuardListeners(this as unknown as SequelizeGuard);
     }
     this._cache.flushAll();
     this._cacheReady = undefined;
@@ -127,11 +134,12 @@ export function extendWithCache(SequelizeGuard: SequelizeGuardType): void {
    * Get or create cache instance
    */
   SequelizeGuard.prototype.getCache = async function (): Promise<GuardCache> {
+    this._assertModelBindings();
     const cache = this._cache ?? this.resetCache();
     if (!this._cacheReady) {
       const initialization = Promise.resolve()
         .then(async () => {
-          const { mappedRoles, mappedPerms } = await this.committedReads.read(
+          const { mappedRoles, mappedPerms } = await this._readCommitted(
             async () => {
               const roles = await this.models().GuardRole.findAll({
                 include: 'Permissions',
