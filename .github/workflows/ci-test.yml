@@ -45,12 +45,9 @@ jobs:
       - name: Detect if library is affected
         id: affected
         run: |
-          AFFECTED=$(yarn --silent nx show projects --affected)
-          if echo "$AFFECTED" | grep -xq "sequelize-guard"; then
-            echo "library=true" >> $GITHUB_OUTPUT
-          else
-            echo "library=false" >> $GITHUB_OUTPUT
-          fi
+          affected_projects=$(yarn --silent nx show projects --affected --json)
+          library_affected=$(node -p 'JSON.parse(process.argv[1]).includes("sequelize-guard")' "$affected_projects")
+          printf 'library=%s\n' "$library_affected" >> "$GITHUB_OUTPUT"
 
       - name: Run lint
         # This runs lint with eslint
@@ -58,8 +55,9 @@ jobs:
 
       - name: Run tests and generate coverage
         if: steps.affected.outputs.library == 'true'
-        # This runs vitest with coverage enabled
-        run: npx nx affected -t test:coverage --parallel=3
+        run: |
+          yarn nx run sequelize-guard:test:coverage --skip-nx-cache
+          test -s packages/sequelize-guard/coverage/lcov.info
 
       - name: Test docs search index
         run: yarn nx run sequelize-guard-docs:test --skip-nx-cache
@@ -73,6 +71,8 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           base-path: packages/sequelize-guard
+          file: packages/sequelize-guard/coverage/lcov.info
+          format: lcov
 
       - name: Build the library
         run: npx nx affected -t build --parallel=3
