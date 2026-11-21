@@ -48,6 +48,10 @@ await guard.sync({ logging: false });
 
 Synchronization includes the configured `UserModel`, if supplied, and excludes unrelated Sequelize models. `force: true` drops tables and `alter` can remove data. Use migrations for production schema changes, and run synchronization before serving requests. If migrations already created the tables, use `sync: false` and call `await guard.getCache()` after migrations to initialize the legacy administrative snapshot without synchronizing tables.
 
+Pass an initialized `UserModel` from the same Sequelize instance. Its single primary key may be `INTEGER`, `STRING` (including `CHAR`), or `UUID`; the guard junction uses the matching column type. `userPk`, when supplied, must name that key's attribute or database column. Each Sequelize instance supports one guard for its lifetime. Define application models and schema defaults before constructing it.
+
+TypeScript infers the custom user type from `new SequelizeGuard(sequelize, { UserModel })`. If you store options separately, use `GuardOptions<YourUserModel>` to preserve that type.
+
 `guard.init()` starts a fluent permission statement; it does not initialize the database.
 
 Configure schema routing on Sequelize before constructing the guard. An explicit `sync({ schema })` must match every model's existing schema, including a supplied `UserModel`. Per-call `searchPath` overrides are rejected because later cache and authorization queries would not share them. Both checks reject before database work.

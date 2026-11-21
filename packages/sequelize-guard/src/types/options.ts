@@ -1,10 +1,10 @@
-import type { ModelStatic } from 'sequelize';
-import { GuardUserModel } from '../sequelize-models';
+import type { Model, ModelStatic } from 'sequelize';
+import type { GuardUserModel } from '../sequelize-models';
 
 /**
  * Configuration options for SequelizeGuard
  */
-export interface GuardOptions {
+export interface GuardOptions<TUser extends Model = GuardUserModel> {
   /**
    * Table names configuration
    */
@@ -55,13 +55,14 @@ export interface GuardOptions {
   debug?: boolean;
 
   /**
-   * Model used for User (pass model, not string name)
+   * Initialized application user model on the same Sequelize instance.
    * @default null
    */
-  UserModel?: ModelStatic<GuardUserModel> | null;
+  UserModel?: ModelStatic<TUser> | null;
 
   /**
-   * Primary key used for User Model
+   * Attribute or column name of the supplied UserModel's single primary key.
+   * Omit to use its declared primary key; the built-in user uses `id`.
    * @default 'id'
    */
   userPk?: string;
@@ -90,6 +91,6 @@ export interface GuardOptions {
 /**
  * Internal options with all defaults applied
  */
-export interface GuardInternalOptions extends Required<GuardOptions> {
-  tables: Required<NonNullable<GuardOptions['tables']>>;
+export interface GuardInternalOptions extends Required<GuardOptions<Model>> {
+  tables: Required<NonNullable<GuardOptions<Model>['tables']>>;
 }
