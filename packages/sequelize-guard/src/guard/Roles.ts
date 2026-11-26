@@ -470,19 +470,8 @@ export async function createRoles(
       results.set(role.name, { role, created: false });
     }
     const fresh = chunk.filter(({ name }) => !results.has(name));
-    if (fresh.length) {
-      await guard._models.GuardRole.bulkCreate(fresh, { transaction });
-      const created = await lockRoles(
-        guard,
-        fresh.map(({ name }) => name),
-        transaction,
-      );
-      if (created.length !== fresh.length) {
-        throw new Error('Could not resolve all newly created roles');
-      }
-      for (const role of created) {
-        results.set(role.name, { role, created: true });
-      }
+    for (const roleData of fresh) {
+      results.set(roleData.name, await createRole(guard, roleData, transaction));
     }
   }
 
