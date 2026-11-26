@@ -44,6 +44,7 @@ import type {
   GuardEventCallback,
   GuardPermissionData,
   PermissionData,
+  PolicyMutationOptions,
   RemovePermsFromRoleResult,
   RoleCreationParam,
   RoleCreationResult,
@@ -347,6 +348,7 @@ export class SequelizeGuard<
     role: string,
     actions: string | string[],
     resources: string | string[],
+    options?: PolicyMutationOptions,
   ) => Promise<AddPermsToRoleResult>;
 
   // Permission guard methods
@@ -382,7 +384,10 @@ export class SequelizeGuard<
   ) => PermissionData[];
 
   // Role guard methods
-  declare makeRole: (role: RoleCreationParam) => Promise<RoleCreationResult>;
+  declare makeRole: (
+    role: RoleCreationParam,
+    options?: PolicyMutationOptions,
+  ) => Promise<RoleCreationResult>;
   /** Create roles. Omitted options return plain data; explicit options default to models. */
   declare makeRoles: <TOptions extends [options?: CreateRolesOptions]>(
     roles: RoleCreationParam[],
@@ -397,6 +402,7 @@ export class SequelizeGuard<
   >;
   declare deleteRoles: (
     roles: string | RoleCreationParam[] | GuardRoleModel[],
+    options?: PolicyMutationOptions,
   ) => Promise<number>;
   declare allRoles: () => Promise<GuardRoleModel[]>;
   declare getRole: (role: string) => Promise<GuardRoleModel | null>;
@@ -405,11 +411,13 @@ export class SequelizeGuard<
     role: string | GuardRoleModel,
     actions: string | string[],
     resources: string | string[],
+    options?: PolicyMutationOptions,
   ) => Promise<AddPermsToRoleResult>;
   declare rmPermsFromRole: (
     role: string,
     actions: string | string[],
     resources: string | string[],
+    options?: PolicyMutationOptions,
   ) => Promise<RemovePermsFromRoleResult>;
   declare onRolesCreated: (
     cb: GuardEventCallback<GuardRoleModel[]>,
@@ -419,10 +427,22 @@ export class SequelizeGuard<
   ) => UnsubscribeFn;
 
   // User guard methods
-  declare makeUser: () => Promise<TUser>;
-  declare assignRole: (user: TUser, role: string) => Promise<TUser>;
-  declare assignRoles: (user: TUser, roles: string[]) => Promise<void>;
-  declare rmAssignedRoles: (user: TUser, roles: string[]) => Promise<void>;
+  declare makeUser: (options?: PolicyMutationOptions) => Promise<TUser>;
+  declare assignRole: (
+    user: TUser,
+    role: string,
+    options?: PolicyMutationOptions,
+  ) => Promise<TUser>;
+  declare assignRoles: (
+    user: TUser,
+    roles: string[],
+    options?: PolicyMutationOptions,
+  ) => Promise<void>;
+  declare rmAssignedRoles: (
+    user: TUser,
+    roles: string[],
+    options?: PolicyMutationOptions,
+  ) => Promise<void>;
   declare getUserRoles: (user: TUser) => Promise<GuardRoleData[]>;
 
   //User permission resolution methods

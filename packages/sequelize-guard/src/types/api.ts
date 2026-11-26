@@ -1,3 +1,4 @@
+import type { Transaction } from 'sequelize';
 import type { GuardPermissionModel, GuardRoleModel } from '../sequelize-models';
 
 /** Plain permission attributes returned by `json: true`. */
@@ -47,15 +48,28 @@ export interface AddPermsToRoleResult {
  * Result from removing permissions from role
  */
 export interface RemovePermsFromRoleResult {
-  role: GuardRoleModel;
+  /** Null when the requested role does not exist. */
+  role: GuardRoleModel | null;
+  /** Active direct permissions remaining after removal. */
   permissions: GuardPermissionModel[];
+  /** Original permission bundles unlinked from the role, including replaced bundles. */
   permsRemoved: GuardPermissionModel[];
+}
+
+/** Options for a policy mutation. */
+export interface PolicyMutationOptions {
+  /**
+   * An outermost transaction on the guard's Sequelize instance. Await queries
+   * and mutations on this transaction sequentially. The guard uses a savepoint
+   * and suppresses its events. Callers own notifications after commit.
+   */
+  transaction?: Transaction;
 }
 
 /**
  * Options for creating permissions
  */
-export interface CreatePermsOptions {
+export interface CreatePermsOptions extends PolicyMutationOptions {
   name?: string;
   names?: string[];
   all?: boolean;
@@ -65,7 +79,7 @@ export interface CreatePermsOptions {
 /**
  * Options for creating roles
  */
-export interface CreateRolesOptions {
+export interface CreateRolesOptions extends PolicyMutationOptions {
   json?: boolean;
   all?: boolean;
 }
@@ -113,8 +127,8 @@ export interface PermissionData {
  */
 export interface RoleData {
   name: string;
-  description?: string;
-  parent_id?: number;
+  description?: string | null;
+  parent_id?: number | null;
 }
 
 /**

@@ -20,8 +20,8 @@ import { modelOptions } from './utils';
 export type GuardRoleData = {
   id: CreationOptional<number>;
   name: string;
-  description?: string;
-  parent_id?: ForeignKey<GuardRoleModel['id']>;
+  description?: string | null;
+  parent_id?: ForeignKey<GuardRoleModel['id']> | null;
 };
 
 /**

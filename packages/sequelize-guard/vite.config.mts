@@ -87,7 +87,7 @@ export default defineConfig({
     },
 
     rollupOptions: {
-      external: ['sequelize', 'lodash', 'node-cache', 'events'],
+      external: ['sequelize', 'lodash', 'node-cache', 'events', 'node:crypto'],
       output: {
         preserveModules: false,
         exports: 'named',

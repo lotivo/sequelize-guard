@@ -116,5 +116,6 @@ export function installLegacyCompatibility(
     model.addHook('beforeBulkCreate', ensure);
     model.addHook('beforeUpdate', ensure);
     model.addHook('beforeDestroy', ensure);
+    model.addHook('beforeRestore', ensure);
   }
 }

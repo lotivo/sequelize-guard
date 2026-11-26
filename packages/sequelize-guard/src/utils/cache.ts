@@ -182,13 +182,7 @@ function bindGuardListeners(guard: SequelizeGuard): void {
   const cache = guard._cache as GuardCache;
 
   guard.onRolesCreated((roles) => {
-    const rolesData = roles.map((role) => {
-      const r = role;
-      r.Permissions = [];
-      return r;
-    });
-
-    const mappedRoles = mappedRolesToIds(rolesData);
+    const mappedRoles = mappedRolesToIds(roles);
     cache.setRoles({
       ...cache.getRoles(),
       ...mappedRoles,

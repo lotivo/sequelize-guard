@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createTestDatabase, closeTestDatabase, TestContext } from './setup';
 
 describe('Control and Guard Setup', () => {
@@ -21,16 +21,49 @@ describe('Control and Guard Setup', () => {
       expect(res._roles).toContain('admin');
     });
 
-    it('should not accept anything other than string for role', () => {
-      // setup
-      // execute
-      const res = context.guard
-        .init()
-        .allow('admin')
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-        .allow(3 as any);
-      // assert
-      expect(res._roles).toContain('admin');
+    it('rejects invalid builder input before changing the statement', () => {
+      const control = context.guard.init().allow('admin').to('view').on('blog');
+      expect(() => control.allow(3 as unknown as string)).toThrow('Role name');
+      expect(() => control.to(['edit', 'two words'])).toThrow('actions');
+      expect(() => control.on([])).toThrow('resource');
+      expect(control._roles).toBe('admin');
+      expect(control._actions).toEqual(['view']);
+      expect(control._resources).toEqual(['blog']);
+    });
+
+    it('keeps an incomplete statement available for completion', async () => {
+      const control = context.guard.init().allow('complete-later').to('read');
+      await expect(control.commit()).rejects.toThrow('resource');
+      const result = await control.on('article').commit();
+      expect(result.role.name).toBe('complete-later');
+    });
+
+    it('consumes each complete statement before calling the database', async () => {
+      const guard = context.guard;
+      const control = guard.init();
+      const commit = vi.spyOn(guard, 'addPermsToRole');
+      try {
+        const unavailable = new Error('write failed');
+        commit.mockRejectedValueOnce(unavailable);
+        const failed = control.allow('first').to('read').on('draft').commit();
+        const retried = control
+          .allow('second')
+          .to('edit')
+          .on('article')
+          .commit();
+        await expect(failed).rejects.toBe(unavailable);
+        await expect(retried).resolves.toMatchObject({
+          role: { name: 'second' },
+          permissions: [{ resource: 'article' }],
+        });
+        await expect(control.commit()).rejects.toThrow('Role name');
+        expect(commit.mock.calls.map((call) => call.slice(0, 3))).toEqual([
+          ['first', ['read'], ['draft']],
+          ['second', ['edit'], ['article']],
+        ]);
+      } finally {
+        commit.mockRestore();
+      }
     });
 
     it('should add view action to control', () => {

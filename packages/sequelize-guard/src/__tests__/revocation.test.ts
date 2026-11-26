@@ -1,7 +1,6 @@
 import { Sequelize } from 'sequelize';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SequelizeGuard } from '../index';
-import type { GuardRoleModel } from '../sequelize-models';
 import { closeTestDatabase, createTestDatabase, TestContext } from './setup';
 
 describe('Authorization after revocation', () => {
@@ -66,6 +65,7 @@ describe('Authorization after revocation', () => {
     expect(await user.can!('read document')).toBe(true);
     expect(await user.isA!('reader')).toBe(true);
 
+    guard.options.safeGuardDeletes = false;
     expect(await guard.deleteRoles('reader')).toBe(1);
 
     await expect(user.can!('read document')).resolves.toBe(false);
@@ -128,6 +128,7 @@ describe('Authorization after revocation', () => {
     await user.assignRole!('reader');
     expect(await user.can!('read document')).toBe(true);
 
+    other.options.safeGuardDeletes = false;
     expect(await other.deleteRoles('reader')).toBe(1);
     expect(await user.can!('read document')).toBe(false);
     expect(await user.isA!('reader')).toBe(false);
@@ -171,7 +172,7 @@ describe('Authorization after revocation', () => {
       expect(await user.can!('read document')).toBe(false);
     } finally {
       releaseRead.resolve();
-      await earlierRead;
+      await expect(earlierRead).rejects.toThrow(/SQLite transaction/);
     }
 
     expect(await user.can!('read document')).toBe(false);
@@ -201,25 +202,22 @@ describe('Authorization after revocation', () => {
     expect(await user.can!('read document')).toBe(true);
     const grantStarted = Promise.withResolvers<void>();
     const releaseGrant = Promise.withResolvers<void>();
-    const prototype = guard.models().GuardRole.prototype as GuardRoleModel;
-    const addPermissions = prototype.addPermissions!;
-    vi.spyOn(prototype, 'addPermissions').mockImplementationOnce(
-      async function (this: GuardRoleModel, permissions) {
+    const { RolePermission } = guard.models();
+    const bulkCreate = RolePermission.bulkCreate.bind(RolePermission);
+    vi.spyOn(RolePermission, 'bulkCreate').mockImplementationOnce(
+      async (records, options) => {
         grantStarted.resolve();
         await releaseGrant.promise;
-        return addPermissions.call(this, permissions);
+        return bulkCreate(records, options);
       },
     );
 
     const earlierGrant = guard.allow('reader', 'edit', 'document');
     await grantStarted.promise;
-    try {
-      const removal = await guard.rmPermsFromRole('reader', 'read', 'document');
-      expect(removal.permsRemoved).toHaveLength(1);
-    } finally {
-      releaseGrant.resolve();
-      await earlierGrant;
-    }
+    const removal = guard.rmPermsFromRole('reader', 'read', 'document');
+    releaseGrant.resolve();
+    await earlierGrant;
+    expect((await removal).permsRemoved).toHaveLength(1);
 
     expect(await user.can!('read document')).toBe(false);
     expect(await user.can!('edit document')).toBe(true);
