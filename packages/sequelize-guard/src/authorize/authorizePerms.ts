@@ -1,6 +1,11 @@
 import { Op } from 'sequelize';
 import { GuardUserModel } from '../sequelize-models';
 import type { SequelizeGuardType } from '../SequelizeGuard';
+import {
+  isPermissionToken,
+  parsePermissionRequest,
+  readPermissionActions,
+} from './permissionGrammar';
 
 /**
  * Extend SequelizeGuard with permission-based authorization
@@ -18,7 +23,7 @@ export function extendWithAuthorizePerms(
     user: GuardUserModel,
     permission: string,
   ): Promise<boolean> {
-    const requested = parseRequest(permission);
+    const requested = parsePermissionRequest(permission);
     if (!requested) return false;
     // Keep the membership and matching grants in one writer-backed read.
     const roles = await this._readCommitted(() =>
@@ -60,40 +65,20 @@ export function extendWithAuthorizePerms(
     givenPermissions,
     wantedPermission,
   ) {
-    const requested = parseRequest(wantedPermission);
+    const requested = parsePermissionRequest(wantedPermission);
     if (!requested) return false;
     return givenPermissions.some(({ resource, action }) => {
       if (
-        !validToken(resource) ||
+        !isPermissionToken(resource) ||
         (resource !== '*' && resource !== requested.resource)
-      )
-        return false;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(action);
-      } catch {
+      ) {
         return false;
       }
+      const actions = readPermissionActions(action);
       return (
-        Array.isArray(parsed) &&
-        parsed.every(validToken) &&
-        (parsed.includes('*') || parsed.includes(requested.action))
+        actions !== null &&
+        (actions.includes('*') || actions.includes(requested.action))
       );
     });
   };
-}
-
-function validToken(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && !/\s/.test(value);
-}
-
-function parseRequest(
-  value: string,
-): { action: string; resource: string } | null {
-  if (value === '*') return { action: '*', resource: '*' };
-  if (typeof value !== 'string') return null;
-  const parts = value.split(' ');
-  return parts.length === 2 && parts.every(validToken)
-    ? { action: parts[0], resource: parts[1] }
-    : null;
 }

@@ -1,13 +1,13 @@
 import lodash from 'lodash';
-import {
-  Op,
-  FindOptions,
-  WhereOptions,
-  InferAttributes,
-  InferCreationAttributes,
-} from 'sequelize';
-import type { GuardRoleData, GuardRoleModel } from '../sequelize-models';
-import type { SequelizeGuardType } from '../SequelizeGuard';
+import { Op } from 'sequelize';
+import type { FindOptions, InferAttributes, Model, Transaction } from 'sequelize';
+import { readPermissionActions } from '../authorize/permissionGrammar';
+import type {
+  GuardPermissionModel,
+  GuardRoleData,
+  GuardRoleModel,
+} from '../sequelize-models';
+import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
 import type {
   RoleCreationResult,
   FindRolesArgs,
@@ -16,10 +16,24 @@ import type {
   AddPermsToRoleResult,
   RemovePermsFromRoleResult,
   UnsubscribeFn,
+  GuardCreationResult,
   GuardEventCallback,
   RoleCreationParam,
-  GuardCreationResult,
+  PolicyMutationOptions,
 } from '../types';
+import {
+  canonicalPermissionActions,
+  createPermissions,
+  makePermission,
+  permissionInputs,
+} from './Permissions';
+import {
+  canArchiveLinks,
+  findOrInsertPolicyRecord,
+  mutatePolicy,
+  policyBatchSize,
+} from './policyMutation';
+import type { PolicyMutation } from './policyMutation';
 
 /**
  * Extend SequelizeGuard with role management methods
@@ -29,28 +43,28 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   /**
    * Creates a new role if not already present
    * @param role
+   * @param options
    */
   SequelizeGuard.prototype.makeRole = async function (
     role: RoleCreationParam,
-    description?: string,
+    options: PolicyMutationOptions = {},
   ): Promise<RoleCreationResult> {
-    this._assertModelBindings();
-    if (!role) throw new Error('Role must be string with length not zero');
-
     const roleData = makeRoleData(role);
-    const [createdRole, created] = await this._models.GuardRole.findOrCreate({
-      useMaster: true,
-      where: {
-        name: roleData.name,
+    return mutatePolicy(
+      this as unknown as SequelizeGuard<Model>,
+      options,
+      async (mutation) => {
+        const result = await createRole(
+          this as unknown as SequelizeGuard<Model>,
+          roleData,
+          mutation.transaction,
+        );
+        if (result.created) {
+          mutation.emitAfterCommit('onRolesCreated', [result.role]);
+        }
+        return result;
       },
-      defaults: {
-        ...roleData,
-        description,
-      },
-    });
-
-    this.emit('onRolesCreated', [createdRole]);
-    return { role: createdRole, created };
+    );
   };
 
   /**
@@ -60,44 +74,35 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
    */
   SequelizeGuard.prototype.makeRoles = async function <
     TOptions extends [options?: CreateRolesOptions],
-  >(roles: RoleCreationParam[], ...[givenOptions]: TOptions) {
-    this._assertModelBindings();
-    const options = givenOptions ?? { json: true };
-    const sanitizedRoles = sanitizeRolesInput(roles);
-    let roles2insert = [...sanitizedRoles];
-
-    const existRoles = await this._models.GuardRole.findAll({
-      useMaster: true,
-    });
-    const rNames = existRoles.map((d) => d.name);
-    const toRemove = roles2insert.filter((r) => rNames.indexOf(r.name) >= 0);
-    roles2insert = roles2insert.filter((r) => rNames.indexOf(r.name) < 0);
-
-    const insertedRoles = await this._models.GuardRole.bulkCreate(
-      roles2insert as Array<InferCreationAttributes<GuardRoleModel>>,
-    );
-
-    if (insertedRoles.length) {
-      this.emit('onRolesCreated', insertedRoles);
-    }
-
-    let result = insertedRoles;
-    if (options.json) {
-      result = result.map((role) => role.toJSON());
-    }
-
-    if (options.all) {
-      const existingFiltered = lodash.filter(existRoles, (r) =>
-        toRemove.map((t) => t.name).includes(r.name),
-      );
-      result = lodash.concat(
-        options.json
-          ? existingFiltered.map((role) => role.toJSON())
-          : existingFiltered,
-        result,
-      );
-    }
-
+  >(
+    roles: RoleCreationParam[],
+    ...[options]: TOptions
+  ): Promise<
+    GuardCreationResult<
+      TOptions[0],
+      GuardRoleModel,
+      GuardRoleData,
+      GuardRoleData
+    >
+  > {
+    const roleData = roleInputs(roles);
+    const result = roleData.length
+      ? await mutatePolicy(
+          this as unknown as SequelizeGuard<Model>,
+          options ?? {},
+          async (mutation) => {
+            const models = await createRoles(
+              this as unknown as SequelizeGuard<Model>,
+              roleData,
+              mutation,
+              options,
+            );
+            return options === undefined || options.json
+              ? models.map((role) => role.toJSON<GuardRoleData>())
+              : models;
+          },
+        )
+      : [];
     return result as GuardCreationResult<
       TOptions[0],
       GuardRoleModel,
@@ -109,54 +114,99 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   /**
    * Delete multiple roles
    * @param roles
+   * @param options
    */
   SequelizeGuard.prototype.deleteRoles = async function (
     roles: string | RoleCreationParam[] | GuardRoleModel[],
+    options: PolicyMutationOptions = {},
   ): Promise<number> {
-    this._assertModelBindings();
-    const sanitizedRoles = sanitizeRolesInput(roles);
-    const rolesToDelete = await this._models.GuardRole.findAll({
-      where: { name: { [Op.in]: sanitizedRoles.map((role) => role.name) } },
-      useMaster: true,
-    });
+    const names = roleInputs(roles).map((role) => role.name);
+    if (!names.length) return 0;
 
-    if (!rolesToDelete.length) return 0;
+    return mutatePolicy(
+      this as unknown as SequelizeGuard<Model>,
+      options,
+      async ({ transaction, emitAfterCommit }) => {
+        const rolesToDelete = await lockRoles(
+          this as unknown as SequelizeGuard<Model>,
+          names,
+          transaction,
+        );
+        if (!rolesToDelete.length) return 0;
 
-    const deletedCount = await this._models.GuardRole.destroy({
-      where: {
-        name: { [Op.in]: rolesToDelete.map((d) => d.name) },
+        const { GuardRole, RolePermission, RoleUser } = this._models;
+        const ids = rolesToDelete.map((role) => role.id);
+        const links = { where: { role_id: ids }, transaction, paranoid: false };
+        const children = {
+          where: { parent_id: ids },
+          transaction,
+          useMaster: true,
+        };
+
+        if (this.options.safeGuardDeletes) {
+          const checkOptions = {
+            transaction,
+            useMaster: true,
+            lock: true,
+            attributes: ['id'],
+          };
+          const associated =
+            (await RolePermission.findOne({ ...links, ...checkOptions })) ||
+            (await RoleUser.findOne({ ...links, ...checkOptions })) ||
+            (await GuardRole.findOne({ ...children, ...checkOptions }));
+          if (associated) {
+            throw new Error(
+              'Cannot delete roles with associated memberships, permissions, or child roles',
+            );
+          }
+        } else {
+          // Explicit cleanup also applies when the role itself is soft-deleted.
+          await RoleUser.destroy({ ...links, force: true });
+          await RolePermission.destroy({ ...links, force: true });
+          await GuardRole.update({ parent_id: null }, children);
+        }
+
+        const deleted = await GuardRole.destroy({
+          where: { id: ids },
+          transaction,
+        });
+        if (deleted) emitAfterCommit('onRolesDeleted', rolesToDelete);
+        return deleted;
       },
-    });
-
-    this.emit('onRolesDeleted', rolesToDelete);
-    return deletedCount;
+    );
   };
 
   /**
-   * Get all available roles
+   * Load all available roles and their permissions from the writer database.
    */
   SequelizeGuard.prototype.allRoles = async function (): Promise<
     GuardRoleModel[]
   > {
     return this._readCommitted(() =>
-      this._models.GuardRole.findAll({ useMaster: true, transaction: null }),
-    );
-  };
-
-  /**
-   * Get role by name
-   * @param role
-   */
-  SequelizeGuard.prototype.getRole = async function (
-    role: string,
-  ): Promise<GuardRoleModel | null> {
-    return this._readCommitted(() =>
-      this._models.GuardRole.findOne({
-        where: { name: role.toLowerCase() },
+      this._models.GuardRole.findAll({
+        include: 'Permissions',
         useMaster: true,
         transaction: null,
       }),
     );
+  };
+
+  /**
+   * Load a role and its permissions from the writer database.
+   */
+  SequelizeGuard.prototype.getRole = async function (
+    role: string,
+  ): Promise<GuardRoleModel | null> {
+    const name = normalizeRoleName(role);
+    const result = await this._readCommitted(() =>
+      this._models.GuardRole.findOne({
+        where: { name },
+        include: 'Permissions',
+        useMaster: true,
+        transaction: null,
+      }),
+    );
+    return result?.name === name ? result : null;
   };
 
   /**
@@ -166,39 +216,33 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   SequelizeGuard.prototype.findRoles = async function (
     args: FindRolesArgs = {},
   ): Promise<GuardRoleModel[]> {
-    const wheres: WhereOptions<InferAttributes<GuardRoleModel>>[] = [];
-    const cond: FindOptions<InferAttributes<GuardRoleModel>> = { where: {} };
-
-    if (args.names && args.names.length) {
-      if (args.search) {
-        args.names.forEach((name) => {
-          wheres.push({ name: { [Op.substring]: name } });
-        });
-      } else {
-        args.names.forEach((name) => {
-          wheres.push({ [Op.or]: { name } });
-        });
-      }
-    } else if (args.name) {
-      wheres.push({ name: args.name });
+    const names = args.names?.length
+      ? args.names
+      : args.name
+        ? [args.name]
+        : [];
+    const normalized = names.map(normalizeRoleName);
+    const cond: FindOptions<InferAttributes<GuardRoleModel>> = {
+      useMaster: true,
+      transaction: null,
+    };
+    if (normalized.length) {
+      cond.where = args.search
+        ? {
+            [Op.or]: normalized.map((name) => ({
+              name: { [Op.substring]: name },
+            })),
+          }
+        : { name: normalized };
     }
-
-    if (wheres.length > 0) {
-      cond.where = { [Op.or]: wheres };
-    }
-
-    if (args.withParent) {
-      cond.include = 'Parent';
-    }
+    if (args.withParent) cond.include = 'Parent';
 
     const roles = await this._readCommitted(() =>
-      this._models.GuardRole.findAll({
-        ...cond,
-        useMaster: true,
-        transaction: null,
-      }),
+      this._models.GuardRole.findAll(cond),
     );
-    return roles;
+    return args.search || !normalized.length
+      ? roles
+      : roles.filter((role) => normalized.includes(role.name));
   };
 
   /**
@@ -206,81 +250,130 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
    * @param role
    * @param actions
    * @param resources
+   * @param options
    */
   SequelizeGuard.prototype.addPermsToRole = async function (
     role: string | GuardRoleModel,
     actions: string | string[],
     resources: string | string[],
+    options: PolicyMutationOptions = {},
   ): Promise<AddPermsToRoleResult> {
-    this._assertModelBindings();
-    const perms = await this.createPerms(resources, actions, {
-      all: true,
+    const requested = permissionInputs(resources, actions);
+    const roleData = makeRoleData(role);
+    const guard = this as unknown as SequelizeGuard<Model>;
+    return mutatePolicy(guard, options, async (mutation) => {
+      const { transaction, emitAfterCommit } = mutation;
+      const { role: target, created } =
+        typeof role === 'string'
+          ? await createRole(guard, roleData, transaction)
+          : {
+              role: await lockRoleInstance(guard, role, transaction),
+              created: false,
+            };
+      if (created) emitAfterCommit('onRolesCreated', [target]);
+
+      const assigned = await loadRolePermissions(guard, target, transaction);
+      const grants = await createPermissions(guard, requested, mutation, {
+        all: true,
+      });
+      const assignedIds = new Set(assigned.map((permission) => permission.id));
+      const additions = grants.filter(
+        (permission) => !assignedIds.has(permission.id),
+      );
+
+      await linkPermissions(guard, target, additions, transaction);
+      target.Permissions = [...assigned, ...additions];
+      if (additions.length) emitAfterCommit('onPermsAddedToRole', target);
+      return { role: target, permissions: target.Permissions };
     });
-
-    const { role: roleModel } = await this.makeRole(role);
-    const roles = await this.findRoles({ name: roleModel.name });
-    const roleToUpdate = roles[0];
-
-    const assignedPerms = await roleToUpdate.getPermissions!();
-    const perms2add = lodash.differenceBy(perms, assignedPerms, (r) => r.name);
-
-    await roleToUpdate.addPermissions!(perms2add);
-
-    roleToUpdate.Permissions = [...assignedPerms, ...perms2add];
-    // TODO: Check why this was in previous version.
-    // roleToUpdate.dataValues.Permissions = roleToUpdate.Permissions;
-
-    this.emit('onPermsAddedToRole', roleToUpdate);
-
-    return {
-      role: roleToUpdate,
-      permissions: roleToUpdate.Permissions,
-    };
   };
 
   /**
-   * Remove permissions from role
-   * @param role
-   * @param actions
-   * @param resources
+   * Subtract exact action tokens from the role's grants for the selected resources.
    */
   SequelizeGuard.prototype.rmPermsFromRole = async function (
     role: string,
     actions: string | string[],
     resources: string | string[],
+    options: PolicyMutationOptions = {},
   ): Promise<RemovePermsFromRoleResult> {
-    this._assertModelBindings();
-    const perms2rmIn = this._sanitizePermsInput(resources, actions);
-
-    const { role: roleModel } = await this.makeRole(role);
-    const roles = await this._models.GuardRole.findAll({
-      where: { name: roleModel.name },
-      useMaster: true,
-    });
-    const roleToUpdate = roles[0];
-
-    const assignedPerms = await roleToUpdate.getPermissions!({
-      useMaster: true,
-    });
-    const perms2rm = lodash.intersectionBy(
-      assignedPerms,
-      perms2rmIn,
-      (r) => r.resource + r.action,
+    const name = normalizeRoleName(role);
+    const requested = new Set(
+      permissionInputs(resources, actions).map(
+        (permission) => permission.resource,
+      ),
     );
+    const removedActions = new Set(canonicalPermissionActions(actions));
+    const guard = this as unknown as SequelizeGuard<Model>;
 
-    await roleToUpdate.removePermissions!(perms2rm);
+    return mutatePolicy(guard, options, async (mutation) => {
+      const { transaction, emitAfterCommit } = mutation;
+      const [target] = await lockRoles(guard, [name], transaction);
+      if (!target) return { role: null, permissions: [], permsRemoved: [] };
 
-    roleToUpdate.Permissions = lodash.without(assignedPerms, ...perms2rm);
-    // roleToUpdate.dataValues.Permissions = roleToUpdate.Permissions;
+      const assigned = await loadRolePermissions(guard, target, transaction);
+      const retained: GuardPermissionModel[] = [];
+      const permsRemoved: GuardPermissionModel[] = [];
+      const replacements: ReturnType<typeof makePermission>[] = [];
 
-    //TODO: Make enum for all the events, create proper event management system
-    this.emit('onPermsRemovedFromRole', roleToUpdate);
+      for (const grant of assigned) {
+        if (!requested.has(grant.resource)) {
+          retained.push(grant);
+          continue;
+        }
+        const grantActions = readPermissionActions(grant.action);
+        if (!grantActions) {
+          throw new Error(
+            `Invalid actions in stored permission "${grant.name}"`,
+          );
+        }
+        const remaining = grantActions.filter(
+          (action) => !removedActions.has(action),
+        );
+        if (remaining.length === grantActions.length) {
+          retained.push(grant);
+          continue;
+        }
+        permsRemoved.push(grant);
+        if (remaining.length) {
+          replacements.push(
+            makePermission(
+              grant.resource,
+              canonicalPermissionActions(remaining),
+            ),
+          );
+        }
+      }
 
-    return {
-      role: roleToUpdate,
-      permissions: roleToUpdate.Permissions,
-      permsRemoved: perms2rm,
-    };
+      if (permsRemoved.length) {
+        const residualGrants = await createPermissions(
+          guard,
+          replacements,
+          mutation,
+          { all: true },
+        );
+        const retainedIds = new Set(
+          retained.map((permission) => permission.id),
+        );
+        const additions = residualGrants.filter(
+          (permission) => !retainedIds.has(permission.id),
+        );
+        await this._models.RolePermission.destroy({
+          where: {
+            role_id: target.id,
+            permission_id: permsRemoved.map((permission) => permission.id),
+          },
+          force: true,
+          transaction,
+        });
+        await linkPermissions(guard, target, additions, transaction);
+        retained.push(...additions);
+        emitAfterCommit('onPermsRemovedFromRole', target);
+      }
+
+      target.Permissions = retained;
+      return { role: target, permissions: retained, permsRemoved };
+    });
   };
 
   /**
@@ -312,30 +405,188 @@ export function extendWithRoles(SequelizeGuard: SequelizeGuardType): void {
   };
 }
 
-/**
- * Helper functions
- * @param role
- */
-function makeRoleData(role: RoleCreationParam): RoleData {
-  if (typeof role === 'string') {
-    return { name: role.toLowerCase() };
+export function normalizeRoleName(name: unknown): string {
+  if (typeof name !== 'string' || !name.trim()) {
+    throw new TypeError('Role name must be a non-empty string');
   }
+  return name.trim().toLowerCase();
+}
+
+function makeRoleData(role: RoleCreationParam): RoleData {
+  if (typeof role === 'string') return { name: normalizeRoleName(role) };
   return {
-    ...role,
-    name: role.name.toLowerCase(),
+    name: normalizeRoleName(role?.name),
+    description: role.description,
+    parent_id: role.parent_id,
   };
 }
 
-/**
- *
- * @param roles
- */
-function sanitizeRolesInput(roles: string | RoleCreationParam[]): RoleData[] {
-  if (typeof roles === 'string') {
-    return [makeRoleData(roles)];
+export function roleInputs(roles: string | RoleCreationParam[]): RoleData[] {
+  const values = typeof roles === 'string' ? [roles] : roles;
+  const unique = new Map<string, RoleData>();
+  for (const value of values) {
+    const role = makeRoleData(value);
+    if (!unique.has(role.name)) unique.set(role.name, role);
+  }
+  return [...unique.values()];
+}
+
+export async function createRole(
+  guard: SequelizeGuard<Model>,
+  roleData: RoleData,
+  transaction: Transaction,
+): Promise<RoleCreationResult> {
+  const model = guard._models.GuardRole;
+  const [role, created] = await findOrInsertPolicyRecord(
+    model,
+    {
+      where: { name: roleData.name },
+      transaction,
+      lock: true,
+      useMaster: true,
+    },
+    roleData,
+  );
+  if (role.name !== roleData.name) {
+    throw new Error(
+      `Role "${roleData.name}" conflicts with an existing role name`,
+    );
+  }
+  return { role, created };
+}
+
+export async function createRoles(
+  guard: SequelizeGuard<Model>,
+  roles: RoleData[],
+  { transaction, emitAfterCommit }: PolicyMutation,
+  options: Pick<CreateRolesOptions, 'all'> = {},
+): Promise<GuardRoleModel[]> {
+  if (!roles.length) return [];
+  const results = new Map<string, RoleCreationResult>();
+  const ordered = [...roles].sort((a, b) => (a.name < b.name ? -1 : 1));
+  for (const chunk of lodash.chunk(ordered, policyBatchSize)) {
+    const names = chunk.map(({ name }) => name);
+    for (const role of await lockRoles(guard, names, transaction)) {
+      results.set(role.name, { role, created: false });
+    }
+    const fresh = chunk.filter(({ name }) => !results.has(name));
+    if (fresh.length) {
+      await guard._models.GuardRole.bulkCreate(fresh, { transaction });
+      const created = await lockRoles(
+        guard,
+        fresh.map(({ name }) => name),
+        transaction,
+      );
+      if (created.length !== fresh.length) {
+        throw new Error('Could not resolve all newly created roles');
+      }
+      for (const role of created) {
+        results.set(role.name, { role, created: true });
+      }
+    }
   }
 
-  return roles
-    .map((role) => makeRoleData(role))
-    .filter((role) => typeof role.name === 'string' && role.name.length > 0);
+  const matches = roles.map(({ name }) => results.get(name)!);
+  const created = matches
+    .filter((result) => result.created)
+    .map(({ role }) => role);
+  if (created.length) emitAfterCommit('onRolesCreated', created);
+  return options.all ? matches.map(({ role }) => role) : created;
+}
+
+export async function lockRoles(
+  guard: SequelizeGuard<Model>,
+  names: string[],
+  transaction: Transaction,
+): Promise<GuardRoleModel[]> {
+  const roles = await guard._models.GuardRole.findAll({
+    where: { name: names },
+    order: [['name', 'ASC']],
+    transaction,
+    useMaster: true,
+    lock: true,
+  });
+  const requested = new Set(names);
+  return roles.filter((role) => requested.has(role.name));
+}
+
+async function lockRoleInstance(
+  guard: SequelizeGuard<Model>,
+  role: GuardRoleModel,
+  transaction: Transaction,
+): Promise<GuardRoleModel> {
+  if (!(role instanceof guard._models.GuardRole)) {
+    throw new TypeError('Expected a role from the guard role model');
+  }
+  const target = await guard._models.GuardRole.findByPk(role.id, {
+    lock: true,
+    transaction,
+    useMaster: true,
+  });
+  if (!target) {
+    throw new Error('Role does not exist on the guard connection');
+  }
+  return target;
+}
+
+async function loadRolePermissions(
+  guard: SequelizeGuard<Model>,
+  role: GuardRoleModel,
+  transaction: Transaction,
+): Promise<GuardPermissionModel[]> {
+  const links = await guard._models.RolePermission.findAll({
+    where: { role_id: role.id },
+    transaction,
+    useMaster: true,
+    lock: true,
+  });
+  if (!links.length) return [];
+  return guard._models.GuardPermission.findAll({
+    where: { id: links.map((link) => link.permission_id) },
+    transaction,
+    useMaster: true,
+    lock: transaction.LOCK.SHARE,
+  });
+}
+
+async function linkPermissions(
+  guard: SequelizeGuard<Model>,
+  role: GuardRoleModel,
+  permissions: GuardPermissionModel[],
+  transaction: Transaction,
+): Promise<void> {
+  if (!permissions.length) return;
+  const links = guard._models.RolePermission;
+  let missing = permissions;
+  if (canArchiveLinks(links)) {
+    const previous = await links.findAll({
+      where: {
+        role_id: role.id,
+        permission_id: permissions.map(({ id }) => id),
+      },
+      paranoid: false,
+      transaction,
+      useMaster: true,
+      lock: true,
+    });
+    const existing = new Set(
+      previous.map(({ permission_id }) => permission_id),
+    );
+    missing = permissions.filter(({ id }) => !existing.has(id));
+    const archived = previous
+      .filter((link) => link.isSoftDeleted())
+      .map(({ id }) => id);
+    if (archived.length) {
+      await links.restore({ where: { id: archived }, transaction });
+    }
+  }
+  if (missing.length) {
+    await links.bulkCreate(
+      missing.map((permission) => ({
+        role_id: role.id,
+        permission_id: permission.id,
+      })),
+      { transaction },
+    );
+  }
 }

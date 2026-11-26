@@ -1,6 +1,7 @@
 import type { Model, ModelStatic } from 'sequelize';
 import type { GuardUserModel, GuardUserModelStatic } from '../sequelize-models';
 import type { SequelizeGuard } from '../SequelizeGuard';
+import type { PolicyMutationOptions } from '../types';
 
 /** Validate application model surfaces before Sequelize adds associations or methods. */
 export function assertGuardUserAssociations(user: ModelStatic<Model>): void {
@@ -63,8 +64,9 @@ export function setupGuardUserAssociations(
   (GuardUser.prototype as GuardUserModel).assignRole = function (
     this: GuardUserModel,
     role: string,
+    options?: PolicyMutationOptions,
   ) {
-    return guard.assignRole(this, role);
+    return guard.assignRole(this, role, options);
   };
 
   (GuardUser.prototype as GuardUserModel).roles = function (
@@ -78,15 +80,17 @@ export function setupGuardUserAssociations(
   (GuardUser.prototype as GuardUserModel).assignRoles = function (
     this: GuardUserModel,
     roles: string[],
+    options?: PolicyMutationOptions,
   ) {
-    return guard.assignRoles(this, roles);
+    return guard.assignRoles(this, roles, options);
   };
 
   (GuardUser.prototype as GuardUserModel).rmAssignedRoles = function (
     this: GuardUserModel,
     roles: string[],
+    options?: PolicyMutationOptions,
   ) {
-    return guard.rmAssignedRoles(this, roles);
+    return guard.rmAssignedRoles(this, roles, options);
   };
 
   (GuardUser.prototype as GuardUserModel).isAllOf = function (

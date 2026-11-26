@@ -6,6 +6,7 @@ import {
   ModelStatic,
   NonAttribute,
 } from 'sequelize';
+import type { PolicyMutationOptions } from '../types';
 import { GuardRoleModel } from './GuardRole';
 import {
   BaseModelType,
@@ -40,10 +41,14 @@ export interface GuardUserModel extends SequelizeModelClass<GuardUserModel> {
 
   /**
    * Assign single role to user
-   * @param {{string}} role
+   * @param role
+   * @param options
    * @returns GuardUserModel
    */
-  assignRole?: (role: string) => Promise<GuardUserModel>;
+  assignRole?: (
+    role: string,
+    options?: PolicyMutationOptions,
+  ) => Promise<GuardUserModel>;
 
   /**
    * @deprecated Use `getRoles` association method instead
@@ -53,15 +58,23 @@ export interface GuardUserModel extends SequelizeModelClass<GuardUserModel> {
   /**
    * Assign multiple roles to user
    * @param roles
+   * @param options
    * @returns void
    */
-  assignRoles?: (roles: string[]) => Promise<void>;
+  assignRoles?: (
+    roles: string[],
+    options?: PolicyMutationOptions,
+  ) => Promise<void>;
   /**
    * Remove assigned roles from user
    * @param roles
+   * @param options
    * @returns void
    */
-  rmAssignedRoles?: (roles: string[]) => Promise<void>;
+  rmAssignedRoles?: (
+    roles: string[],
+    options?: PolicyMutationOptions,
+  ) => Promise<void>;
 }
 
 export type GuardUserModelStatic = ModelStatic<GuardUserModel>;

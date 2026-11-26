@@ -1,5 +1,5 @@
 import type { SequelizeGuard, SequelizeGuardType } from '../SequelizeGuard';
-import type { AddPermsToRoleResult } from '../types';
+import type { AddPermsToRoleResult, PolicyMutationOptions } from '../types';
 import { GuardControl } from './GuardControl';
 
 /**
@@ -21,12 +21,14 @@ export function extendWithGuardControl(
    * @param role
    * @param actions
    * @param resources
+   * @param options
    */
   SequelizeGuard.prototype.allow = function (
     role: string,
     actions: string | string[],
     resources: string | string[],
+    options?: PolicyMutationOptions,
   ): Promise<AddPermsToRoleResult> {
-    return this.init().allow(role).to(actions).on(resources).commit();
+    return this.init().allow(role).to(actions).on(resources).commit(options);
   };
 }

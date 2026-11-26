@@ -203,7 +203,7 @@ describe('Roles', () => {
       );
       // assert
       expect(data.permissions.length).toBe(1);
-      expect(data.role.name).toBe('analyst');
+      expect(data.role?.name).toBe('analyst');
     });
 
     it('should handle removing permissions from non-existent role', async () => {
@@ -216,7 +216,9 @@ describe('Roles', () => {
       );
       // assert
       expect(data.permissions.length).toBe(0);
-      expect(data.role.name).toBe('analyst2');
+      expect(data.role).toBeNull();
+      expect(data.permsRemoved).toEqual([]);
+      expect(await context.guard.getRole('analyst2')).toBeNull();
     });
   });
 });
